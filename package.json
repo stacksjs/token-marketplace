@@ -8,7 +8,6 @@
   "contributors": ["Chris Breuer <chris@stacksjs.org>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
-  "homepage": "https://github.com/stacksjs/stacks#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stacksjs/stacks.git"
@@ -30,6 +29,9 @@
     "prod": "./buddy build",
     "deploy": "./buddy deploy",
     "lint": "./buddy lint",
+    "lint:fix": "./buddy lint:fix",
+    "format": "./buddy format",
+    "format:check": "./buddy format:check",
     "serve": "./buddy serve",
     "make": "./buddy make",
     "make:component": "./buddy make:component",
@@ -55,22 +57,11 @@
     "stx": "./buddy"
   },
   "dependencies": {
-    "@cwcss/crosswind": "link:@cwcss/crosswind",
     "@stacksjs/clarity": "^0.3.24",
     "@stacksjs/stx": "link:@stacksjs/stx",
-    "@stacksjs/ts-cache": "link:@stacksjs/ts-cache",
-    "bun-plugin-dotenvx": "link:bun-plugin-dotenvx",
     "bun-plugin-stx": "link:bun-plugin-stx",
-    "bun-plugin-yml": "link:bun-plugin-yml",
-    "bun-query-builder": "link:bun-query-builder",
-    "bun-queue": "link:bun-queue",
-    "bun-router": "file:../bun-router/packages/bun-router",
+    "@cwcss/crosswind": "link:@cwcss/crosswind",
     "stacks": "workspace:*"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-git"
-    }
   },
   "workspaces": [
     "storage/framework/**",
@@ -83,11 +74,6 @@
     "!storage/framework/cache/**"
   ],
   "devDependencies": {
-    "buddy-bot": "0.9.4",
-    "typescript": "5.9.2",
     "better-dx": "0.2.5"
-  },
-  "overrides": {
-    "unconfig": "0.3.10"
   }
 }

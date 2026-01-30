@@ -1,5 +1,5 @@
 # preload these modules before running bun
-preload = [ "./resources/plugins/preloader.ts" ]
+preload = [ "./storage/framework/defaults/resources/plugins/preloader.ts" ]
 
 [test]
 preload = [ "./tests/setup.ts" ]
@@ -11,7 +11,6 @@ coverage = true
 # will automatically install dependencies on the fly during execution.
 # auto = true
 linker = "hoisted"
-
 registry = { url = "https://registry.npmjs.org/", token = "$BUN_AUTH_TOKEN" }
 
 # whether to install optionalDependencies (currently needed because all drivers are optional)
@@ -58,6 +57,18 @@ disableManifest = false
 
 # whether to save the lockfile to disk
 save = true
+
+# Exclude patterns - directories to ignore in workspaces
+[install.workspace]
+exclude = [
+  "**/cdk.out/**",
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/.cache/**",
+  "**/build/**",
+  "**/coverage/**",
+  "**/.turbo/**"
+]
 
 [run]
 # equivalent to `bun --bun` for all `bun run` commands

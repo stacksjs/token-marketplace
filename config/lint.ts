@@ -1,25 +1,64 @@
-import config from '@stacksjs/eslint-config'
+import type { PickierConfig } from 'pickier'
 
-export default config({
-  // Enable stylistic formatting rules
-  // stylistic: true,
-
-  // Or customize the stylistic rules
-  stylistic: {
-    indent: 2,
-    quotes: 'single', // or 'double'
+const config: PickierConfig = {
+  lint: {
+    extensions: ['ts', 'js', 'vue', 'json', 'yaml', 'md'],
   },
 
-  typescript: true,
-  vue: false,
-  jsonc: true,
-  yaml: true,
-  unocss: true,
+  format: {
+    extensions: ['ts', 'js', 'vue', 'json', 'yaml', 'md'],
+    indent: 2,
+    quotes: 'single',
+    semi: false,
+    trailingComma: true,
+  },
+
+  rules: {
+    // TypeScript rules
+    noDebugger: 'off',
+    noConsole: 'off',
+  },
+
+  pluginRules: {
+    // Disable regexp rules that cause false positives on route definitions
+    'regexp/no-unused-capturing-group': 'off',
+    'regexp/no-super-linear-backtracking': 'off',
+    'regexp/optimal-quantifier-concatenation': 'off',
+    // Disable style rules that conflict with common patterns or generated code
+    'style/brace-style': 'off',
+    'style/max-statements-per-line': 'off',
+    'style/quotes': 'off',
+    'indent': 'off',
+    'quotes': 'off',
+    // TypeScript rules
+    'ts/no-top-level-await': 'off',
+    // Console is intentional in this codebase
+    'no-console': 'off',
+    // Markdown rules
+    'markdown/heading-increment': 'off',
+    'markdown/no-empty-links': 'off',
+  },
 
   ignores: [
-    '**/fixtures',
-    '**/*.md',
-    '**/*.yaml',
-    // ...globs
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/fixtures/**',
+    '**/coverage/**',
+    '**/cdk.out/**',
+    '**/.git/**',
+    '**/storage/framework/cache/**',
+    '**/storage/framework/server/storage/**',
+    // Generated ORM model files
+    '**/storage/framework/orm/src/models/**',
+    '**/storage/framework/orm/src/routes/**',
+    // Generated actions and requests
+    '**/storage/framework/actions/**',
+    '**/storage/framework/requests/**',
+    '**/storage/framework/defaults/actions/**',
+    // Temp and generated type files
+    '**/temp/**',
+    '**/storage/framework/types/**',
   ],
-})
+}
+
+export default config
