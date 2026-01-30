@@ -1,9 +1,21 @@
-import type { LogEvent } from 'kysely'
 import { memoryUsage } from 'node:process'
 import { config } from '@stacksjs/config'
 import { log } from '@stacksjs/logging'
+import { trackQuery } from '@stacksjs/router'
 import { parseQuery } from './query-parser'
-import { db as kysely } from './utils'
+import { db } from './utils'
+
+/**
+ * Query log event type - compatible with bun-query-builder hooks
+ */
+interface LogEvent {
+  query?: {
+    sql?: string
+    parameters?: unknown[]
+  }
+  queryDurationMillis?: number
+  error?: Error | unknown
+}
 
 interface QueryLogRecord {
   query: string
@@ -35,12 +47,20 @@ interface QueryLogRecord {
  */
 export async function logQuery(event: LogEvent): Promise<void> {
   try {
-    // Skip if database logging is disabled
-    if (!config.database?.queryLogging?.enabled)
-      return
-
     // Extract basic information from the event
     const { query, durationMs, error, bindings } = extractQueryInfo(event)
+
+    // Always track query for error page context (even if logging is disabled)
+    try {
+      trackQuery(query, durationMs, config.database?.default || 'unknown')
+    }
+    catch {
+      // Ignore if router not available
+    }
+
+    // Skip database logging if disabled
+    if (!config.database?.queryLogging?.enabled)
+      return
 
     // Determine query status based on duration and error
     const status = determineQueryStatus(durationMs, error)
@@ -296,7 +316,8 @@ function generateOptimizationSuggestions(explainResult: any, logRecord: QueryLog
  */
 async function storeQueryLog(logRecord: QueryLogRecord): Promise<void> {
   try {
-    await kysely.insertInto('query_logs').values(logRecord).execute()
+    // Use bun-query-builder's table().insert() syntax
+    await db.table('query_logs').insert(logRecord).execute()
   }
   catch (error) {
     log.error('Failed to store query log:', error)

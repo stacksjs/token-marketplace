@@ -19,45 +19,84 @@ type Action = ActionPath | ActionName | string
  * @returns The result of the command.
  */
 export async function runAction(action: Action, options?: ActionOptions): Promise<Result<Subprocess, CommandError>> {
-  log.debug('runAction:', action, options)
 
-  // check if action is a file anywhere in ./app/Actions/**/*.ts
-  // if it is, return and await the action
-  const glob = new Bun.Glob('**/*.{ts,js}')
-  const scanOptions = { cwd: p.userActionsPath(), onlyFiles: true, absolute: true }
-
-  for await (const file of glob.scan(scanOptions)) {
-    if (file.endsWith(`${action}.ts`) || file.endsWith(`${action}.js`))
-      return ((await import(file)).default as ActionType).handle()
-
-    // if a custom model name is used, we need to check for it
+  // Special case: handle dev/views directly for maximum performance
+  if (action === 'dev/views') {
     try {
-      log.debug('trying to import', file)
-      const a = await import(file)
-      if (a.name === action) {
-        log.debug('a.name matches', a.name)
-        return await a.handle()
-      }
+      log.success('🚀 Starting STX development server on http://localhost:3456\n')
+
+      // Import and call serve function directly - no subprocess!
+      const { serve } = await import('bun-plugin-stx/serve')
+      await serve({
+        patterns: ['resources/views'],
+        port: 3456,
+      })
+
+      // This will never return since serve runs forever
+      // eslint-disable-next-line no-unreachable
+      return { ok: true, value: {} as Subprocess }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (error) {
-      // handleError(error, { shouldExit: false })
+      return err(`Failed to start dev server: ${error}`)
+    }
+  }
+
+  // Quick check: does this look like a core action? (contains a slash or is a common core action name)
+  // Most core actions are like "dev/views", "build/app", etc.
+  const isLikelyCoreAction = action.includes('/') || ['dev', 'build', 'install', 'upgrade', 'migrate'].some(prefix => action.startsWith(prefix))
+
+  if (!isLikelyCoreAction) {
+    // Only scan user actions if it's NOT likely a core action
+    const glob = new Bun.Glob('**/*.{ts,js}')
+    const scanOptions = { cwd: p.userActionsPath(), onlyFiles: true, absolute: true }
+
+    // First pass: only check filenames, don't import anything
+    const matchingFiles: string[] = []
+    const basePath = p.userActionsPath()
+
+    for await (const file of glob.scan(scanOptions)) {
+      // Normalize the file path relative to basePath to match the action name
+      // e.g., /path/to/app/Actions/SomeAction.ts -> SomeAction
+      const relativePath = file.replace(`${basePath}/`, '').replace(/\.(ts|js)$/, '')
+
+      if (relativePath === action || file.endsWith(`${action}.ts`) || file.endsWith(`${action}.js`)) {
+        // Direct filename match - import and execute immediately
+        return ((await import(file)).default as ActionType).handle()
+      }
+      // Collect all files for potential name matching (only if direct match fails)
+      matchingFiles.push(file)
+    }
+
+    // Second pass: only import files if we didn't find a direct match
+    // This is a fallback for custom action names
+    for (const file of matchingFiles) {
+      try {
+        const a = await import(file)
+        if (a.name === action) {
+          return await a.handle()
+        }
+      }
+      // eslint-disable-next-line unused-imports/no-unused-vars
+      catch (error) {
+        // handleError(error, { shouldExit: false })
+      }
     }
   }
 
   // or else, just run the action normally by assuming the action is core Action,  stored in p.actionsPath
   const opts = buddyOptions()
   const path = p.relativeActionsPath(`src/${action}.ts`)
-  const cmd = `bun ${path} ${opts}`.trimEnd()
+
+  // Use --watch for dev actions to enable hot reloading
+  const isDevAction = action.startsWith('dev/')
+  const watchFlag = isDevAction ? '--watch' : ''
+  const cmd = `bun ${watchFlag} ${path} ${opts}`.trimEnd()
 
   const optionsWithCwd: CliOptions = {
     cwd: options?.cwd || p.projectPath(),
     stdio: [options?.stdin ?? 'inherit', 'pipe', 'pipe'],
     ...options,
   }
-
-  log.debug('action cmd:', cmd)
-  log.debug('optionsWithCwd:', optionsWithCwd)
 
   return await runCommand(cmd, optionsWithCwd)
 }
@@ -73,13 +112,10 @@ export async function runActions(
   actions: Action[],
   options?: ActionOptions,
 ): Promise<Ok<Subprocess<Writable, Readable, Readable>, Error>[] | Err<never, string>> {
-  log.debug('runActions:', actions, options)
-
   if (!actions.length)
     return err('No actions were specified')
 
   for (const action of actions) {
-    log.debug(`running action "${action}"`)
     if (!hasAction(action))
       return err(`The specified action "${action}" does not exist`)
   }
@@ -92,8 +128,6 @@ export async function runActions(
   }
 
   const commands = actions.map(action => `bun ${p.relativeActionsPath(`src/${action}.ts`)} ${opts}`)
-
-  log.debug('commands:', commands)
 
   return await runCommands(commands, o)
 }

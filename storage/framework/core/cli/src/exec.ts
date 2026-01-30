@@ -15,7 +15,7 @@ import { italic, log } from './'
  * ```ts
  * const result = await exec('ls')
  *
- * if (result.isErr())
+ * if (result.isErr)
  *   console.error(result.error)
  * else
  *   console.log(result)
@@ -27,9 +27,6 @@ import { italic, log } from './'
  */
 export async function exec(command: string | string[], options?: CliOptions): Promise<Result<Subprocess, Error>> {
   const cmd = Array.isArray(command) ? command : command.match(/(?:[^\s"]|"[^"]*")+/g)
-
-  log.debug('exec:', Array.isArray(command) ? command.join(' ') : command, options)
-  log.debug('cmd:', cmd)
 
   if (!cmd)
     return err(handleError(`Failed to parse command: ${cmd}`, options))
@@ -44,7 +41,7 @@ export async function exec(command: string | string[], options?: CliOptions): Pr
 
     // detached: options?.background || false,
     cwd,
-    // env: { ...e, ...options?.env },
+    env: { ...process.env, ...options?.env },
     onExit(
       subprocess: Subprocess<SpawnOptions.Writable, SpawnOptions.Readable, SpawnOptions.Readable>,
       exitCode: number | null,
@@ -90,9 +87,6 @@ export async function exec(command: string | string[], options?: CliOptions): Pr
  * ```
  */
 export async function execSync(command: string | string[], options?: CliOptions): Promise<string> {
-  log.debug('Running execSync:', command)
-  log.debug('execSync options:', options)
-
   const cmd = Array.isArray(command) ? command : command.match(/(?:[^\s"]|"[^"]*")+/g)
 
   if (!cmd) {
@@ -106,7 +100,7 @@ export async function execSync(command: string | string[], options?: CliOptions)
     stdout: options?.stdout ?? 'pipe',
     stderr: options?.stderr ?? 'inherit',
     cwd: options?.cwd ?? process.cwd(),
-    // env: { ...Bun.env, ...options?.env },
+    env: { ...process.env, ...options?.env },
     onExit(
       subprocess: Subprocess<SpawnOptions.Writable, SpawnOptions.Readable, SpawnOptions.Readable>,
       exitCode: number | null,

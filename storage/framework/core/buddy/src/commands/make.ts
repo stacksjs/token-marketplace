@@ -9,12 +9,16 @@ import {
   invoke,
   makeAction,
   makeCertificate,
+  makeCommand,
   makeComponent,
   makeDatabase,
   makeFunction,
+  makeJob,
   makeLanguage,
   makePage,
+  makePolicy,
   makeQueueTable,
+  makeResource,
   makeStack,
 } from '@stacksjs/actions'
 import { intro, italic, outro } from '@stacksjs/cli'
@@ -25,16 +29,20 @@ import { ExitCode } from '@stacksjs/types'
 export function make(buddy: CLI): void {
   const descriptions = {
     action: 'Create a new action',
+    command: 'Create a new CLI command',
     model: 'Create a new model',
     middleware: 'Create a new middleware',
     component: 'Create a new component',
     page: 'Create a new page',
     function: 'Create a new function',
+    job: 'Create a new job',
     language: 'Create a new language',
     database: 'Create a new database',
     migration: 'Create a new migration',
     factory: 'Create a new factory',
     notification: 'Create a new notification',
+    policy: 'Create a new authorization policy',
+    resource: 'Create a new API resource',
     name: 'The name of the action',
     queue: 'Make queue migration',
     stack: 'Create a new stack',
@@ -82,6 +90,9 @@ export function make(buddy: CLI): void {
           case 'certificate':
             await makeCertificate()
             break
+          case 'command':
+            await makeCommand(options)
+            break
           case 'component':
             await makeComponent(options)
             break
@@ -90,6 +101,9 @@ export function make(buddy: CLI): void {
             break
           case 'function':
             await makeFunction(options)
+            break
+          case 'job':
+            await makeJob(options)
             break
           case 'language':
             await makeLanguage(options)
@@ -108,6 +122,12 @@ export function make(buddy: CLI): void {
             break
           case 'notification':
             await createNotification(options)
+            break
+          case 'policy':
+            await makePolicy(options)
+            break
+          case 'resource':
+            await makeResource(options)
             break
           case 'queue-table':
             await makeQueueTable()
@@ -182,6 +202,47 @@ export function make(buddy: CLI): void {
     })
 
   buddy
+    .command('make:command [name]', descriptions.command)
+    .option('-n, --name [name]', descriptions.name, { default: false })
+    .option('-s, --signature [signature]', 'The command signature (CLI name)', { default: false })
+    .option('-d, --description [description]', 'The command description', { default: false })
+    .option('--no-register', 'Do not register in Commands.ts', { default: false })
+    .option('-p, --project [project]', descriptions.project, { default: false })
+    .option('--verbose', descriptions.verbose, { default: false })
+    .example('buddy make:command SendEmails')
+    .example('buddy make:command SendEmails --signature=send-emails')
+    .action(async (name: string, options: MakeOptions & { signature?: string, description?: string, register?: boolean }) => {
+      log.debug('Running `buddy make:command` ...', options)
+
+      const perf = await intro('buddy make:command')
+
+      name = name ?? options.name
+      options.name = name
+
+      if (!name) {
+        log.error('You need to specify a command name.')
+        log.info('Example: buddy make:command SendEmails')
+        process.exit()
+      }
+
+      const result = await makeCommand(options)
+
+      if (!result) {
+        await outro('While running the make:command command, there was an issue', {
+          startTime: perf,
+          useSeconds: true,
+        })
+        process.exit()
+      }
+
+      await outro(`Created your ${italic(name)} command.`, {
+        startTime: perf,
+        useSeconds: true,
+      })
+      process.exit(ExitCode.Success)
+    })
+
+  buddy
     .command('make:component [name]', descriptions.component)
     .option('-n, --name [name]', descriptions.name, { default: false })
     .option('-p, --project [project]', descriptions.project, { default: false })
@@ -215,7 +276,7 @@ export function make(buddy: CLI): void {
         log.error('You need to specify a database name via the `--name` option, or as the command’s argument.')
         log.info('Example: `buddy make:database my-cool-database`')
         log.info('Or: `buddy make:database --name=my-cool-database`')
-        log.info('Read more about the documentation here: https://stacksjs.org/docs/make/database')
+        log.info('Read more about the documentation here: https://stacksjs.com/docs/make/database')
         process.exit()
       }
 
@@ -348,6 +409,87 @@ export function make(buddy: CLI): void {
     })
 
   buddy
+    .command('make:policy [name]', descriptions.policy)
+    .option('-n, --name [name]', descriptions.name, { default: false })
+    .option('-m, --model [model]', 'The model this policy is for', { default: false })
+    .option('--no-register', 'Do not register in Gates.ts', { default: false })
+    .option('-p, --project [project]', descriptions.project, { default: false })
+    .option('--verbose', descriptions.verbose, { default: false })
+    .example('buddy make:policy PostPolicy')
+    .example('buddy make:policy CommentPolicy --model=Comment')
+    .action(async (name: string, options: MakeOptions & { model?: string, register?: boolean }) => {
+      log.debug('Running `buddy make:policy` ...', options)
+
+      const perf = await intro('buddy make:policy')
+
+      name = name ?? options.name
+      options.name = name
+
+      if (!name) {
+        log.error('You need to specify a policy name.')
+        log.info('Example: buddy make:policy PostPolicy')
+        process.exit()
+      }
+
+      const result = await makePolicy(options)
+
+      if (!result) {
+        await outro('While running the make:policy command, there was an issue', {
+          startTime: perf,
+          useSeconds: true,
+        })
+        process.exit()
+      }
+
+      await outro(`Created your ${italic(name)} policy.`, {
+        startTime: perf,
+        useSeconds: true,
+      })
+      process.exit(ExitCode.Success)
+    })
+
+  buddy
+    .command('make:resource [name]', descriptions.resource)
+    .option('-n, --name [name]', descriptions.name, { default: false })
+    .option('-m, --model [model]', 'The model this resource is for', { default: false })
+    .option('-c, --collection', 'Create a collection resource', { default: false })
+    .option('-p, --project [project]', descriptions.project, { default: false })
+    .option('--verbose', descriptions.verbose, { default: false })
+    .example('buddy make:resource UserResource')
+    .example('buddy make:resource PostResource --model=Post')
+    .example('buddy make:resource PostCollection --collection')
+    .action(async (name: string, options: MakeOptions & { model?: string, collection?: boolean }) => {
+      log.debug('Running `buddy make:resource` ...', options)
+
+      const perf = await intro('buddy make:resource')
+
+      name = name ?? options.name
+      options.name = name
+
+      if (!name) {
+        log.error('You need to specify a resource name.')
+        log.info('Example: buddy make:resource UserResource')
+        process.exit()
+      }
+
+      const result = await makeResource(options)
+
+      if (!result) {
+        await outro('While running the make:resource command, there was an issue', {
+          startTime: perf,
+          useSeconds: true,
+        })
+        process.exit()
+      }
+
+      await outro(`Created your ${italic(name)} resource.`, {
+        startTime: perf,
+        useSeconds: true,
+      })
+      process.exit(ExitCode.Success)
+    })
+
+  buddy
     .command('make:queue-table', descriptions.migration)
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
@@ -394,6 +536,46 @@ export function make(buddy: CLI): void {
       }
 
       await makePage(options)
+    })
+
+  buddy
+    .command('make:job [name]', descriptions.job)
+    .option('-n, --name [name]', descriptions.name, { default: false })
+    .option('-q, --queue [queue]', 'The queue to dispatch to', { default: 'default' })
+    .option('-c, --class', 'Create a class-based job', { default: false })
+    .option('-t, --tries [tries]', 'Number of retry attempts', { default: 3 })
+    .option('-b, --backoff [backoff]', 'Backoff delay in seconds', { default: 3 })
+    .option('-p, --project [project]', descriptions.project, { default: false })
+    .option('--verbose', descriptions.verbose, { default: false })
+    .action(async (name: string, options: MakeOptions) => {
+      log.debug('Running `buddy make:job` ...', options)
+
+      const perf = await intro('buddy make:job')
+
+      name = name ?? options.name
+      options.name = name
+
+      if (!name) {
+        log.error('You need to specify a job name.')
+        log.info('Example: buddy make:job SendWelcomeEmail')
+        process.exit()
+      }
+
+      const result = await makeJob(options)
+
+      if (!result) {
+        await outro('While running the make:job command, there was an issue', {
+          startTime: perf,
+          useSeconds: true,
+        })
+        process.exit()
+      }
+
+      await outro(`Created your ${italic(name)} job.`, {
+        startTime: perf,
+        useSeconds: true,
+      })
+      process.exit(ExitCode.Success)
     })
 
   buddy.on('make:*', () => {

@@ -4,7 +4,7 @@
   "version": "0.70.23",
   "description": "The Stacks framework router.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": ["Chris Breuer <chris@stacksjs.com>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/core/router#readme",
@@ -36,20 +36,19 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
+    "bun-router": "file:../../../../../bun-router/packages/bun-router",
     "ts-rate-limiter": "^0.4.0"
   },
   "devDependencies": {
     "@stacksjs/actions": "workspace:*",
     "@stacksjs/config": "workspace:*",
-    "@stacksjs/development": "workspace:*",
+    "better-dx": "^0.2.5",
     "@stacksjs/error-handling": "workspace:*",
     "@stacksjs/logging": "workspace:*",
     "@stacksjs/orm": "workspace:*",
     "@stacksjs/path": "workspace:*",
     "@stacksjs/storage": "workspace:*",
     "@stacksjs/types": "workspace:*",
-    "@stacksjs/validation": "workspace:*",
-    "unplugin-vue-router": "^0.15.0",
-    "vue-router": "^4.5.1"
+    "@stacksjs/validation": "workspace:*"
   }
 }

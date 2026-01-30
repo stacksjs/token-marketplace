@@ -1,22 +1,35 @@
-import type { RawBuilder } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
+import { BaseOrm } from '../utils/base'
 import type { Operator } from '@stacksjs/orm'
-import type { ManufacturerJsonResponse, ManufacturersTable, ManufacturerUpdate, NewManufacturer } from '../types/ManufacturerType'
-import type { ProductModel } from './Product'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
 import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
-import { DB } from '@stacksjs/orm'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { ManufacturerModelType, ManufacturerJsonResponse, NewManufacturer, ManufacturerUpdate, ManufacturersTable } from '../types/ManufacturerType'
 
-import { BaseOrm } from '../utils/base'
+import type {ProductModel} from './Product'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersTable, ManufacturerJsonResponse> {
   private readonly hidden: Array<keyof ManufacturerJsonResponse> = []
-  private readonly fillable: Array<keyof ManufacturerJsonResponse> = ['manufacturer', 'description', 'country', 'featured', 'uuid']
+  private readonly fillable: Array<keyof ManufacturerJsonResponse> = ["manufacturer","description","country","featured","uuid"]
   private readonly guarded: Array<keyof ManufacturerJsonResponse> = []
   protected attributes = {} as ManufacturerJsonResponse
   protected originalAttributes = {} as ManufacturerJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -34,33 +47,33 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   constructor(manufacturer: ManufacturerJsonResponse | undefined) {
     super('manufacturers')
     if (manufacturer) {
+
       this.attributes = { ...manufacturer }
       this.originalAttributes = { ...manufacturer }
 
-      Object.keys(manufacturer).forEach((key) => {
+      Object.keys(manufacturer).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (manufacturer as ManufacturerJsonResponse)[key]
+           this.customColumns[key] = (manufacturer as ManufacturerJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('manufacturers')
-    this.updateFromQuery = DB.instance.updateTable('manufacturers')
-    this.deleteFromQuery = DB.instance.deleteFrom('manufacturers')
+    this.selectFromQuery = db.selectFrom('manufacturers')
+    this.updateFromQuery = db.updateTable('manufacturers')
+    this.deleteFromQuery = db.deleteFrom('manufacturers')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: ManufacturerJsonResponse | ManufacturerJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('manufacturer_id', 'in', modelIds)
         .selectAll()
@@ -75,8 +88,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { manufacturer_id: number }) => {
           return record.manufacturer_id === models.id
         })
@@ -97,10 +109,12 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
     if (Array.isArray(data)) {
       data.map((model: ManufacturerJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -109,14 +123,14 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -130,72 +144,76 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
-  get products(): ProductModel[] | [] {
-    return this.attributes.products
-  }
+  get products():ProductModel[] | [] {
+        return this.attributes.products
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get manufacturer(): string {
-    return this.attributes.manufacturer
-  }
+get manufacturer(): string {
+      return this.attributes.manufacturer
+    }
 
-  get description(): string | undefined {
-    return this.attributes.description
-  }
+get description(): string | undefined {
+      return this.attributes.description
+    }
 
-  get country(): string {
-    return this.attributes.country
-  }
+get country(): string {
+      return this.attributes.country
+    }
 
-  get featured(): boolean | undefined {
-    return this.attributes.featured
-  }
+get featured(): boolean | undefined {
+      return this.attributes.featured
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set manufacturer(value: string) {
-    this.attributes.manufacturer = value
-  }
+set manufacturer(value: string) {
+      this.attributes.manufacturer = value
+    }
 
-  set description(value: string) {
-    this.attributes.description = value
-  }
+set description(value: string) {
+      this.attributes.description = value
+    }
 
-  set country(value: string) {
-    this.attributes.country = value
-  }
+set country(value: string) {
+      this.attributes.country = value
+    }
 
-  set featured(value: boolean) {
-    this.attributes.featured = value
-  }
+set featured(value: boolean) {
+      this.attributes.featured = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof ManufacturerJsonResponse)[] | RawBuilder<string> | string): ManufacturerModel {
     const instance = new ManufacturerModel(undefined)
@@ -205,12 +223,11 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
   // Method to find a Manufacturer by ID
   static async find(id: number): Promise<ManufacturerModel | undefined> {
-    const query = DB.instance.selectFrom('manufacturers').where('id', '=', id).selectAll()
+    let query = db.selectFrom('manufacturers').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new ManufacturerModel(undefined)
     return instance.createInstance(model)
@@ -231,8 +248,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ManufacturerModel(model)
   }
@@ -246,7 +262,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   static async all(): Promise<ManufacturerModel[]> {
     const instance = new ManufacturerModel(undefined)
 
-    const models = await DB.instance.selectFrom('manufacturers').selectAll().execute()
+    const models = await db.selectFrom('manufacturers').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -265,7 +281,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
   static async findMany(ids: number[]): Promise<ManufacturerModel[]> {
     const instance = new ManufacturerModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ManufacturerJsonResponse) => instance.parseResult(new ManufacturerModel(modelItem)))
@@ -280,8 +296,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ManufacturerModel(model)
   }
@@ -295,8 +310,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ManufacturerModel(model)
   }
@@ -463,12 +477,12 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: ManufacturerModel[]
+    data: ManufacturerModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new ManufacturerModel(undefined)
@@ -478,7 +492,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     return {
       data: result.data.map((item: ManufacturerJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -490,19 +504,19 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   async applyCreate(newManufacturer: NewManufacturer): Promise<ManufacturerModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newManufacturer).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewManufacturer
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('manufacturers')
+    const result = await db.insertInto('manufacturers')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('manufacturers')
+    const model = await db.selectFrom('manufacturers')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -512,7 +526,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     }
 
     if (model)
-      dispatch('manufacturer:created', model)
+ dispatch('manufacturer:created', model)
     return this.createInstance(model)
   }
 
@@ -581,7 +595,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   async update(newManufacturer: ManufacturerUpdate): Promise<ManufacturerModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newManufacturer).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as ManufacturerUpdate
 
@@ -589,14 +603,14 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('manufacturers')
+    await db.updateTable('manufacturers')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('manufacturers')
+      const model = await db.selectFrom('manufacturers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -606,7 +620,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       }
 
       if (model)
-        dispatch('manufacturer:updated', model)
+ dispatch('manufacturer:updated', model)
       return this.createInstance(model)
     }
 
@@ -614,14 +628,14 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   }
 
   async forceUpdate(newManufacturer: ManufacturerUpdate): Promise<ManufacturerModel | undefined> {
-    await DB.instance.updateTable('manufacturers')
+    await db.updateTable('manufacturers')
       .set(newManufacturer)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('manufacturers')
+      const model = await db.selectFrom('manufacturers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -631,7 +645,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       }
 
       if (this)
-        dispatch('manufacturer:updated', model)
+ dispatch('manufacturer:updated', model)
       return this.createInstance(model)
     }
 
@@ -642,13 +656,13 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('manufacturers')
+      await db.updateTable('manufacturers')
         .set(this.attributes as ManufacturerUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('manufacturers')
+      const model = await db.selectFrom('manufacturers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -658,17 +672,16 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       }
 
       if (this)
-        dispatch('manufacturer:updated', model)
+ dispatch('manufacturer:updated', model)
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('manufacturers')
+      const result = await db.insertInto('manufacturers')
         .values(this.attributes as NewManufacturer)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('manufacturers')
+      const model = await db.selectFrom('manufacturers')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -678,7 +691,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
       }
 
       if (this)
-        dispatch('manufacturer:created', model)
+ dispatch('manufacturer:created', model)
       return this.createInstance(model)
     }
   }
@@ -693,23 +706,23 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
         ),
       ) as NewManufacturer
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('manufacturers')
+    await db.insertInto('manufacturers')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newManufacturer: NewManufacturer): Promise<ManufacturerModel> {
-    const result = await DB.instance.insertInto('manufacturers')
+    const result = await db.insertInto('manufacturers')
       .values(newManufacturer)
       .executeTakeFirst()
 
     const instance = new ManufacturerModel(undefined)
-    const model = await DB.instance.selectFrom('manufacturers')
+    const model = await db.selectFrom('manufacturers')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -719,7 +732,7 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     }
 
     if (model)
-      dispatch('manufacturer:created', model)
+ dispatch('manufacturer:created', model)
 
     return instance.createInstance(model)
   }
@@ -729,11 +742,11 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
-
+    
     if (model)
-      dispatch('manufacturer:deleted', model)
+ dispatch('manufacturer:deleted', model)
 
-    const deleted = await DB.instance.deleteFrom('manufacturers')
+    const deleted = await db.deleteFrom('manufacturers')
       .where('id', '=', this.id)
       .execute()
 
@@ -745,45 +758,49 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
 
     const model = await instance.find(Number(id))
 
-    if (model)
-      dispatch('manufacturer:deleted', model)
+    
 
-    return await DB.instance.deleteFrom('manufacturers')
+    if (model)
+ dispatch('manufacturer:deleted', model)
+
+    return await db.deleteFrom('manufacturers')
       .where('id', '=', id)
       .execute()
   }
 
   static whereManufacturer(value: string): ManufacturerModel {
-    const instance = new ManufacturerModel(undefined)
+          const instance = new ManufacturerModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('manufacturer', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('manufacturer', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereDescription(value: string): ManufacturerModel {
-    const instance = new ManufacturerModel(undefined)
+static whereDescription(value: string): ManufacturerModel {
+          const instance = new ManufacturerModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereCountry(value: string): ManufacturerModel {
-    const instance = new ManufacturerModel(undefined)
+static whereCountry(value: string): ManufacturerModel {
+          const instance = new ManufacturerModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('country', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('country', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereFeatured(value: string): ManufacturerModel {
-    const instance = new ManufacturerModel(undefined)
+static whereFeatured(value: string): ManufacturerModel {
+          const instance = new ManufacturerModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('featured', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('featured', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof ManufacturersTable, values: V[]): ManufacturerModel {
     const instance = new ManufacturerModel(undefined)
@@ -791,15 +808,23 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     return instance.applyWhereIn<V>(column, values)
   }
 
-  toSearchableObject(): Partial<ManufacturerJsonResponse> {
-    return {
-      id: this.id,
-      manufacturer: this.manufacturer,
-      description: this.description,
-      country: this.country,
-      featured: this.featured,
-    }
-  }
+  
+
+  
+      toSearchableObject(): Partial<ManufacturerJsonResponse> {
+        return {
+          id: this.id,
+manufacturer: this.manufacturer,
+description: this.description,
+country: this.country,
+featured: this.featured
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof ManufacturerJsonResponse): ManufacturerModel {
     const instance = new ManufacturerModel(undefined)
@@ -816,21 +841,21 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
   toJSON(): ManufacturerJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      manufacturer: this.manufacturer,
-      description: this.description,
-      country: this.country,
-      featured: this.featured,
+id: this.id,
+manufacturer: this.manufacturer,
+   description: this.description,
+   country: this.country,
+   featured: this.featured,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       products: this.products,
-      ...this.customColumns,
-    }
+...this.customColumns,
+}
 
     return output
   }
@@ -843,9 +868,11 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<ManufacturerModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -860,15 +887,16 @@ export class ManufacturerModel extends BaseOrm<ManufacturerModel, ManufacturersT
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<ManufacturerModel | undefined> {
-  const query = DB.instance.selectFrom('manufacturers').where('id', '=', id).selectAll()
+  let query = db.selectFrom('manufacturers').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new ManufacturerModel(undefined)
   return instance.createInstance(model)
@@ -886,42 +914,44 @@ export async function create(newManufacturer: NewManufacturer): Promise<Manufact
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('manufacturers')
+  await db.deleteFrom('manufacturers')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereManufacturer(value: string): Promise<ManufacturerModel[]> {
-  const query = DB.instance.selectFrom('manufacturers').where('manufacturer', '=', value)
-  const results: ManufacturerJsonResponse = await query.execute()
+          const query = db.selectFrom('manufacturers').where('manufacturer', '=', value)
+          const results: ManufacturerJsonResponse = await query.execute()
 
-  return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
-}
+          return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
+        } 
 
 export async function whereDescription(value: string): Promise<ManufacturerModel[]> {
-  const query = DB.instance.selectFrom('manufacturers').where('description', '=', value)
-  const results: ManufacturerJsonResponse = await query.execute()
+          const query = db.selectFrom('manufacturers').where('description', '=', value)
+          const results: ManufacturerJsonResponse = await query.execute()
 
-  return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
-}
+          return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
+        } 
 
 export async function whereCountry(value: string): Promise<ManufacturerModel[]> {
-  const query = DB.instance.selectFrom('manufacturers').where('country', '=', value)
-  const results: ManufacturerJsonResponse = await query.execute()
+          const query = db.selectFrom('manufacturers').where('country', '=', value)
+          const results: ManufacturerJsonResponse = await query.execute()
 
-  return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
-}
+          return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
+        } 
 
 export async function whereFeatured(value: boolean): Promise<ManufacturerModel[]> {
-  const query = DB.instance.selectFrom('manufacturers').where('featured', '=', value)
-  const results: ManufacturerJsonResponse = await query.execute()
+          const query = db.selectFrom('manufacturers').where('featured', '=', value)
+          const results: ManufacturerJsonResponse = await query.execute()
 
-  return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
-}
+          return results.map((modelItem: ManufacturerJsonResponse) => new ManufacturerModel(modelItem))
+        } 
+
+
 
 export const Manufacturer = ManufacturerModel
 

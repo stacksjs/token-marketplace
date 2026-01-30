@@ -4,7 +4,7 @@
   "version": "0.70.23",
   "description": "Easily manage your DNS.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": ["Chris Breuer <chris@stacksjs.com>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/core/dns#readme",
@@ -43,10 +43,13 @@
     "typecheck": "bun tsc --noEmit",
     "prepublishOnly": "bun run build"
   },
+  "dependencies": {
+    "@aws-sdk/client-route-53-domains": "^3.911.0"
+  },
   "devDependencies": {
     "@aws-sdk/client-route-53": "^3.883.0",
     "@stacksjs/actions": "workspace:*",
-    "@stacksjs/development": "workspace:*",
+    "better-dx": "^0.2.5",
     "@stacksjs/dnsx": "^0.2.2",
     "@stacksjs/error-handling": "workspace:*",
     "@stacksjs/path": "workspace:*",
@@ -54,8 +57,5 @@
     "@stacksjs/strings": "workspace:*",
     "@stacksjs/whois": "workspace:*",
     "aws-cdk-lib": "^2.213.0"
-  },
-  "dependencies": {
-    "@aws-sdk/client-route-53-domains": "^3.911.0"
   }
 }

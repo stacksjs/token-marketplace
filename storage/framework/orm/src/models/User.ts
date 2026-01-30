@@ -1,31 +1,46 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewUser, UserJsonResponse, UsersTable, UserUpdate } from '../types/UserType'
-import type { AuthorModel } from './Author'
-import type { CustomerModel } from './Customer'
-import type { DriverModel } from './Driver'
-import type { PersonalAccessTokenModel } from './PersonalAccessToken'
-import type { SubscriberModel } from './Subscriber'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
-
-import { HttpError } from '@stacksjs/error-handling'
-
-import { DB } from '@stacksjs/orm'
-
-import { makeHash } from '@stacksjs/security'
-
-// soon, these will be auto-imported
-// soon, these will be auto-imported
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { UserModelType, UserJsonResponse, NewUser, UserUpdate, UsersTable } from '../types/UserType'
+
+import type {SubscriberModel} from './Subscriber'
+
+import type {DriverModel} from './Driver'
+
+import type {AuthorModel} from './Author'
+
+import type {PersonalAccessTokenModel} from './PersonalAccessToken'
+
+import type {CustomerModel} from './Customer'
+
+
+
+
+import type { Attributes, Model } from '@stacksjs/types';
+import { makeHash } from '@stacksjs/security';
+// soon, these will be auto-imported
+// soon, these will be auto-imported
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> {
-  private readonly hidden: Array<keyof UserJsonResponse> = ['password']
-  private readonly fillable: Array<keyof UserJsonResponse> = ['name', 'email', 'password', 'uuid', 'two_factor_secret', 'public_key']
+  private readonly hidden: Array<keyof UserJsonResponse> = ["password"]
+  private readonly fillable: Array<keyof UserJsonResponse> = ["name","email","password","uuid","two_factor_secret","public_key"]
   private readonly guarded: Array<keyof UserJsonResponse> = []
   protected attributes = {} as UserJsonResponse
   protected originalAttributes = {} as UserJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -43,33 +58,33 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   constructor(user: UserJsonResponse | undefined) {
     super('users')
     if (user) {
+
       this.attributes = { ...user }
       this.originalAttributes = { ...user }
 
-      Object.keys(user).forEach((key) => {
+      Object.keys(user).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (user as UserJsonResponse)[key]
+           this.customColumns[key] = (user as UserJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('users')
-    this.updateFromQuery = DB.instance.updateTable('users')
-    this.deleteFromQuery = DB.instance.deleteFrom('users')
+    this.selectFromQuery = db.selectFrom('users')
+    this.updateFromQuery = db.updateTable('users')
+    this.deleteFromQuery = db.deleteFrom('users')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: UserJsonResponse | UserJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('user_id', 'in', modelIds)
         .selectAll()
@@ -84,8 +99,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { user_id: number }) => {
           return record.user_id === models.id
         })
@@ -106,13 +120,14 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
     if (Array.isArray(data)) {
       data.map((model: UserJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
           salutationName: () => {
-            return `Mr. ${model.name}`
-          },
+      return `Mr. ${model.name}`;
+    }, 
 
         }
 
@@ -122,8 +137,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
@@ -131,8 +145,8 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         },
 
         salutationName: () => {
-          return `Mr. ${model.name}`
-        },
+      return `Mr. ${model.name}`;
+    }, 
 
       }
 
@@ -148,99 +162,102 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
       },
 
       password: async () => {
-        return await makeHash(model.password, { algorithm: 'bcrypt' })
-      },
+      return await makeHash(model.password, { algorithm: "bcrypt" });
+    }, 
 
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
-  get subscriber(): SubscriberModel | undefined {
-    return this.attributes.subscriber
-  }
+  get subscriber():SubscriberModel | undefined {
+        return this.attributes.subscriber
+      }
 
-  get driver(): DriverModel | undefined {
-    return this.attributes.driver
-  }
+get driver():DriverModel | undefined {
+        return this.attributes.driver
+      }
 
-  get author(): AuthorModel | undefined {
-    return this.attributes.author
-  }
+get author():AuthorModel | undefined {
+        return this.attributes.author
+      }
 
-  get personal_access_tokens(): PersonalAccessTokenModel[] | [] {
-    return this.attributes.personal_access_tokens
-  }
+get personal_access_tokens():PersonalAccessTokenModel[] | [] {
+        return this.attributes.personal_access_tokens
+      }
 
-  get customers(): CustomerModel[] | [] {
-    return this.attributes.customers
-  }
+get customers():CustomerModel[] | [] {
+        return this.attributes.customers
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get public_passkey(): string | undefined {
-    return this.attributes.public_passkey
-  }
+get public_passkey(): string | undefined {
+      return this.attributes.public_passkey
+    }
 
-  get name(): string {
-    return this.attributes.name
-  }
+get name(): string {
+      return this.attributes.name
+    }
 
-  get email(): string {
-    return this.attributes.email
-  }
+get email(): string {
+      return this.attributes.email
+    }
 
-  get password(): string {
-    return this.attributes.password
-  }
+get password(): string {
+      return this.attributes.password
+    }
 
-  get github_id(): string | undefined {
-    return this.attributes.github_id
-  }
+get github_id(): string | undefined {
+        return this.attributes.github_id
+      }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set public_passkey(value: string) {
-    this.attributes.public_passkey = value
-  }
+set public_passkey(value: string) {
+      this.attributes.public_passkey = value
+    }
 
-  set name(value: string) {
-    this.attributes.name = value
-  }
+set name(value: string) {
+      this.attributes.name = value
+    }
 
-  set email(value: string) {
-    this.attributes.email = value
-  }
+set email(value: string) {
+      this.attributes.email = value
+    }
 
-  set password(value: string) {
-    this.attributes.password = value
-  }
+set password(value: string) {
+      this.attributes.password = value
+    }
 
-  set github_id(value: string) {
-    this.attributes.github_id = value
-  }
+set github_id(value: string) {
+        this.attributes.github_id = value
+      }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof UserJsonResponse)[] | RawBuilder<string> | string): UserModel {
     const instance = new UserModel(undefined)
@@ -250,12 +267,11 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
   // Method to find a User by ID
   static async find(id: number): Promise<UserModel | undefined> {
-    const query = DB.instance.selectFrom('users').where('id', '=', id).selectAll()
+    let query = db.selectFrom('users').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new UserModel(undefined)
     return instance.createInstance(model)
@@ -276,8 +292,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new UserModel(model)
   }
@@ -291,7 +306,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   static async all(): Promise<UserModel[]> {
     const instance = new UserModel(undefined)
 
-    const models = await DB.instance.selectFrom('users').selectAll().execute()
+    const models = await db.selectFrom('users').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -310,7 +325,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
   static async findMany(ids: number[]): Promise<UserModel[]> {
     const instance = new UserModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: UserJsonResponse) => instance.parseResult(new UserModel(modelItem)))
@@ -325,8 +340,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new UserModel(model)
   }
@@ -340,8 +354,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new UserModel(model)
   }
@@ -508,12 +521,12 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: UserModel[]
+    data: UserModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new UserModel(undefined)
@@ -523,7 +536,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
     return {
       data: result.data.map((item: UserJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -535,19 +548,19 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   async applyCreate(newUser: NewUser): Promise<UserModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newUser).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewUser
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('users')
+    const result = await db.insertInto('users')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('users')
+    const model = await db.selectFrom('users')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -556,6 +569,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
       throw new HttpError(500, 'Failed to retrieve created User')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -624,7 +638,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   async update(newUser: UserUpdate): Promise<UserModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newUser).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as UserUpdate
 
@@ -632,14 +646,14 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('users')
+    await db.updateTable('users')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('users')
+      const model = await db.selectFrom('users')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -648,6 +662,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         throw new HttpError(500, 'Failed to retrieve updated User')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -655,14 +670,14 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   }
 
   async forceUpdate(newUser: UserUpdate): Promise<UserModel | undefined> {
-    await DB.instance.updateTable('users')
+    await db.updateTable('users')
       .set(newUser)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('users')
+      const model = await db.selectFrom('users')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -671,6 +686,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         throw new HttpError(500, 'Failed to retrieve updated User')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -681,13 +697,13 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('users')
+      await db.updateTable('users')
         .set(this.attributes as UserUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('users')
+      const model = await db.selectFrom('users')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -696,16 +712,16 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         throw new HttpError(500, 'Failed to retrieve updated User')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('users')
+      const result = await db.insertInto('users')
         .values(this.attributes as NewUser)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('users')
+      const model = await db.selectFrom('users')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -714,6 +730,7 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         throw new HttpError(500, 'Failed to retrieve created User')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -728,23 +745,23 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
         ),
       ) as NewUser
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('users')
+    await db.insertInto('users')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newUser: NewUser): Promise<UserModel> {
-    const result = await DB.instance.insertInto('users')
+    const result = await db.insertInto('users')
       .values(newUser)
       .executeTakeFirst()
 
     const instance = new UserModel(undefined)
-    const model = await DB.instance.selectFrom('users')
+    const model = await db.selectFrom('users')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -753,6 +770,8 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
       throw new HttpError(500, 'Failed to retrieve created User')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -760,8 +779,11 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('users')
+    const deleted = await db.deleteFrom('users')
       .where('id', '=', this.id)
       .execute()
 
@@ -769,34 +791,44 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('users')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('users')
       .where('id', '=', id)
       .execute()
   }
 
   static whereName(value: string): UserModel {
-    const instance = new UserModel(undefined)
+          const instance = new UserModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereEmail(value: string): UserModel {
-    const instance = new UserModel(undefined)
+static whereEmail(value: string): UserModel {
+          const instance = new UserModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static wherePassword(value: string): UserModel {
-    const instance = new UserModel(undefined)
+static wherePassword(value: string): UserModel {
+          const instance = new UserModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('password', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('password', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof UsersTable, values: V[]): UserModel {
     const instance = new UserModel(undefined)
@@ -804,13 +836,21 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
     return instance.applyWhereIn<V>(column, values)
   }
 
-  toSearchableObject(): Partial<UserJsonResponse> {
-    return {
-      id: this.id,
-      name: this.name,
-      email: this.email,
-    }
-  }
+  
+
+  
+      toSearchableObject(): Partial<UserJsonResponse> {
+        return {
+          id: this.id,
+name: this.name,
+email: this.email
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof UserJsonResponse): UserModel {
     const instance = new UserModel(undefined)
@@ -827,22 +867,22 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
   toJSON(): UserJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      name: this.name,
-      email: this.email,
+id: this.id,
+name: this.name,
+   email: this.email,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       personal_access_tokens: this.personal_access_tokens,
-      customers: this.customers,
-      ...this.customColumns,
-      github_id: this.github_id,
-      public_passkey: this.public_passkey,
-    }
+customers: this.customers,
+...this.customColumns,
+github_id: this.github_id,
+public_passkey: this.public_passkey,
+}
 
     return output
   }
@@ -855,9 +895,11 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<UserModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -872,15 +914,16 @@ export class UserModel extends BaseOrm<UserModel, UsersTable, UserJsonResponse> 
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<UserModel | undefined> {
-  const query = DB.instance.selectFrom('users').where('id', '=', id).selectAll()
+  let query = db.selectFrom('users').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new UserModel(undefined)
   return instance.createInstance(model)
@@ -898,35 +941,37 @@ export async function create(newUser: NewUser): Promise<UserModel> {
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('users')
+  await db.deleteFrom('users')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereName(value: string): Promise<UserModel[]> {
-  const query = DB.instance.selectFrom('users').where('name', '=', value)
-  const results: UserJsonResponse = await query.execute()
+          const query = db.selectFrom('users').where('name', '=', value)
+          const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
-}
+          return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
+        } 
 
 export async function whereEmail(value: string): Promise<UserModel[]> {
-  const query = DB.instance.selectFrom('users').where('email', '=', value)
-  const results: UserJsonResponse = await query.execute()
+          const query = db.selectFrom('users').where('email', '=', value)
+          const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
-}
+          return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
+        } 
 
 export async function wherePassword(value: string): Promise<UserModel[]> {
-  const query = DB.instance.selectFrom('users').where('password', '=', value)
-  const results: UserJsonResponse = await query.execute()
+          const query = db.selectFrom('users').where('password', '=', value)
+          const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
-}
+          return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
+        } 
+
+
 
 export const User = UserModel
 

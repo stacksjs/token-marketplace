@@ -267,7 +267,7 @@ export type GeneratorOption =
   | 'componentMeta'
   | 'coreSymlink'
   | 'openApiSpec'
-  | 'pkgxConfig'
+  | 'pantryConfig'
   | 'openapi'
   | 'modelFiles'
 export type GeneratorOptions = {
@@ -389,6 +389,10 @@ export interface MigrateOptions extends CliOptions {
 
 export interface CliQueueOptions extends CliOptions {
   queue?: string
+  id?: string | number
+  all?: boolean
+  force?: boolean
+  connection?: string
 }
 
 export interface ReleaseOptions extends CliOptions {

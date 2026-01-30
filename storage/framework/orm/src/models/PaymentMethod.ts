@@ -1,23 +1,38 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewPaymentMethod, PaymentMethodJsonResponse, PaymentMethodsTable, PaymentMethodUpdate } from '../types/PaymentMethodType'
-import type { PaymentTransactionModel } from './PaymentTransaction'
-import type { UserModel } from './User'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
-import { HttpError } from '@stacksjs/error-handling'
-
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { PaymentMethodModelType, PaymentMethodJsonResponse, NewPaymentMethod, PaymentMethodUpdate, PaymentMethodsTable } from '../types/PaymentMethodType'
+
+import type {PaymentTransactionModel} from './PaymentTransaction'
+
+import type {UserModel} from './User'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { collect } from '@stacksjs/collections';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMethodsTable, PaymentMethodJsonResponse> {
   private readonly hidden: Array<keyof PaymentMethodJsonResponse> = []
-  private readonly fillable: Array<keyof PaymentMethodJsonResponse> = ['type', 'last_four', 'brand', 'exp_month', 'exp_year', 'is_default', 'provider_id', 'uuid']
+  private readonly fillable: Array<keyof PaymentMethodJsonResponse> = ["type","last_four","brand","exp_month","exp_year","is_default","provider_id","uuid"]
   private readonly guarded: Array<keyof PaymentMethodJsonResponse> = []
   protected attributes = {} as PaymentMethodJsonResponse
   protected originalAttributes = {} as PaymentMethodJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -35,33 +50,33 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   constructor(paymentMethod: PaymentMethodJsonResponse | undefined) {
     super('payment_methods')
     if (paymentMethod) {
+
       this.attributes = { ...paymentMethod }
       this.originalAttributes = { ...paymentMethod }
 
-      Object.keys(paymentMethod).forEach((key) => {
+      Object.keys(paymentMethod).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (paymentMethod as PaymentMethodJsonResponse)[key]
+           this.customColumns[key] = (paymentMethod as PaymentMethodJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('payment_methods')
-    this.updateFromQuery = DB.instance.updateTable('payment_methods')
-    this.deleteFromQuery = DB.instance.deleteFrom('payment_methods')
+    this.selectFromQuery = db.selectFrom('payment_methods')
+    this.updateFromQuery = db.updateTable('payment_methods')
+    this.deleteFromQuery = db.deleteFrom('payment_methods')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: PaymentMethodJsonResponse | PaymentMethodJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('paymentMethod_id', 'in', modelIds)
         .selectAll()
@@ -76,8 +91,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { paymentMethod_id: number }) => {
           return record.paymentMethod_id === models.id
         })
@@ -98,10 +112,12 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
     if (Array.isArray(data)) {
       data.map((model: PaymentMethodJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -110,14 +126,14 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -131,104 +147,108 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
-  get payment_transactions(): PaymentTransactionModel[] | [] {
-    return this.attributes.payment_transactions
-  }
+  get payment_transactions():PaymentTransactionModel[] | [] {
+        return this.attributes.payment_transactions
+      }
 
-  get user_id(): number {
-    return this.attributes.user_id
-  }
+get user_id(): number {
+        return this.attributes.user_id
+      }
 
-  get user(): UserModel | undefined {
-    return this.attributes.user
-  }
+get user(): UserModel | undefined {
+        return this.attributes.user
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get type(): string {
-    return this.attributes.type
-  }
+get type(): string {
+      return this.attributes.type
+    }
 
-  get last_four(): number {
-    return this.attributes.last_four
-  }
+get last_four(): number {
+      return this.attributes.last_four
+    }
 
-  get brand(): string {
-    return this.attributes.brand
-  }
+get brand(): string {
+      return this.attributes.brand
+    }
 
-  get exp_month(): number {
-    return this.attributes.exp_month
-  }
+get exp_month(): number {
+      return this.attributes.exp_month
+    }
 
-  get exp_year(): number {
-    return this.attributes.exp_year
-  }
+get exp_year(): number {
+      return this.attributes.exp_year
+    }
 
-  get is_default(): boolean | undefined {
-    return this.attributes.is_default
-  }
+get is_default(): boolean | undefined {
+      return this.attributes.is_default
+    }
 
-  get provider_id(): string | undefined {
-    return this.attributes.provider_id
-  }
+get provider_id(): string | undefined {
+      return this.attributes.provider_id
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set type(value: string) {
-    this.attributes.type = value
-  }
+set type(value: string) {
+      this.attributes.type = value
+    }
 
-  set last_four(value: number) {
-    this.attributes.last_four = value
-  }
+set last_four(value: number) {
+      this.attributes.last_four = value
+    }
 
-  set brand(value: string) {
-    this.attributes.brand = value
-  }
+set brand(value: string) {
+      this.attributes.brand = value
+    }
 
-  set exp_month(value: number) {
-    this.attributes.exp_month = value
-  }
+set exp_month(value: number) {
+      this.attributes.exp_month = value
+    }
 
-  set exp_year(value: number) {
-    this.attributes.exp_year = value
-  }
+set exp_year(value: number) {
+      this.attributes.exp_year = value
+    }
 
-  set is_default(value: boolean) {
-    this.attributes.is_default = value
-  }
+set is_default(value: boolean) {
+      this.attributes.is_default = value
+    }
 
-  set provider_id(value: string) {
-    this.attributes.provider_id = value
-  }
+set provider_id(value: string) {
+      this.attributes.provider_id = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof PaymentMethodJsonResponse)[] | RawBuilder<string> | string): PaymentMethodModel {
     const instance = new PaymentMethodModel(undefined)
@@ -238,12 +258,11 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
   // Method to find a PaymentMethod by ID
   static async find(id: number): Promise<PaymentMethodModel | undefined> {
-    const query = DB.instance.selectFrom('payment_methods').where('id', '=', id).selectAll()
+    let query = db.selectFrom('payment_methods').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new PaymentMethodModel(undefined)
     return instance.createInstance(model)
@@ -264,8 +283,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new PaymentMethodModel(model)
   }
@@ -279,7 +297,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   static async all(): Promise<PaymentMethodModel[]> {
     const instance = new PaymentMethodModel(undefined)
 
-    const models = await DB.instance.selectFrom('payment_methods').selectAll().execute()
+    const models = await db.selectFrom('payment_methods').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -298,7 +316,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
   static async findMany(ids: number[]): Promise<PaymentMethodModel[]> {
     const instance = new PaymentMethodModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: PaymentMethodJsonResponse) => instance.parseResult(new PaymentMethodModel(modelItem)))
@@ -313,8 +331,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new PaymentMethodModel(model)
   }
@@ -328,8 +345,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new PaymentMethodModel(model)
   }
@@ -496,12 +512,12 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: PaymentMethodModel[]
+    data: PaymentMethodModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new PaymentMethodModel(undefined)
@@ -511,7 +527,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
     return {
       data: result.data.map((item: PaymentMethodJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -523,19 +539,19 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   async applyCreate(newPaymentMethod: NewPaymentMethod): Promise<PaymentMethodModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newPaymentMethod).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewPaymentMethod
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('payment_methods')
+    const result = await db.insertInto('payment_methods')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('payment_methods')
+    const model = await db.selectFrom('payment_methods')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -544,6 +560,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
       throw new HttpError(500, 'Failed to retrieve created PaymentMethod')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -612,7 +629,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   async update(newPaymentMethod: PaymentMethodUpdate): Promise<PaymentMethodModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newPaymentMethod).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as PaymentMethodUpdate
 
@@ -620,14 +637,14 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('payment_methods')
+    await db.updateTable('payment_methods')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('payment_methods')
+      const model = await db.selectFrom('payment_methods')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -636,6 +653,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
         throw new HttpError(500, 'Failed to retrieve updated PaymentMethod')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -643,14 +661,14 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   }
 
   async forceUpdate(newPaymentMethod: PaymentMethodUpdate): Promise<PaymentMethodModel | undefined> {
-    await DB.instance.updateTable('payment_methods')
+    await db.updateTable('payment_methods')
       .set(newPaymentMethod)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('payment_methods')
+      const model = await db.selectFrom('payment_methods')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -659,6 +677,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
         throw new HttpError(500, 'Failed to retrieve updated PaymentMethod')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -669,13 +688,13 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('payment_methods')
+      await db.updateTable('payment_methods')
         .set(this.attributes as PaymentMethodUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('payment_methods')
+      const model = await db.selectFrom('payment_methods')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -684,16 +703,16 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
         throw new HttpError(500, 'Failed to retrieve updated PaymentMethod')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('payment_methods')
+      const result = await db.insertInto('payment_methods')
         .values(this.attributes as NewPaymentMethod)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('payment_methods')
+      const model = await db.selectFrom('payment_methods')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -702,6 +721,7 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
         throw new HttpError(500, 'Failed to retrieve created PaymentMethod')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -716,23 +736,23 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
         ),
       ) as NewPaymentMethod
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('payment_methods')
+    await db.insertInto('payment_methods')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newPaymentMethod: NewPaymentMethod): Promise<PaymentMethodModel> {
-    const result = await DB.instance.insertInto('payment_methods')
+    const result = await db.insertInto('payment_methods')
       .values(newPaymentMethod)
       .executeTakeFirst()
 
     const instance = new PaymentMethodModel(undefined)
-    const model = await DB.instance.selectFrom('payment_methods')
+    const model = await db.selectFrom('payment_methods')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -741,6 +761,8 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
       throw new HttpError(500, 'Failed to retrieve created PaymentMethod')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -748,8 +770,11 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('payment_methods')
+    const deleted = await db.deleteFrom('payment_methods')
       .where('id', '=', this.id)
       .execute()
 
@@ -757,66 +782,76 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('payment_methods')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('payment_methods')
       .where('id', '=', id)
       .execute()
   }
 
   static whereType(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereLastFour(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereLastFour(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('last_four', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('last_four', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereBrand(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereBrand(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('brand', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('brand', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereExpMonth(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereExpMonth(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('exp_month', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('exp_month', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereExpYear(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereExpYear(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('exp_year', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('exp_year', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsDefault(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereIsDefault(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_default', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_default', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereProviderId(value: string): PaymentMethodModel {
-    const instance = new PaymentMethodModel(undefined)
+static whereProviderId(value: string): PaymentMethodModel {
+          const instance = new PaymentMethodModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('provider_id', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('provider_id', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof PaymentMethodsTable, values: V[]): PaymentMethodModel {
     const instance = new PaymentMethodModel(undefined)
@@ -824,19 +859,28 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async userBelong(): Promise<UserModel> {
-    if (this.user_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async userBelong(): Promise<UserModel> {
+          if (this.user_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await User
-      .where('id', '=', this.user_id)
-      .first()
+          const model = await User
+            .where('id', '=', this.user_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
+
+
+
+  
+
+  
+
+  
 
   static distinct(column: keyof PaymentMethodJsonResponse): PaymentMethodModel {
     const instance = new PaymentMethodModel(undefined)
@@ -853,26 +897,26 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
   toJSON(): PaymentMethodJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      type: this.type,
-      last_four: this.last_four,
-      brand: this.brand,
-      exp_month: this.exp_month,
-      exp_year: this.exp_year,
-      is_default: this.is_default,
-      provider_id: this.provider_id,
+id: this.id,
+type: this.type,
+   last_four: this.last_four,
+   brand: this.brand,
+   exp_month: this.exp_month,
+   exp_year: this.exp_year,
+   is_default: this.is_default,
+   provider_id: this.provider_id,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       payment_transactions: this.payment_transactions,
-      user_id: this.user_id,
-      user: this.user,
-      ...this.customColumns,
-    }
+user_id: this.user_id,
+   user: this.user,
+...this.customColumns,
+}
 
     return output
   }
@@ -885,9 +929,11 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<PaymentMethodModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -902,15 +948,16 @@ export class PaymentMethodModel extends BaseOrm<PaymentMethodModel, PaymentMetho
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<PaymentMethodModel | undefined> {
-  const query = DB.instance.selectFrom('payment_methods').where('id', '=', id).selectAll()
+  let query = db.selectFrom('payment_methods').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new PaymentMethodModel(undefined)
   return instance.createInstance(model)
@@ -928,63 +975,65 @@ export async function create(newPaymentMethod: NewPaymentMethod): Promise<Paymen
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('payment_methods')
+  await db.deleteFrom('payment_methods')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereType(value: string): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('type', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('type', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereLastFour(value: number): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('last_four', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('last_four', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereBrand(value: string): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('brand', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('brand', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereExpMonth(value: number): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('exp_month', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('exp_month', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereExpYear(value: number): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('exp_year', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('exp_year', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereIsDefault(value: boolean): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('is_default', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('is_default', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
 
 export async function whereProviderId(value: string): Promise<PaymentMethodModel[]> {
-  const query = DB.instance.selectFrom('payment_methods').where('provider_id', '=', value)
-  const results: PaymentMethodJsonResponse = await query.execute()
+          const query = db.selectFrom('payment_methods').where('provider_id', '=', value)
+          const results: PaymentMethodJsonResponse = await query.execute()
 
-  return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
-}
+          return results.map((modelItem: PaymentMethodJsonResponse) => new PaymentMethodModel(modelItem))
+        } 
+
+
 
 export const PaymentMethod = PaymentMethodModel
 

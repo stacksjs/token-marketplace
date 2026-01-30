@@ -1,33 +1,49 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewProduct, ProductJsonResponse, ProductsTable, ProductUpdate } from '../types/ProductType'
-import type { CategoryModel } from './Category'
-import type { CouponModel } from './Coupon'
-import type { LicenseKeyModel } from './LicenseKey'
-import type { ManufacturerModel } from './Manufacturer'
-import type { ProductUnitModel } from './ProductUnit'
-import type { ProductVariantModel } from './ProductVariant'
-import type { ReviewModel } from './Review'
-import type { WaitlistProductModel } from './WaitlistProduct'
-import { randomUUIDv7 } from 'bun'
-
-import { sql } from '@stacksjs/database'
-
-import { HttpError } from '@stacksjs/error-handling'
-
-import { dispatch } from '@stacksjs/events'
-
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { ProductModelType, ProductJsonResponse, NewProduct, ProductUpdate, ProductsTable } from '../types/ProductType'
+
+import type {ReviewModel} from './Review'
+
+import type {ProductUnitModel} from './ProductUnit'
+
+import type {ProductVariantModel} from './ProductVariant'
+
+import type {LicenseKeyModel} from './LicenseKey'
+
+import type {WaitlistProductModel} from './WaitlistProduct'
+
+import type {CouponModel} from './Coupon'
+
+import type {CategoryModel} from './Category'
+
+import type {ManufacturerModel} from './Manufacturer'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJsonResponse> {
   private readonly hidden: Array<keyof ProductJsonResponse> = []
-  private readonly fillable: Array<keyof ProductJsonResponse> = ['name', 'description', 'price', 'image_url', 'is_available', 'inventory_count', 'preparation_time', 'allergens', 'nutritional_info', 'uuid', 'category_id', 'manufacturer_id']
+  private readonly fillable: Array<keyof ProductJsonResponse> = ["name","description","price","image_url","is_available","inventory_count","preparation_time","allergens","nutritional_info","uuid","category_id","manufacturer_id"]
   private readonly guarded: Array<keyof ProductJsonResponse> = []
   protected attributes = {} as ProductJsonResponse
   protected originalAttributes = {} as ProductJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -45,33 +61,33 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   constructor(product: ProductJsonResponse | undefined) {
     super('products')
     if (product) {
+
       this.attributes = { ...product }
       this.originalAttributes = { ...product }
 
-      Object.keys(product).forEach((key) => {
+      Object.keys(product).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (product as ProductJsonResponse)[key]
+           this.customColumns[key] = (product as ProductJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('products')
-    this.updateFromQuery = DB.instance.updateTable('products')
-    this.deleteFromQuery = DB.instance.deleteFrom('products')
+    this.selectFromQuery = db.selectFrom('products')
+    this.updateFromQuery = db.updateTable('products')
+    this.deleteFromQuery = db.deleteFrom('products')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: ProductJsonResponse | ProductJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('product_id', 'in', modelIds)
         .selectAll()
@@ -86,8 +102,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { product_id: number }) => {
           return record.product_id === models.id
         })
@@ -108,10 +123,12 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
     if (Array.isArray(data)) {
       data.map((model: ProductJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -120,14 +137,14 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -141,148 +158,152 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
-  get reviews(): ReviewModel[] | [] {
-    return this.attributes.reviews
-  }
+  get reviews():ReviewModel[] | [] {
+        return this.attributes.reviews
+      }
 
-  get product_units(): ProductUnitModel[] | [] {
-    return this.attributes.product_units
-  }
+get product_units():ProductUnitModel[] | [] {
+        return this.attributes.product_units
+      }
 
-  get product_variants(): ProductVariantModel[] | [] {
-    return this.attributes.product_variants
-  }
+get product_variants():ProductVariantModel[] | [] {
+        return this.attributes.product_variants
+      }
 
-  get license_keys(): LicenseKeyModel[] | [] {
-    return this.attributes.license_keys
-  }
+get license_keys():LicenseKeyModel[] | [] {
+        return this.attributes.license_keys
+      }
 
-  get waitlist_products(): WaitlistProductModel[] | [] {
-    return this.attributes.waitlist_products
-  }
+get waitlist_products():WaitlistProductModel[] | [] {
+        return this.attributes.waitlist_products
+      }
 
-  get coupons(): CouponModel[] | [] {
-    return this.attributes.coupons
-  }
+get coupons():CouponModel[] | [] {
+        return this.attributes.coupons
+      }
 
-  get category_id(): number {
-    return this.attributes.category_id
-  }
+get category_id(): number {
+        return this.attributes.category_id
+      }
 
-  get category(): CategoryModel | undefined {
-    return this.attributes.category
-  }
+get category(): CategoryModel | undefined {
+        return this.attributes.category
+      }
 
-  get manufacturer_id(): number {
-    return this.attributes.manufacturer_id
-  }
+get manufacturer_id(): number {
+        return this.attributes.manufacturer_id
+      }
 
-  get manufacturer(): ManufacturerModel | undefined {
-    return this.attributes.manufacturer
-  }
+get manufacturer(): ManufacturerModel | undefined {
+        return this.attributes.manufacturer
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get name(): string {
-    return this.attributes.name
-  }
+get name(): string {
+      return this.attributes.name
+    }
 
-  get description(): string | undefined {
-    return this.attributes.description
-  }
+get description(): string | undefined {
+      return this.attributes.description
+    }
 
-  get price(): number {
-    return this.attributes.price
-  }
+get price(): number {
+      return this.attributes.price
+    }
 
-  get image_url(): string | undefined {
-    return this.attributes.image_url
-  }
+get image_url(): string | undefined {
+      return this.attributes.image_url
+    }
 
-  get is_available(): boolean | undefined {
-    return this.attributes.is_available
-  }
+get is_available(): boolean | undefined {
+      return this.attributes.is_available
+    }
 
-  get inventory_count(): number | undefined {
-    return this.attributes.inventory_count
-  }
+get inventory_count(): number | undefined {
+      return this.attributes.inventory_count
+    }
 
-  get preparation_time(): number {
-    return this.attributes.preparation_time
-  }
+get preparation_time(): number {
+      return this.attributes.preparation_time
+    }
 
-  get allergens(): string | undefined {
-    return this.attributes.allergens
-  }
+get allergens(): string | undefined {
+      return this.attributes.allergens
+    }
 
-  get nutritional_info(): string | undefined {
-    return this.attributes.nutritional_info
-  }
+get nutritional_info(): string | undefined {
+      return this.attributes.nutritional_info
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set name(value: string) {
-    this.attributes.name = value
-  }
+set name(value: string) {
+      this.attributes.name = value
+    }
 
-  set description(value: string) {
-    this.attributes.description = value
-  }
+set description(value: string) {
+      this.attributes.description = value
+    }
 
-  set price(value: number) {
-    this.attributes.price = value
-  }
+set price(value: number) {
+      this.attributes.price = value
+    }
 
-  set image_url(value: string) {
-    this.attributes.image_url = value
-  }
+set image_url(value: string) {
+      this.attributes.image_url = value
+    }
 
-  set is_available(value: boolean) {
-    this.attributes.is_available = value
-  }
+set is_available(value: boolean) {
+      this.attributes.is_available = value
+    }
 
-  set inventory_count(value: number) {
-    this.attributes.inventory_count = value
-  }
+set inventory_count(value: number) {
+      this.attributes.inventory_count = value
+    }
 
-  set preparation_time(value: number) {
-    this.attributes.preparation_time = value
-  }
+set preparation_time(value: number) {
+      this.attributes.preparation_time = value
+    }
 
-  set allergens(value: string) {
-    this.attributes.allergens = value
-  }
+set allergens(value: string) {
+      this.attributes.allergens = value
+    }
 
-  set nutritional_info(value: string) {
-    this.attributes.nutritional_info = value
-  }
+set nutritional_info(value: string) {
+      this.attributes.nutritional_info = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof ProductJsonResponse)[] | RawBuilder<string> | string): ProductModel {
     const instance = new ProductModel(undefined)
@@ -292,12 +313,11 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
   // Method to find a Product by ID
   static async find(id: number): Promise<ProductModel | undefined> {
-    const query = DB.instance.selectFrom('products').where('id', '=', id).selectAll()
+    let query = db.selectFrom('products').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new ProductModel(undefined)
     return instance.createInstance(model)
@@ -318,8 +338,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductModel(model)
   }
@@ -333,7 +352,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   static async all(): Promise<ProductModel[]> {
     const instance = new ProductModel(undefined)
 
-    const models = await DB.instance.selectFrom('products').selectAll().execute()
+    const models = await db.selectFrom('products').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -352,7 +371,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
   static async findMany(ids: number[]): Promise<ProductModel[]> {
     const instance = new ProductModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ProductJsonResponse) => instance.parseResult(new ProductModel(modelItem)))
@@ -367,8 +386,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductModel(model)
   }
@@ -382,8 +400,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductModel(model)
   }
@@ -550,12 +567,12 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: ProductModel[]
+    data: ProductModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new ProductModel(undefined)
@@ -565,7 +582,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     return {
       data: result.data.map((item: ProductJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -577,19 +594,19 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   async applyCreate(newProduct: NewProduct): Promise<ProductModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProduct).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewProduct
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('products')
+    const result = await db.insertInto('products')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('products')
+    const model = await db.selectFrom('products')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -599,7 +616,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     }
 
     if (model)
-      dispatch('product:created', model)
+ dispatch('product:created', model)
     return this.createInstance(model)
   }
 
@@ -668,7 +685,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   async update(newProduct: ProductUpdate): Promise<ProductModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProduct).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as ProductUpdate
 
@@ -676,14 +693,14 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('products')
+    await db.updateTable('products')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('products')
+      const model = await db.selectFrom('products')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -693,7 +710,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       }
 
       if (model)
-        dispatch('product:updated', model)
+ dispatch('product:updated', model)
       return this.createInstance(model)
     }
 
@@ -701,14 +718,14 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   }
 
   async forceUpdate(newProduct: ProductUpdate): Promise<ProductModel | undefined> {
-    await DB.instance.updateTable('products')
+    await db.updateTable('products')
       .set(newProduct)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('products')
+      const model = await db.selectFrom('products')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -718,7 +735,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       }
 
       if (this)
-        dispatch('product:updated', model)
+ dispatch('product:updated', model)
       return this.createInstance(model)
     }
 
@@ -729,13 +746,13 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('products')
+      await db.updateTable('products')
         .set(this.attributes as ProductUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('products')
+      const model = await db.selectFrom('products')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -745,17 +762,16 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       }
 
       if (this)
-        dispatch('product:updated', model)
+ dispatch('product:updated', model)
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('products')
+      const result = await db.insertInto('products')
         .values(this.attributes as NewProduct)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('products')
+      const model = await db.selectFrom('products')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -765,7 +781,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
       }
 
       if (this)
-        dispatch('product:created', model)
+ dispatch('product:created', model)
       return this.createInstance(model)
     }
   }
@@ -780,23 +796,23 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
         ),
       ) as NewProduct
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('products')
+    await db.insertInto('products')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newProduct: NewProduct): Promise<ProductModel> {
-    const result = await DB.instance.insertInto('products')
+    const result = await db.insertInto('products')
       .values(newProduct)
       .executeTakeFirst()
 
     const instance = new ProductModel(undefined)
-    const model = await DB.instance.selectFrom('products')
+    const model = await db.selectFrom('products')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -806,7 +822,7 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     }
 
     if (model)
-      dispatch('product:created', model)
+ dispatch('product:created', model)
 
     return instance.createInstance(model)
   }
@@ -816,11 +832,11 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
-
+    
     if (model)
-      dispatch('product:deleted', model)
+ dispatch('product:deleted', model)
 
-    const deleted = await DB.instance.deleteFrom('products')
+    const deleted = await db.deleteFrom('products')
       .where('id', '=', this.id)
       .execute()
 
@@ -832,85 +848,89 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
 
     const model = await instance.find(Number(id))
 
-    if (model)
-      dispatch('product:deleted', model)
+    
 
-    return await DB.instance.deleteFrom('products')
+    if (model)
+ dispatch('product:deleted', model)
+
+    return await db.deleteFrom('products')
       .where('id', '=', id)
       .execute()
   }
 
   static whereName(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereDescription(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereDescription(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static wherePrice(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static wherePrice(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('price', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('price', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereImageUrl(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereImageUrl(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('image_url', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('image_url', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsAvailable(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereIsAvailable(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_available', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_available', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereInventoryCount(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereInventoryCount(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('inventory_count', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('inventory_count', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static wherePreparationTime(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static wherePreparationTime(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('preparation_time', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('preparation_time', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereAllergens(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereAllergens(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('allergens', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('allergens', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereNutritionalInfo(value: string): ProductModel {
-    const instance = new ProductModel(undefined)
+static whereNutritionalInfo(value: string): ProductModel {
+          const instance = new ProductModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('nutritional_info', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('nutritional_info', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof ProductsTable, values: V[]): ProductModel {
     const instance = new ProductModel(undefined)
@@ -918,45 +938,55 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async categoryBelong(): Promise<CategoryModel> {
-    if (this.category_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async categoryBelong(): Promise<CategoryModel> {
+          if (this.category_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await Category
-      .where('id', '=', this.category_id)
-      .first()
+          const model = await Category
+            .where('id', '=', this.category_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
 
-  async manufacturerBelong(): Promise<ManufacturerModel> {
-    if (this.manufacturer_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
 
-    const model = await Manufacturer
-      .where('id', '=', this.manufacturer_id)
-      .first()
+        async manufacturerBelong(): Promise<ManufacturerModel> {
+          if (this.manufacturer_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          const model = await Manufacturer
+            .where('id', '=', this.manufacturer_id)
+            .first()
 
-    return model
-  }
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-  toSearchableObject(): Partial<ProductJsonResponse> {
-    return {
-      id: this.id,
-      name: this.name,
-      description: this.description,
-      price: this.price,
-      category_id: this.category_id,
-      is_available: this.is_available,
-      inventory_count: this.inventory_count,
-    }
-  }
+          return model
+        }
+
+
+
+  
+      toSearchableObject(): Partial<ProductJsonResponse> {
+        return {
+          id: this.id,
+name: this.name,
+description: this.description,
+price: this.price,
+category_id: this.category_id,
+is_available: this.is_available,
+inventory_count: this.inventory_count
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof ProductJsonResponse): ProductModel {
     const instance = new ProductModel(undefined)
@@ -973,35 +1003,35 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
   toJSON(): ProductJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      name: this.name,
-      description: this.description,
-      price: this.price,
-      image_url: this.image_url,
-      is_available: this.is_available,
-      inventory_count: this.inventory_count,
-      preparation_time: this.preparation_time,
-      allergens: this.allergens,
-      nutritional_info: this.nutritional_info,
+id: this.id,
+name: this.name,
+   description: this.description,
+   price: this.price,
+   image_url: this.image_url,
+   is_available: this.is_available,
+   inventory_count: this.inventory_count,
+   preparation_time: this.preparation_time,
+   allergens: this.allergens,
+   nutritional_info: this.nutritional_info,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       reviews: this.reviews,
-      product_units: this.product_units,
-      product_variants: this.product_variants,
-      license_keys: this.license_keys,
-      waitlist_products: this.waitlist_products,
-      coupons: this.coupons,
-      category_id: this.category_id,
-      category: this.category,
-      manufacturer_id: this.manufacturer_id,
-      manufacturer: this.manufacturer,
-      ...this.customColumns,
-    }
+product_units: this.product_units,
+product_variants: this.product_variants,
+license_keys: this.license_keys,
+waitlist_products: this.waitlist_products,
+coupons: this.coupons,
+category_id: this.category_id,
+   category: this.category,
+manufacturer_id: this.manufacturer_id,
+   manufacturer: this.manufacturer,
+...this.customColumns,
+}
 
     return output
   }
@@ -1014,9 +1044,11 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<ProductModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -1031,15 +1063,16 @@ export class ProductModel extends BaseOrm<ProductModel, ProductsTable, ProductJs
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<ProductModel | undefined> {
-  const query = DB.instance.selectFrom('products').where('id', '=', id).selectAll()
+  let query = db.selectFrom('products').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new ProductModel(undefined)
   return instance.createInstance(model)
@@ -1057,77 +1090,79 @@ export async function create(newProduct: NewProduct): Promise<ProductModel> {
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('products')
+  await db.deleteFrom('products')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereName(value: string): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('name', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('name', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereDescription(value: string): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('description', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('description', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function wherePrice(value: number): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('price', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('price', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereImageUrl(value: string): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('image_url', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('image_url', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereIsAvailable(value: boolean): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('is_available', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('is_available', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereInventoryCount(value: number): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('inventory_count', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('inventory_count', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function wherePreparationTime(value: number): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('preparation_time', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('preparation_time', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereAllergens(value: string): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('allergens', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('allergens', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
 
 export async function whereNutritionalInfo(value: string): Promise<ProductModel[]> {
-  const query = DB.instance.selectFrom('products').where('nutritional_info', '=', value)
-  const results: ProductJsonResponse = await query.execute()
+          const query = db.selectFrom('products').where('nutritional_info', '=', value)
+          const results: ProductJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
-}
+          return results.map((modelItem: ProductJsonResponse) => new ProductModel(modelItem))
+        } 
+
+
 
 export const Product = ProductModel
 

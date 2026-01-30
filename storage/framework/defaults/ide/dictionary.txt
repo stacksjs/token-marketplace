@@ -35,6 +35,7 @@ brotli
 browserslist
 bumpp
 bundleconfig
+bunfig
 bunnel
 bunx
 bunx --bun
@@ -143,6 +144,7 @@ gstatic
 gupshup
 gzipped
 headlessui
+headwind
 heex
 heroicon
 heroicons
@@ -352,7 +354,6 @@ unhead
 unimport
 universalify
 unmanaged
-unocss
 unplugin
 Unprefix
 Unprefixed

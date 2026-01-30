@@ -1,23 +1,37 @@
-import type { RawBuilder } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
+import { BaseOrm } from '../utils/base'
 import type { Operator } from '@stacksjs/orm'
-import type { AuthorJsonResponse, AuthorsTable, AuthorUpdate, NewAuthor } from '../types/AuthorType'
-import type { PostModel } from './Post'
-import type { UserModel } from './User'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
 import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
-import { DB } from '@stacksjs/orm'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { AuthorModelType, AuthorJsonResponse, NewAuthor, AuthorUpdate, AuthorsTable } from '../types/AuthorType'
 
-import { BaseOrm } from '../utils/base'
+import type {PostModel} from './Post'
+
+import type {UserModel} from './User'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonResponse> {
   private readonly hidden: Array<keyof AuthorJsonResponse> = []
-  private readonly fillable: Array<keyof AuthorJsonResponse> = ['name', 'email', 'uuid', 'two_factor_secret', 'public_key', 'user_id']
+  private readonly fillable: Array<keyof AuthorJsonResponse> = ["name","email","uuid","two_factor_secret","public_key","user_id"]
   private readonly guarded: Array<keyof AuthorJsonResponse> = []
   protected attributes = {} as AuthorJsonResponse
   protected originalAttributes = {} as AuthorJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -35,33 +49,33 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   constructor(author: AuthorJsonResponse | undefined) {
     super('authors')
     if (author) {
+
       this.attributes = { ...author }
       this.originalAttributes = { ...author }
 
-      Object.keys(author).forEach((key) => {
+      Object.keys(author).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (author as AuthorJsonResponse)[key]
+           this.customColumns[key] = (author as AuthorJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('authors')
-    this.updateFromQuery = DB.instance.updateTable('authors')
-    this.deleteFromQuery = DB.instance.deleteFrom('authors')
+    this.selectFromQuery = db.selectFrom('authors')
+    this.updateFromQuery = db.updateTable('authors')
+    this.deleteFromQuery = db.deleteFrom('authors')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: AuthorJsonResponse | AuthorJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('author_id', 'in', modelIds)
         .selectAll()
@@ -76,8 +90,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { author_id: number }) => {
           return record.author_id === models.id
         })
@@ -98,10 +111,12 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
     if (Array.isArray(data)) {
       data.map((model: AuthorJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -110,14 +125,14 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -131,72 +146,76 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
-  get posts(): PostModel[] | [] {
-    return this.attributes.posts
-  }
+  get posts():PostModel[] | [] {
+        return this.attributes.posts
+      }
 
-  get user_id(): number {
-    return this.attributes.user_id
-  }
+get user_id(): number {
+        return this.attributes.user_id
+      }
 
-  get user(): UserModel | undefined {
-    return this.attributes.user
-  }
+get user(): UserModel | undefined {
+        return this.attributes.user
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get public_passkey(): string | undefined {
-    return this.attributes.public_passkey
-  }
+get public_passkey(): string | undefined {
+      return this.attributes.public_passkey
+    }
 
-  get name(): string {
-    return this.attributes.name
-  }
+get name(): string {
+      return this.attributes.name
+    }
 
-  get email(): string {
-    return this.attributes.email
-  }
+get email(): string {
+      return this.attributes.email
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set public_passkey(value: string) {
-    this.attributes.public_passkey = value
-  }
+set public_passkey(value: string) {
+      this.attributes.public_passkey = value
+    }
 
-  set name(value: string) {
-    this.attributes.name = value
-  }
+set name(value: string) {
+      this.attributes.name = value
+    }
 
-  set email(value: string) {
-    this.attributes.email = value
-  }
+set email(value: string) {
+      this.attributes.email = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof AuthorJsonResponse)[] | RawBuilder<string> | string): AuthorModel {
     const instance = new AuthorModel(undefined)
@@ -206,12 +225,11 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
   // Method to find a Author by ID
   static async find(id: number): Promise<AuthorModel | undefined> {
-    const query = DB.instance.selectFrom('authors').where('id', '=', id).selectAll()
+    let query = db.selectFrom('authors').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new AuthorModel(undefined)
     return instance.createInstance(model)
@@ -232,8 +250,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new AuthorModel(model)
   }
@@ -247,7 +264,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   static async all(): Promise<AuthorModel[]> {
     const instance = new AuthorModel(undefined)
 
-    const models = await DB.instance.selectFrom('authors').selectAll().execute()
+    const models = await db.selectFrom('authors').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -266,7 +283,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
   static async findMany(ids: number[]): Promise<AuthorModel[]> {
     const instance = new AuthorModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: AuthorJsonResponse) => instance.parseResult(new AuthorModel(modelItem)))
@@ -281,8 +298,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new AuthorModel(model)
   }
@@ -296,8 +312,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new AuthorModel(model)
   }
@@ -464,12 +479,12 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: AuthorModel[]
+    data: AuthorModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new AuthorModel(undefined)
@@ -479,7 +494,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     return {
       data: result.data.map((item: AuthorJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -491,19 +506,19 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   async applyCreate(newAuthor: NewAuthor): Promise<AuthorModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newAuthor).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewAuthor
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('authors')
+    const result = await db.insertInto('authors')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('authors')
+    const model = await db.selectFrom('authors')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -513,7 +528,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     }
 
     if (model)
-      dispatch('author:created', model)
+ dispatch('author:created', model)
     return this.createInstance(model)
   }
 
@@ -582,7 +597,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   async update(newAuthor: AuthorUpdate): Promise<AuthorModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newAuthor).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as AuthorUpdate
 
@@ -590,14 +605,14 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('authors')
+    await db.updateTable('authors')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('authors')
+      const model = await db.selectFrom('authors')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -607,7 +622,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       }
 
       if (model)
-        dispatch('author:updated', model)
+ dispatch('author:updated', model)
       return this.createInstance(model)
     }
 
@@ -615,14 +630,14 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   }
 
   async forceUpdate(newAuthor: AuthorUpdate): Promise<AuthorModel | undefined> {
-    await DB.instance.updateTable('authors')
+    await db.updateTable('authors')
       .set(newAuthor)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('authors')
+      const model = await db.selectFrom('authors')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -632,7 +647,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       }
 
       if (this)
-        dispatch('author:updated', model)
+ dispatch('author:updated', model)
       return this.createInstance(model)
     }
 
@@ -643,13 +658,13 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('authors')
+      await db.updateTable('authors')
         .set(this.attributes as AuthorUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('authors')
+      const model = await db.selectFrom('authors')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -659,17 +674,16 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       }
 
       if (this)
-        dispatch('author:updated', model)
+ dispatch('author:updated', model)
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('authors')
+      const result = await db.insertInto('authors')
         .values(this.attributes as NewAuthor)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('authors')
+      const model = await db.selectFrom('authors')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -679,7 +693,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
       }
 
       if (this)
-        dispatch('author:created', model)
+ dispatch('author:created', model)
       return this.createInstance(model)
     }
   }
@@ -694,23 +708,23 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
         ),
       ) as NewAuthor
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('authors')
+    await db.insertInto('authors')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newAuthor: NewAuthor): Promise<AuthorModel> {
-    const result = await DB.instance.insertInto('authors')
+    const result = await db.insertInto('authors')
       .values(newAuthor)
       .executeTakeFirst()
 
     const instance = new AuthorModel(undefined)
-    const model = await DB.instance.selectFrom('authors')
+    const model = await db.selectFrom('authors')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -720,7 +734,7 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     }
 
     if (model)
-      dispatch('author:created', model)
+ dispatch('author:created', model)
 
     return instance.createInstance(model)
   }
@@ -730,11 +744,11 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
-
+    
     if (model)
-      dispatch('author:deleted', model)
+ dispatch('author:deleted', model)
 
-    const deleted = await DB.instance.deleteFrom('authors')
+    const deleted = await db.deleteFrom('authors')
       .where('id', '=', this.id)
       .execute()
 
@@ -746,29 +760,33 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
 
     const model = await instance.find(Number(id))
 
-    if (model)
-      dispatch('author:deleted', model)
+    
 
-    return await DB.instance.deleteFrom('authors')
+    if (model)
+ dispatch('author:deleted', model)
+
+    return await db.deleteFrom('authors')
       .where('id', '=', id)
       .execute()
   }
 
   static whereName(value: string): AuthorModel {
-    const instance = new AuthorModel(undefined)
+          const instance = new AuthorModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereEmail(value: string): AuthorModel {
-    const instance = new AuthorModel(undefined)
+static whereEmail(value: string): AuthorModel {
+          const instance = new AuthorModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof AuthorsTable, values: V[]): AuthorModel {
     const instance = new AuthorModel(undefined)
@@ -776,27 +794,36 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async userBelong(): Promise<UserModel> {
-    if (this.user_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async userBelong(): Promise<UserModel> {
+          if (this.user_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await User
-      .where('id', '=', this.user_id)
-      .first()
+          const model = await User
+            .where('id', '=', this.user_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
 
-  toSearchableObject(): Partial<AuthorJsonResponse> {
-    return {
-      id: this.id,
-      name: this.name,
-      email: this.email,
-    }
-  }
+
+
+  
+      toSearchableObject(): Partial<AuthorJsonResponse> {
+        return {
+          id: this.id,
+name: this.name,
+email: this.email
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof AuthorJsonResponse): AuthorModel {
     const instance = new AuthorModel(undefined)
@@ -813,21 +840,21 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
   toJSON(): AuthorJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      name: this.name,
-      email: this.email,
+id: this.id,
+name: this.name,
+   email: this.email,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       posts: this.posts,
-      user_id: this.user_id,
-      user: this.user,
-      ...this.customColumns,
-    }
+user_id: this.user_id,
+   user: this.user,
+...this.customColumns,
+}
 
     return output
   }
@@ -840,9 +867,11 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<AuthorModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -857,15 +886,16 @@ export class AuthorModel extends BaseOrm<AuthorModel, AuthorsTable, AuthorJsonRe
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<AuthorModel | undefined> {
-  const query = DB.instance.selectFrom('authors').where('id', '=', id).selectAll()
+  let query = db.selectFrom('authors').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new AuthorModel(undefined)
   return instance.createInstance(model)
@@ -883,28 +913,30 @@ export async function create(newAuthor: NewAuthor): Promise<AuthorModel> {
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('authors')
+  await db.deleteFrom('authors')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereName(value: string): Promise<AuthorModel[]> {
-  const query = DB.instance.selectFrom('authors').where('name', '=', value)
-  const results: AuthorJsonResponse = await query.execute()
+          const query = db.selectFrom('authors').where('name', '=', value)
+          const results: AuthorJsonResponse = await query.execute()
 
-  return results.map((modelItem: AuthorJsonResponse) => new AuthorModel(modelItem))
-}
+          return results.map((modelItem: AuthorJsonResponse) => new AuthorModel(modelItem))
+        } 
 
 export async function whereEmail(value: string): Promise<AuthorModel[]> {
-  const query = DB.instance.selectFrom('authors').where('email', '=', value)
-  const results: AuthorJsonResponse = await query.execute()
+          const query = db.selectFrom('authors').where('email', '=', value)
+          const results: AuthorJsonResponse = await query.execute()
 
-  return results.map((modelItem: AuthorJsonResponse) => new AuthorModel(modelItem))
-}
+          return results.map((modelItem: AuthorJsonResponse) => new AuthorModel(modelItem))
+        } 
+
+
 
 export const Author = AuthorModel
 

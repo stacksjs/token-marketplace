@@ -1,21 +1,36 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { DeploymentJsonResponse, DeploymentsTable, DeploymentUpdate, NewDeployment } from '../types/DeploymentType'
-import type { UserModel } from './User'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
-import { HttpError } from '@stacksjs/error-handling'
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { DeploymentModelType, DeploymentJsonResponse, NewDeployment, DeploymentUpdate, DeploymentsTable } from '../types/DeploymentType'
+
+import type {UserModel} from './User'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { collect } from '@stacksjs/collections';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, DeploymentJsonResponse> {
   private readonly hidden: Array<keyof DeploymentJsonResponse> = []
-  private readonly fillable: Array<keyof DeploymentJsonResponse> = ['commit_sha', 'commit_message', 'branch', 'status', 'execution_time', 'deploy_script', 'terminal_output', 'uuid']
+  private readonly fillable: Array<keyof DeploymentJsonResponse> = ["commit_sha","commit_message","branch","status","execution_time","deploy_script","terminal_output","uuid"]
   private readonly guarded: Array<keyof DeploymentJsonResponse> = []
   protected attributes = {} as DeploymentJsonResponse
   protected originalAttributes = {} as DeploymentJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -33,33 +48,33 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   constructor(deployment: DeploymentJsonResponse | undefined) {
     super('deployments')
     if (deployment) {
+
       this.attributes = { ...deployment }
       this.originalAttributes = { ...deployment }
 
-      Object.keys(deployment).forEach((key) => {
+      Object.keys(deployment).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (deployment as DeploymentJsonResponse)[key]
+           this.customColumns[key] = (deployment as DeploymentJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('deployments')
-    this.updateFromQuery = DB.instance.updateTable('deployments')
-    this.deleteFromQuery = DB.instance.deleteFrom('deployments')
+    this.selectFromQuery = db.selectFrom('deployments')
+    this.updateFromQuery = db.updateTable('deployments')
+    this.deleteFromQuery = db.deleteFrom('deployments')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: DeploymentJsonResponse | DeploymentJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('deployment_id', 'in', modelIds)
         .selectAll()
@@ -74,8 +89,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { deployment_id: number }) => {
           return record.deployment_id === models.id
         })
@@ -96,10 +110,12 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
     if (Array.isArray(data)) {
       data.map((model: DeploymentJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -108,14 +124,14 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -129,100 +145,104 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
   get user_id(): number {
-    return this.attributes.user_id
-  }
+        return this.attributes.user_id
+      }
 
-  get user(): UserModel | undefined {
-    return this.attributes.user
-  }
+get user(): UserModel | undefined {
+        return this.attributes.user
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get commit_sha(): string | undefined {
-    return this.attributes.commit_sha
-  }
+get commit_sha(): string | undefined {
+      return this.attributes.commit_sha
+    }
 
-  get commit_message(): string | undefined {
-    return this.attributes.commit_message
-  }
+get commit_message(): string | undefined {
+      return this.attributes.commit_message
+    }
 
-  get branch(): string | undefined {
-    return this.attributes.branch
-  }
+get branch(): string | undefined {
+      return this.attributes.branch
+    }
 
-  get status(): string | undefined {
-    return this.attributes.status
-  }
+get status(): string | undefined {
+      return this.attributes.status
+    }
 
-  get execution_time(): number | undefined {
-    return this.attributes.execution_time
-  }
+get execution_time(): number | undefined {
+      return this.attributes.execution_time
+    }
 
-  get deploy_script(): string | undefined {
-    return this.attributes.deploy_script
-  }
+get deploy_script(): string | undefined {
+      return this.attributes.deploy_script
+    }
 
-  get terminal_output(): string | undefined {
-    return this.attributes.terminal_output
-  }
+get terminal_output(): string | undefined {
+      return this.attributes.terminal_output
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set commit_sha(value: string) {
-    this.attributes.commit_sha = value
-  }
+set commit_sha(value: string) {
+      this.attributes.commit_sha = value
+    }
 
-  set commit_message(value: string) {
-    this.attributes.commit_message = value
-  }
+set commit_message(value: string) {
+      this.attributes.commit_message = value
+    }
 
-  set branch(value: string) {
-    this.attributes.branch = value
-  }
+set branch(value: string) {
+      this.attributes.branch = value
+    }
 
-  set status(value: string) {
-    this.attributes.status = value
-  }
+set status(value: string) {
+      this.attributes.status = value
+    }
 
-  set execution_time(value: number) {
-    this.attributes.execution_time = value
-  }
+set execution_time(value: number) {
+      this.attributes.execution_time = value
+    }
 
-  set deploy_script(value: string) {
-    this.attributes.deploy_script = value
-  }
+set deploy_script(value: string) {
+      this.attributes.deploy_script = value
+    }
 
-  set terminal_output(value: string) {
-    this.attributes.terminal_output = value
-  }
+set terminal_output(value: string) {
+      this.attributes.terminal_output = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof DeploymentJsonResponse)[] | RawBuilder<string> | string): DeploymentModel {
     const instance = new DeploymentModel(undefined)
@@ -232,12 +252,11 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
   // Method to find a Deployment by ID
   static async find(id: number): Promise<DeploymentModel | undefined> {
-    const query = DB.instance.selectFrom('deployments').where('id', '=', id).selectAll()
+    let query = db.selectFrom('deployments').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new DeploymentModel(undefined)
     return instance.createInstance(model)
@@ -258,8 +277,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new DeploymentModel(model)
   }
@@ -273,7 +291,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   static async all(): Promise<DeploymentModel[]> {
     const instance = new DeploymentModel(undefined)
 
-    const models = await DB.instance.selectFrom('deployments').selectAll().execute()
+    const models = await db.selectFrom('deployments').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -292,7 +310,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
   static async findMany(ids: number[]): Promise<DeploymentModel[]> {
     const instance = new DeploymentModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: DeploymentJsonResponse) => instance.parseResult(new DeploymentModel(modelItem)))
@@ -307,8 +325,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new DeploymentModel(model)
   }
@@ -322,8 +339,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new DeploymentModel(model)
   }
@@ -490,12 +506,12 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: DeploymentModel[]
+    data: DeploymentModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new DeploymentModel(undefined)
@@ -505,7 +521,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
     return {
       data: result.data.map((item: DeploymentJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -517,19 +533,19 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   async applyCreate(newDeployment: NewDeployment): Promise<DeploymentModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newDeployment).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewDeployment
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('deployments')
+    const result = await db.insertInto('deployments')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('deployments')
+    const model = await db.selectFrom('deployments')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -538,6 +554,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
       throw new HttpError(500, 'Failed to retrieve created Deployment')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -606,7 +623,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   async update(newDeployment: DeploymentUpdate): Promise<DeploymentModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newDeployment).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as DeploymentUpdate
 
@@ -614,14 +631,14 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('deployments')
+    await db.updateTable('deployments')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('deployments')
+      const model = await db.selectFrom('deployments')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -630,6 +647,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
         throw new HttpError(500, 'Failed to retrieve updated Deployment')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -637,14 +655,14 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   }
 
   async forceUpdate(newDeployment: DeploymentUpdate): Promise<DeploymentModel | undefined> {
-    await DB.instance.updateTable('deployments')
+    await db.updateTable('deployments')
       .set(newDeployment)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('deployments')
+      const model = await db.selectFrom('deployments')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -653,6 +671,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
         throw new HttpError(500, 'Failed to retrieve updated Deployment')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -663,13 +682,13 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('deployments')
+      await db.updateTable('deployments')
         .set(this.attributes as DeploymentUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('deployments')
+      const model = await db.selectFrom('deployments')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -678,16 +697,16 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
         throw new HttpError(500, 'Failed to retrieve updated Deployment')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('deployments')
+      const result = await db.insertInto('deployments')
         .values(this.attributes as NewDeployment)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('deployments')
+      const model = await db.selectFrom('deployments')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -696,6 +715,7 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
         throw new HttpError(500, 'Failed to retrieve created Deployment')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -710,23 +730,23 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
         ),
       ) as NewDeployment
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('deployments')
+    await db.insertInto('deployments')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newDeployment: NewDeployment): Promise<DeploymentModel> {
-    const result = await DB.instance.insertInto('deployments')
+    const result = await db.insertInto('deployments')
       .values(newDeployment)
       .executeTakeFirst()
 
     const instance = new DeploymentModel(undefined)
-    const model = await DB.instance.selectFrom('deployments')
+    const model = await db.selectFrom('deployments')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -735,6 +755,8 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
       throw new HttpError(500, 'Failed to retrieve created Deployment')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -742,8 +764,11 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('deployments')
+    const deleted = await db.deleteFrom('deployments')
       .where('id', '=', this.id)
       .execute()
 
@@ -751,66 +776,76 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('deployments')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('deployments')
       .where('id', '=', id)
       .execute()
   }
 
   static whereCommitSha(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('commit_sha', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('commit_sha', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereCommitMessage(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereCommitMessage(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('commit_message', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('commit_message', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereBranch(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereBranch(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('branch', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('branch', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereStatus(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereStatus(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereExecutionTime(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereExecutionTime(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('execution_time', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('execution_time', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereDeployScript(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereDeployScript(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('deploy_script', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('deploy_script', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereTerminalOutput(value: string): DeploymentModel {
-    const instance = new DeploymentModel(undefined)
+static whereTerminalOutput(value: string): DeploymentModel {
+          const instance = new DeploymentModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('terminal_output', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('terminal_output', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof DeploymentsTable, values: V[]): DeploymentModel {
     const instance = new DeploymentModel(undefined)
@@ -818,19 +853,28 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async userBelong(): Promise<UserModel> {
-    if (this.user_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async userBelong(): Promise<UserModel> {
+          if (this.user_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await User
-      .where('id', '=', this.user_id)
-      .first()
+          const model = await User
+            .where('id', '=', this.user_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
+
+
+
+  
+
+  
+
+  
 
   static distinct(column: keyof DeploymentJsonResponse): DeploymentModel {
     const instance = new DeploymentModel(undefined)
@@ -847,25 +891,25 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
   toJSON(): DeploymentJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      commit_sha: this.commit_sha,
-      commit_message: this.commit_message,
-      branch: this.branch,
-      status: this.status,
-      execution_time: this.execution_time,
-      deploy_script: this.deploy_script,
-      terminal_output: this.terminal_output,
+id: this.id,
+commit_sha: this.commit_sha,
+   commit_message: this.commit_message,
+   branch: this.branch,
+   status: this.status,
+   execution_time: this.execution_time,
+   deploy_script: this.deploy_script,
+   terminal_output: this.terminal_output,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       user_id: this.user_id,
-      user: this.user,
-      ...this.customColumns,
-    }
+   user: this.user,
+...this.customColumns,
+}
 
     return output
   }
@@ -878,9 +922,11 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<DeploymentModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -895,15 +941,16 @@ export class DeploymentModel extends BaseOrm<DeploymentModel, DeploymentsTable, 
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<DeploymentModel | undefined> {
-  const query = DB.instance.selectFrom('deployments').where('id', '=', id).selectAll()
+  let query = db.selectFrom('deployments').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new DeploymentModel(undefined)
   return instance.createInstance(model)
@@ -921,63 +968,65 @@ export async function create(newDeployment: NewDeployment): Promise<DeploymentMo
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('deployments')
+  await db.deleteFrom('deployments')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereCommitSha(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('commit_sha', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('commit_sha', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereCommitMessage(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('commit_message', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('commit_message', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereBranch(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('branch', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('branch', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereStatus(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('status', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('status', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereExecutionTime(value: number): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('execution_time', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('execution_time', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereDeployScript(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('deploy_script', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('deploy_script', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
 
 export async function whereTerminalOutput(value: string): Promise<DeploymentModel[]> {
-  const query = DB.instance.selectFrom('deployments').where('terminal_output', '=', value)
-  const results: DeploymentJsonResponse = await query.execute()
+          const query = db.selectFrom('deployments').where('terminal_output', '=', value)
+          const results: DeploymentJsonResponse = await query.execute()
 
-  return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
-}
+          return results.map((modelItem: DeploymentJsonResponse) => new DeploymentModel(modelItem))
+        } 
+
+
 
 export const Deployment = DeploymentModel
 

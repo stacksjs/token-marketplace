@@ -72,17 +72,25 @@ export const defaults: StacksOptions = {
   },
 
   cache: {
-    driver: 'redis',
+    driver: 'memory',
     prefix: 'stx',
     ttl: 3600,
+    maxKeys: -1,
+    useClones: true,
 
     drivers: {
       redis: {
-        connection: 'default',
         host: 'localhost',
         port: 6379,
         username: '',
         password: '',
+        database: 0,
+        tls: false,
+      },
+      memory: {
+        maxKeys: -1,
+        checkPeriod: 600,
+        deleteOnExpire: true,
       },
     },
   },
@@ -190,7 +198,7 @@ export const defaults: StacksOptions = {
   email: {
     from: {
       name: 'Stacks',
-      address: 'no-reply@stacksjs.org',
+      address: 'no-reply@stacksjs.com',
     },
 
     mailboxes: [],
@@ -407,17 +415,16 @@ export const defaults: StacksOptions = {
   },
 
   hashing: {
-    driver: 'argon2',
+    driver: 'bcrypt', // Laravel default
 
     bcrypt: {
-      rounds: 10,
-      cost: 4, // number between 4-31
+      rounds: 12, // Laravel default is 10-12, higher = more secure but slower
     },
 
     argon2: {
       memory: 65536, // memory usage in kibibytes
       // threads: 1,
-      time: 1, // the number of iterations
+      time: 2, // the number of iterations
     },
   },
 
@@ -427,7 +434,7 @@ export const defaults: StacksOptions = {
     repository: 'stacksjs/stacks',
     license: 'MIT',
     author: 'Chris Breuer',
-    contributors: ['Chris Breuer <chris@stacksjs.org>'],
+    contributors: ['Chris Breuer <chris@stacksjs.com>'],
     defaultLanguage: 'en',
 
     vueComponents: {
@@ -651,14 +658,14 @@ export const defaults: StacksOptions = {
     },
   },
 
-  storage: {
+  filesystems: {
     driver: 's3',
   },
 
   team: {
     name: 'Stacks',
     members: {
-      'Chris Breuer': 'chris@stacksjs.org',
+      'Chris Breuer': 'chris@stacksjs.com',
     },
   },
 

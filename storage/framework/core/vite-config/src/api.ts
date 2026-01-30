@@ -1,20 +1,17 @@
-import type { UserConfig as ViteConfig } from 'vite'
-import { ports } from '@stacksjs/config'
-import { path as p } from '@stacksjs/path'
+import { defineConfig } from 'vite'
 
-export const apiConfig: ViteConfig = {
-  base: '/api/',
-
-  root: p.frameworkPath('api'),
-  publicDir: p.publicPath(),
-  envDir: p.projectPath(),
-
+export default defineConfig({
   server: {
-    port: ports.backend,
+    port: 5173,
     proxy: {
-      '/': `http://127.0.0.1:${ports.api}`,
+      '/api': {
+        target: 'http://localhost:3008',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
-}
-
-export default apiConfig
+  build: {
+    target: 'esnext',
+  },
+})

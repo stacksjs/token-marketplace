@@ -4,7 +4,7 @@
   "version": "0.70.23",
   "description": "Stacks env helper methods.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": ["Chris Breuer <chris@stacksjs.com>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/core/env#readme",
@@ -33,14 +33,9 @@
     "typecheck": "bun tsc --noEmit",
     "prepublishOnly": "bun run build"
   },
-  "dependencies": {
-    "@dotenvx/dotenvx": "^1.49.0"
-  },
   "devDependencies": {
-    "@stacksjs/development": "workspace:*",
+    "better-dx": "^0.2.5",
     "@stacksjs/path": "workspace:*",
-    "@stacksjs/validation": "workspace:*",
-    "fs-extra": "^11.3.1",
-    "std-env": "^3.9.0"
+    "@stacksjs/validation": "workspace:*"
   }
 }

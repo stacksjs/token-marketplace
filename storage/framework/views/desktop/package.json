@@ -5,7 +5,7 @@
   "private": "true",
   "description": "The Stacks Dashboard.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": ["Chris Breuer <chris@stacksjs.com>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/core/dashboard#readme",
@@ -43,6 +43,6 @@
   },
   "devDependencies": {
     "@stacksjs/desktop": "workspace:*",
-    "@stacksjs/development": "workspace:*"
+    "better-dx": "^0.2.5"
   }
 }

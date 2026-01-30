@@ -5,7 +5,7 @@
   "description": "The Stacks framework.",
   "author": "Chris Breuer",
   "contributors": [
-    "Chris Breuer <chris@stacksjs.org>"
+    "Chris Breuer <chris@stacksjs.com>"
   ],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
@@ -296,7 +296,7 @@
   ],
   "scripts": {
     "buddy": "bun run ./buddy/src/cli.ts",
-    "build": "cd path && bun run build && cd .. && bun ./build.ts",
+    "build": "bun ./build.ts",
     "up": "bun update",
     "up:latest": "bun update --latest"
   },
@@ -316,7 +316,7 @@
     "@stacksjs/config": "^0.70.23",
     "@stacksjs/database": "^0.70.23",
     "@stacksjs/desktop": "^0.70.23",
-    "@stacksjs/development": "^0.70.23",
+    "better-dx": "^0.2.5",
     "@stacksjs/dns": "^0.70.23",
     "@stacksjs/docs": "^0.70.23",
     "@stacksjs/email": "^0.70.23",
@@ -347,8 +347,6 @@
     "@stacksjs/types": "^0.70.23",
     "@stacksjs/ui": "^0.70.23",
     "@stacksjs/utils": "^0.70.23",
-    "@stacksjs/validation": "^0.70.23",
-    "@stacksjs/vite-config": "^0.70.23",
-    "@stacksjs/vite-plugin": "^0.70.23"
+    "@stacksjs/validation": "^0.70.23"
   }
 }

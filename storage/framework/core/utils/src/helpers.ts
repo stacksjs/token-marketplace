@@ -25,7 +25,7 @@ export async function initProject(): Promise<Result<Subprocess, Error>> {
 
   const result = await runAction(Action.KeyGenerate, { cwd: projectPath() })
 
-  if (result.isErr())
+  if (result.isErr)
     return err(handleError(result.error))
 
   log.info('Application key generated.')
@@ -70,28 +70,15 @@ export async function isAppKeySet(): Promise<boolean> {
 /**
  * Determines the utilized reset preset.
  *
- * @url https://www.npmjs.com/package/@unocss/reset
+ * @url https://github.com/stacksjs/headwind
  * @param preset
  */
 export function determineResetPreset(preset?: string): string[] {
   if (ui.reset)
     preset = ui.reset
 
-  if (preset === 'tailwind')
-    return ['import \'@unocss/reset/tailwind.css\'']
-
-  if (preset === 'normalize')
-    return ['import \'@unocss/reset/normalize.css\'']
-
-  if (preset === 'sanitize')
-    return ['import \'@unocss/reset/sanitize/sanitize.css\'', 'import \'@unocss/reset/sanitize/assets.css']
-
-  if (preset === 'eric-meyer')
-    return ['import \'@unocss/reset/eric-meyer.css\'']
-
-  if (preset === 'antfu')
-    return ['import \'@unocss/reset/antfu.css\'']
-
+  // Headwind handles CSS resets internally via preflight
+  // Return empty array as headwind build generates the necessary resets
   return []
 }
 

@@ -41,7 +41,7 @@ export enum NpmScript {
   Preinstall = 'preinstall',
   Prepublish = 'prepublish',
   UpgradeBun = './storage/framework/scripts/setup.sh +bun.sh',
-  UpgradeDependencies = 'pkgx --update && bun install',
+  UpgradeDependencies = 'pantry --update && bun install',
 }
 
 export enum Action {
@@ -61,6 +61,9 @@ export enum Action {
   CheckPorts = 'check/ports',
   Clean = 'clean',
   CreatePersonalAccessClient = 'auth/token',
+  AuthSetup = 'auth/setup',
+  AuthClient = 'auth/client',
+  AuthPrune = 'auth/prune',
   DevComponents = 'dev/components',
   DevDashboard = 'dev/dashboard',
   DevSystemTray = 'dev/system-tray',
@@ -87,6 +90,15 @@ export enum Action {
   Prepublish = 'prepublish',
   QueueTable = 'queue/table',
   QueueWork = 'queue/work',
+  QueueRetry = 'queue/retry',
+  QueueFailed = 'queue/failed',
+  QueueClear = 'queue/clear',
+  QueueStatus = 'queue/status',
+  QueueFlush = 'queue/flush',
+  QueueMonitor = 'queue/monitor',
+  QueueInspect = 'queue/inspect',
+  QueueSchedule = 'queue/schedule',
+  QueueScheduleList = 'queue/schedule-list',
   Release = 'release', // ✅
   RouteList = 'route/list', // ✅
   StripeSetup = 'saas/setup',

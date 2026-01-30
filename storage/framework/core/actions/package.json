@@ -4,7 +4,7 @@
   "version": "0.70.23",
   "description": "The Stacks actions.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": ["Chris Breuer <chris@stacksjs.com>"],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/storage/framework/core/actions#readme",
@@ -22,13 +22,16 @@
     "framework",
     "typescript",
     "javascript",
-    "bun",
-    "vite"
+    "bun"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./run-action": {
+      "types": "./dist/run-action.d.ts",
+      "import": "./dist/run-action.js"
     },
     "./*": {
       "import": "./dist/*"
@@ -47,7 +50,7 @@
     "@stacksjs/cli": "workspace:*",
     "@stacksjs/config": "workspace:*",
     "@stacksjs/database": "workspace:*",
-    "@stacksjs/development": "workspace:*",
+    "better-dx": "^0.2.5",
     "@stacksjs/dns": "workspace:*",
     "@stacksjs/enums": "workspace:*",
     "@stacksjs/env": "workspace:*",
@@ -58,8 +61,6 @@
     "@stacksjs/storage": "workspace:*",
     "@stacksjs/strings": "workspace:*",
     "@stacksjs/utils": "workspace:*",
-    "@stacksjs/validation": "workspace:*",
-    "markdown-it": "^14.1.0",
-    "vue-component-meta": "^3.0.6"
+    "@stacksjs/validation": "workspace:*"
   }
 }

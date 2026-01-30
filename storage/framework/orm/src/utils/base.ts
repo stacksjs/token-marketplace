@@ -1,9 +1,18 @@
 import type { RawBuilder } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
-import { sql } from '@stacksjs/database'
+import { db, sql } from '@stacksjs/database'
 import { HttpError } from '@stacksjs/error-handling'
-import { DB } from '@stacksjs/orm'
 
+/**
+ * BaseOrm - Base class for all generated ORM models
+ *
+ * This class provides the foundation for database operations using bun-query-builder.
+ * It implements a fluent query builder interface compatible with Laravel-style APIs.
+ *
+ * @template T - The model instance type
+ * @template C - The table columns type (for type-safe where clauses)
+ * @template J - The JSON response type
+ */
 export class BaseOrm<T, C, J> {
   protected tableName: string
 
@@ -15,11 +24,9 @@ export class BaseOrm<T, C, J> {
 
   constructor(tableName: string) {
     this.tableName = tableName
-    // TODO: bring back new instantiation from the this parent class
-    this.selectFromQuery = DB.instance.selectFrom(this.tableName)
-    this.updateFromQuery = DB.instance.updateTable(this.tableName)
-    this.deleteFromQuery = DB.instance.deleteFrom(this.tableName)
-
+    this.selectFromQuery = db.selectFrom(this.tableName)
+    this.updateFromQuery = db.updateTable(this.tableName)
+    this.deleteFromQuery = db.deleteFrom(this.tableName)
     this.withRelations = []
   }
 
@@ -57,10 +64,16 @@ export class BaseOrm<T, C, J> {
     let model
 
     if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
+      // Use first() if available (bun-query-builder style), fallback to executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.executeTakeFirst()
     }
     else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
+      // Use first() if available, otherwise selectAll().executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.selectAll().executeTakeFirst()
     }
 
     if (!model)
@@ -76,31 +89,29 @@ export class BaseOrm<T, C, J> {
 
   // The protected helper method that does the actual work
   protected async applyFind(id: number): Promise<T | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
-      .where('id', '=', id)
-      .selectAll()
-      .executeTakeFirst()
+    const query = db.selectFrom(this.tableName).where({ id })
+
+    // Use first() if available (bun-query-builder style)
+    const model = typeof query.first === 'function'
+      ? await query.first()
+      : await query.selectAll().executeTakeFirst()
 
     if (!model)
       return undefined
 
     this.mapCustomGetters(model)
-
     await this.loadRelations(model)
-
-    // cache.getOrSet(`${this.tableName}:${id}`, JSON.stringify(model))
 
     return model
   }
 
   async applyFindMany(ids: number[]): Promise<T[]> {
-    let query = DB.instance.selectFrom('users').where('id', 'in', ids)
+    const query = db.selectFrom(this.tableName).whereIn('id', ids)
 
-    query = query.selectAll()
-
-    // TODO: Properly implement soft deletes
-
-    const models = await query.execute()
+    // Use get() if available (bun-query-builder style), fallback to execute()
+    const models = typeof query.get === 'function'
+      ? await query.get()
+      : await query.selectAll().execute()
 
     this.mapCustomGetters(models)
     await this.loadRelations(models)
@@ -113,9 +124,12 @@ export class BaseOrm<T, C, J> {
   }
 
   async all(): Promise<T[]> {
-    const models = await DB.instance.selectFrom(this.tableName)
-      .selectAll()
-      .execute()
+    const query = db.selectFrom(this.tableName)
+
+    // Use get() if available (bun-query-builder style), fallback to execute()
+    const models = typeof query.get === 'function'
+      ? await query.get()
+      : await query.selectAll().execute()
 
     this.mapCustomGetters(models)
     await this.loadRelations(models)
@@ -127,10 +141,14 @@ export class BaseOrm<T, C, J> {
     let model
 
     if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.executeTakeFirst()
     }
     else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.selectAll().executeTakeFirst()
     }
 
     if (model) {
@@ -176,18 +194,18 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async applyFindOrFail(id: number): Promise<T | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
-      .where('id', '=', id)
-      .selectAll()
-      .executeTakeFirst()
+    const query = db.selectFrom(this.tableName).where({ id })
+
+    // Use first() if available (bun-query-builder style)
+    const model = typeof query.first === 'function'
+      ? await query.first()
+      : await query.selectAll().executeTakeFirst()
 
     if (!model)
       throw new HttpError(404, `No ${this.tableName} results found for id ${id}`)
 
     this.mapCustomGetters(model)
     await this.loadRelations(model)
-
-    // cache.getOrSet(`${this.tableName}:${id}`, JSON.stringify(model))
 
     return model
   }
@@ -365,13 +383,21 @@ export class BaseOrm<T, C, J> {
   }
 
   async exists(): Promise<boolean> {
-    let model
+    // Use exists() if available (bun-query-builder style)
+    if (typeof this.selectFromQuery.exists === 'function') {
+      return await this.selectFromQuery.exists()
+    }
 
+    let model
     if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.executeTakeFirst()
     }
     else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
+      model = typeof this.selectFromQuery.first === 'function'
+        ? await this.selectFromQuery.first()
+        : await this.selectFromQuery.selectAll().executeTakeFirst()
     }
 
     return model !== null && model !== undefined
@@ -389,12 +415,17 @@ export class BaseOrm<T, C, J> {
 
   async applyLast(): Promise<T | undefined> {
     let model
+    const query = this.selectFromQuery.orderBy('id', 'desc')
 
     if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
+      model = typeof query.first === 'function'
+        ? await query.first()
+        : await query.executeTakeFirst()
     }
     else {
-      model = await this.selectFromQuery.selectAll().orderBy('id', 'desc').executeTakeFirst()
+      model = typeof query.first === 'function'
+        ? await query.first()
+        : await query.selectAll().executeTakeFirst()
     }
 
     if (model) {
@@ -418,10 +449,14 @@ export class BaseOrm<T, C, J> {
     let models
 
     if (this.hasSelect) {
-      models = await this.selectFromQuery.execute()
+      models = typeof this.selectFromQuery.get === 'function'
+        ? await this.selectFromQuery.get()
+        : await this.selectFromQuery.execute()
     }
     else {
-      models = await this.selectFromQuery.selectAll().execute()
+      models = typeof this.selectFromQuery.get === 'function'
+        ? await this.selectFromQuery.get()
+        : await this.selectFromQuery.selectAll().execute()
     }
 
     this.mapCustomGetters(models)
@@ -455,11 +490,16 @@ export class BaseOrm<T, C, J> {
   }
 
   async applyCount(): Promise<number> {
+    // Use count() if available (bun-query-builder style)
+    if (typeof this.selectFromQuery.count === 'function') {
+      return await this.selectFromQuery.count()
+    }
+
     const result = await this.selectFromQuery
       .select(sql`COUNT(*) as count`)
       .executeTakeFirst()
 
-    return result.count || 0
+    return result?.count || 0
   }
 
   async count(): Promise<number> {
@@ -652,22 +692,37 @@ export class BaseOrm<T, C, J> {
   }
 
   async applyPaginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{ data: T[], paging: { total_records: number, page: number, total_pages: number }, next_cursor: number | null }> {
-    const totalRecordsResult = await DB.instance.selectFrom(this.tableName)
-      .select(DB.instance.fn.count('id').as('total'))
-      .executeTakeFirst()
+    const perPage = options.limit ?? 10
+    const currentPage = options.page ?? 1
 
-    const totalRecords = Number(totalRecordsResult?.total) || 0
-    const totalPages = Math.ceil(totalRecords / (options.limit ?? 10))
+    // Get total count
+    const countQuery = db.selectFrom(this.tableName)
+    let totalRecords: number
 
-    const modelsWithExtra = await DB.instance.selectFrom(this.tableName)
-      .selectAll()
+    if (typeof countQuery.count === 'function') {
+      totalRecords = await countQuery.count()
+    }
+    else {
+      const totalRecordsResult = await countQuery
+        .select(sql`COUNT(*) as total`)
+        .executeTakeFirst()
+      totalRecords = Number(totalRecordsResult?.total) || 0
+    }
+
+    const totalPages = Math.ceil(totalRecords / perPage)
+
+    // Get data with one extra to check for next page
+    const dataQuery = db.selectFrom(this.tableName)
       .orderBy('id', 'asc')
-      .limit((options.limit ?? 10) + 1)
-      .offset(((options.page ?? 1) - 1) * (options.limit ?? 10))
-      .execute()
+      .limit(perPage + 1)
+      .offset((currentPage - 1) * perPage)
+
+    const modelsWithExtra = typeof dataQuery.get === 'function'
+      ? await dataQuery.get()
+      : await dataQuery.selectAll().execute()
 
     let nextCursor = null
-    if (modelsWithExtra.length > (options.limit ?? 10))
+    if (modelsWithExtra.length > perPage)
       nextCursor = modelsWithExtra.pop()?.id ?? null
 
     this.mapCustomGetters(modelsWithExtra)
@@ -677,7 +732,7 @@ export class BaseOrm<T, C, J> {
       data: modelsWithExtra as T[],
       paging: {
         total_records: totalRecords,
-        page: options.page || 1,
+        page: currentPage,
         total_pages: totalPages,
       },
       next_cursor: nextCursor,
@@ -866,7 +921,7 @@ export class BaseOrm<T, C, J> {
 
   // Base implementations for categorizable trait
   protected async getCategoryIds(id: number): Promise<number[]> {
-    const categoryLinks = await DB.instance
+    const categoryLinks = await db
       .selectFrom('categorizable_models')
       .where('categorizable_id', '=', id)
       .where('categorizable_type', '=', this.tableName)
@@ -882,7 +937,7 @@ export class BaseOrm<T, C, J> {
     if (categoryIds.length === 0)
       return []
 
-    return await DB.instance
+    return await db
       .selectFrom('categorizable')
       .where('id', 'in', categoryIds)
       .selectAll()
@@ -896,14 +951,14 @@ export class BaseOrm<T, C, J> {
 
   protected async baseAddCategory(id: number, category: { name: string, description?: string }): Promise<any> {
     // First check if category exists or create it
-    let categoryRecord = await DB.instance
+    let categoryRecord = await db
       .selectFrom('categorizable')
       .where('name', '=', category.name)
       .selectAll()
       .executeTakeFirst()
 
     if (!categoryRecord) {
-      categoryRecord = await DB.instance
+      categoryRecord = await db
         .insertInto('categorizable')
         .values({
           name: category.name,
@@ -918,7 +973,7 @@ export class BaseOrm<T, C, J> {
     }
 
     // Then create the relationship
-    return await DB.instance
+    return await db
       .insertInto('categorizable_models')
       .values({
         categorizable_id: id,
@@ -937,7 +992,7 @@ export class BaseOrm<T, C, J> {
     if (categoryIds.length === 0)
       return []
 
-    return await DB.instance
+    return await db
       .selectFrom('categorizable')
       .where('id', 'in', categoryIds)
       .where('is_active', '=', true)
@@ -951,7 +1006,7 @@ export class BaseOrm<T, C, J> {
     if (categoryIds.length === 0)
       return []
 
-    return await DB.instance
+    return await db
       .selectFrom('categorizable')
       .where('id', 'in', categoryIds)
       .where('is_active', '=', false)
@@ -960,7 +1015,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseRemoveCategory(categoryId: number): Promise<void> {
-    await DB.instance
+    await db
       .deleteFrom('categorizable')
       .where('categorizable_type', '=', this.tableName)
       .where('id', '=', categoryId)
@@ -969,7 +1024,7 @@ export class BaseOrm<T, C, J> {
 
   // Base implementations for taggable trait
   protected async baseTags(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('taggable')
       .where('taggable_id', '=', id)
       .where('taggable_type', '=', this.tableName)
@@ -978,7 +1033,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseTagCount(id: number): Promise<number> {
-    const result = await DB.instance
+    const result = await db
       .selectFrom('taggable')
       .select(sql`count(*) as count`)
       .where('taggable_id', '=', id)
@@ -989,7 +1044,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseAddTag(id: number, tag: { name: string, description?: string }): Promise<any> {
-    return await DB.instance
+    return await db
       .insertInto('taggable')
       .values({
         ...tag,
@@ -1006,7 +1061,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseActiveTags(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('taggable')
       .where('taggable_id', '=', id)
       .where('taggable_type', '=', this.tableName)
@@ -1016,7 +1071,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseInactiveTags(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('taggable')
       .where('taggable_id', '=', id)
       .where('taggable_type', '=', this.tableName)
@@ -1026,7 +1081,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseRemoveTag(id: number, tagId: number): Promise<void> {
-    await DB.instance
+    await db
       .deleteFrom('taggable')
       .where('taggable_id', '=', id)
       .where('taggable_type', '=', this.tableName)
@@ -1036,7 +1091,7 @@ export class BaseOrm<T, C, J> {
 
   // Base implementations for commentable trait
   protected async baseComments(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('comments')
       .where('commentables_id', '=', id)
       .where('commentables_type', '=', this.tableName)
@@ -1045,7 +1100,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseCommentCount(id: number): Promise<number> {
-    const result = await DB.instance
+    const result = await db
       .selectFrom('comments')
       .select(sql`count(*) as count`)
       .where('commentables_id', '=', id)
@@ -1056,7 +1111,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseAddComment(id: number, comment: { title: string, body: string }): Promise<any> {
-    return await DB.instance
+    return await db
       .insertInto('comments')
       .values({
         ...comment,
@@ -1071,7 +1126,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseApprovedComments(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('comments')
       .where('commentables_id', '=', id)
       .where('commentables_type', '=', this.tableName)
@@ -1081,7 +1136,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async basePendingComments(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('comments')
       .where('commentables_id', '=', id)
       .where('commentables_type', '=', this.tableName)
@@ -1091,7 +1146,7 @@ export class BaseOrm<T, C, J> {
   }
 
   protected async baseRejectedComments(id: number): Promise<any[]> {
-    return await DB.instance
+    return await db
       .selectFrom('comments')
       .where('commentables_id', '=', id)
       .where('commentables_type', '=', this.tableName)

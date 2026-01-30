@@ -48,7 +48,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (server: string | undefined, options: DevOptions) => {
-      log.debug('Running `buddy dev [server]` ...', options)
 
       const perf = await intro('buddy dev')
 
@@ -57,7 +56,7 @@ export function dev(buddy: CLI): void {
       // // check if port 443 is open
       // const result = await runCommand('lsof -i :443', { silent: true })
 
-      // if (result.isErr())
+      // if (result.isErr)
       //   log.warn('While checking if port 443 is open, we noticed it may be in use')
 
       switch (server) {
@@ -129,7 +128,9 @@ export function dev(buddy: CLI): void {
       else {
         if (options.components)
           await runComponentsDevServer(options)
-        if (options.docs)
+        else if (options.dashboard)
+          await runDashboardDevServer(options)
+        else if (options.docs)
           await runDocsDevServer(options)
         else if (options.api)
           await runApiDevServer(options)
@@ -148,7 +149,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:components` ...', options)
 
       const perf = await intro('buddy dev:components')
       const result = await runCommand('bun run dev', {
@@ -159,7 +159,7 @@ export function dev(buddy: CLI): void {
       if (options.verbose)
         log.info('buddy dev:components result', result)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the dev:components command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -178,12 +178,11 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:docs` ...', options)
 
       const perf = await intro('buddy dev:docs')
       const result = await runAction(Action.DevDocs, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the dev:docs command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -202,12 +201,11 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:desktop` ...', options)
 
       const perf = await intro('buddy dev:desktop')
       const result = await runAction(Action.DevDesktop, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the dev:desktop command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -226,7 +224,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:api` ...', options)
 
       await runApiDevServer(options)
     })
@@ -246,7 +243,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:frontend` ...', options)
       await runFrontendDevServer(options)
     })
 
@@ -256,7 +252,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:dashboard` ...', options)
       await runDashboardDevServer(options)
     })
 
@@ -266,7 +261,6 @@ export function dev(buddy: CLI): void {
     .option('-p, --project [project]', descriptions.project, { default: false })
     .option('--verbose', descriptions.verbose, { default: false })
     .action(async (options: DevOptions) => {
-      log.debug('Running `buddy dev:system-tray` ...', options)
       await runSystemTrayDevServer(options)
     })
 
@@ -277,12 +271,16 @@ export function dev(buddy: CLI): void {
 }
 
 export async function startDevelopmentServer(options: DevOptions): Promise<void> {
-  const result = await runAction(Action.Dev, options)
+  // Start both frontend and API servers concurrently
+  log.info('Starting frontend and API development servers...')
 
-  if (result.isErr()) {
-    log.error('While running the dev command, there was an issue', result.error)
-    process.exit(ExitCode.InvalidArgument)
-  }
+  // Run both servers in parallel
+  await Promise.all([
+    runFrontendDevServer(options),
+    runApiDevServer(options),
+  ])
+
+  // Dev servers run indefinitely, so this line should not be reached
 }
 
 function wantsInteractive(options: DevOptions) {

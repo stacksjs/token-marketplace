@@ -16,7 +16,18 @@ import {
   toNamespacedPath,
 } from 'node:path'
 import process from 'node:process'
-import { log } from '@stacksjs/logging'
+
+// Lazy import logging to avoid circular dependency (logging imports path)
+async function debugLog(message: string) {
+  try {
+    const { log } = await import('@stacksjs/logging')
+    log.debug(message)
+  }
+  catch {
+    // Logging not available, silently ignore
+    console.debug(message)
+  }
+}
 
 /**
  * Returns the path to the `actions` directory. The `actions` directory
@@ -313,6 +324,28 @@ export function appPath(path?: string, options?: { relative?: boolean, cwd?: str
     return relative(options.cwd || process.cwd(), absolutePath)
 
   return absolutePath
+}
+
+/**
+ * Returns the path to the defaults `app` directory within the framework directory.
+ * This is where default Actions, Controllers, etc. are stored.
+ *
+ * @param path - The relative path to the file or directory within the defaults app directory.
+ * @returns The absolute path to the specified file or directory within the defaults app directory.
+ */
+export function defaultsAppPath(path?: string): string {
+  return frameworkPath(`defaults/app/${path || ''}`)
+}
+
+/**
+ * Returns the path to the defaults `resources` directory within the framework directory.
+ * This is where default views, components, layouts, etc. are stored.
+ *
+ * @param path - The relative path to the file or directory within the defaults resources directory.
+ * @returns The absolute path to the specified file or directory within the defaults resources directory.
+ */
+export function defaultsResourcesPath(path?: string): string {
+  return frameworkPath(`defaults/resources/${path || ''}`)
 }
 
 /**
@@ -937,7 +970,7 @@ export function projectPath(filePath = '', options?: { relative: boolean }): str
  */
 export async function findProjectPath(project: string): Promise<string> {
   const projectList = Bun.spawnSync(['buddy', 'projects:list', '--quiet']).stdout.toString()
-  log.debug(`ProjectList in findProjectPath ${projectList}`)
+  await debugLog(`ProjectList in findProjectPath ${projectList}`)
 
   // get the list of all Stacks project paths (on the system)
   const projects = projectList
@@ -945,7 +978,7 @@ export async function findProjectPath(project: string): Promise<string> {
     .filter((line: string) => line.startsWith('   - '))
     .map((line: string) => line.trim().substring(4))
 
-  log.debug(`Projects in findProjectPath ${projects}`)
+  await debugLog(`Projects in findProjectPath ${projects}`)
 
   // since we are targeting a specific project, find its path
   const projectPath = projects.find((proj: string) => proj.includes(project))
@@ -1363,6 +1396,8 @@ export interface Path {
   analyticsPath: (path?: string) => string
   arraysPath: (path?: string) => string
   appPath: (path?: string) => string
+  defaultsAppPath: (path?: string) => string
+  defaultsResourcesPath: (path?: string) => string
   authPath: (path?: string) => string
   coreApiPath: (path?: string) => string
   buddyPath: (path?: string) => string
@@ -1495,6 +1530,8 @@ export const path: Path = {
   analyticsPath,
   arraysPath,
   appPath,
+  defaultsAppPath,
+  defaultsResourcesPath,
   authPath,
   coreApiPath,
   buddyPath,

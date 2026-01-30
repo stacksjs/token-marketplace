@@ -1,7 +1,10 @@
 import { italic, log } from '@stacksjs/cli'
-import { db, sql } from '@stacksjs/database'
 import { path } from '@stacksjs/path'
+import { db } from '../../utils'
 import { hasMigrationBeenCreated } from '../index'
+
+// Import sql from bun-query-builder
+import { sql } from 'bun-query-builder'
 
 export function getTraitTables(): string[] {
   return [
@@ -416,6 +419,11 @@ export async function dropCommonTables(): Promise<void> {
 export async function truncateMigrationTables(): Promise<void> {
   await sql`TRUNCATE TABLE migrations`.execute(db)
   await sql`TRUNCATE TABLE migration_locks`.execute(db)
+}
+
+export async function dropMigrationTables(): Promise<void> {
+  await db.schema.dropTable('migrations').ifExists().execute()
+  await db.schema.dropTable('migration_locks').ifExists().execute()
 }
 
 export async function createCommentUpvoteMigration(): Promise<void> {

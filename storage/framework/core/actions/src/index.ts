@@ -30,3 +30,8 @@ export {
   makeStack,
   make as runMake,
 } from './make'
+
+export { makeJob } from './make-job'
+export { makeCommand } from './make-command'
+export { makePolicy } from './make-policy'
+export { makeResource } from './make-resource'

@@ -1,19 +1,34 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewProject, ProjectJsonResponse, ProjectsTable, ProjectUpdate } from '../types/ProjectType'
-import { sql } from '@stacksjs/database'
-import { HttpError } from '@stacksjs/error-handling'
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { ProjectModelType, ProjectJsonResponse, NewProject, ProjectUpdate, ProjectsTable } from '../types/ProjectType'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { collect } from '@stacksjs/collections';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJsonResponse> {
   private readonly hidden: Array<keyof ProjectJsonResponse> = []
-  private readonly fillable: Array<keyof ProjectJsonResponse> = ['name', 'description', 'url', 'status']
+  private readonly fillable: Array<keyof ProjectJsonResponse> = ["name","description","url","status"]
   private readonly guarded: Array<keyof ProjectJsonResponse> = []
   protected attributes = {} as ProjectJsonResponse
   protected originalAttributes = {} as ProjectJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -31,33 +46,33 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   constructor(project: ProjectJsonResponse | undefined) {
     super('projects')
     if (project) {
+
       this.attributes = { ...project }
       this.originalAttributes = { ...project }
 
-      Object.keys(project).forEach((key) => {
+      Object.keys(project).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (project as ProjectJsonResponse)[key]
+           this.customColumns[key] = (project as ProjectJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('projects')
-    this.updateFromQuery = DB.instance.updateTable('projects')
-    this.deleteFromQuery = DB.instance.deleteFrom('projects')
+    this.selectFromQuery = db.selectFrom('projects')
+    this.updateFromQuery = db.updateTable('projects')
+    this.deleteFromQuery = db.deleteFrom('projects')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: ProjectJsonResponse | ProjectJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('project_id', 'in', modelIds)
         .selectAll()
@@ -72,8 +87,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { project_id: number }) => {
           return record.project_id === models.id
         })
@@ -94,10 +108,12 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
     if (Array.isArray(data)) {
       data.map((model: ProjectJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -106,14 +122,14 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -127,10 +143,11 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
@@ -138,49 +155,52 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
     return this.attributes.id
   }
 
-  get name(): string {
-    return this.attributes.name
-  }
+get name(): string {
+      return this.attributes.name
+    }
 
-  get description(): string {
-    return this.attributes.description
-  }
+get description(): string {
+      return this.attributes.description
+    }
 
-  get url(): string {
-    return this.attributes.url
-  }
+get url(): string {
+      return this.attributes.url
+    }
 
-  get status(): string {
-    return this.attributes.status
-  }
+get status(): string {
+      return this.attributes.status
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set name(value: string) {
-    this.attributes.name = value
-  }
+      this.attributes.name = value
+    }
 
-  set description(value: string) {
-    this.attributes.description = value
-  }
+set description(value: string) {
+      this.attributes.description = value
+    }
 
-  set url(value: string) {
-    this.attributes.url = value
-  }
+set url(value: string) {
+      this.attributes.url = value
+    }
 
-  set status(value: string) {
-    this.attributes.status = value
-  }
+set status(value: string) {
+      this.attributes.status = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof ProjectJsonResponse)[] | RawBuilder<string> | string): ProjectModel {
     const instance = new ProjectModel(undefined)
@@ -190,12 +210,11 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
   // Method to find a Project by ID
   static async find(id: number): Promise<ProjectModel | undefined> {
-    const query = DB.instance.selectFrom('projects').where('id', '=', id).selectAll()
+    let query = db.selectFrom('projects').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new ProjectModel(undefined)
     return instance.createInstance(model)
@@ -216,8 +235,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProjectModel(model)
   }
@@ -231,7 +249,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   static async all(): Promise<ProjectModel[]> {
     const instance = new ProjectModel(undefined)
 
-    const models = await DB.instance.selectFrom('projects').selectAll().execute()
+    const models = await db.selectFrom('projects').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -250,7 +268,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
   static async findMany(ids: number[]): Promise<ProjectModel[]> {
     const instance = new ProjectModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ProjectJsonResponse) => instance.parseResult(new ProjectModel(modelItem)))
@@ -265,8 +283,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProjectModel(model)
   }
@@ -280,8 +297,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProjectModel(model)
   }
@@ -448,12 +464,12 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: ProjectModel[]
+    data: ProjectModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new ProjectModel(undefined)
@@ -463,7 +479,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
     return {
       data: result.data.map((item: ProjectJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -475,17 +491,19 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   async applyCreate(newProject: NewProject): Promise<ProjectModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProject).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewProject
 
     await this.mapCustomSetters(filteredValues)
 
-    const result = await DB.instance.insertInto('projects')
+    
+
+    const result = await db.insertInto('projects')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('projects')
+    const model = await db.selectFrom('projects')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -494,6 +512,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
       throw new HttpError(500, 'Failed to retrieve created Project')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -562,7 +581,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   async update(newProject: ProjectUpdate): Promise<ProjectModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProject).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as ProjectUpdate
 
@@ -570,14 +589,14 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('projects')
+    await db.updateTable('projects')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('projects')
+      const model = await db.selectFrom('projects')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -586,6 +605,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
         throw new HttpError(500, 'Failed to retrieve updated Project')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -593,14 +613,14 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   }
 
   async forceUpdate(newProject: ProjectUpdate): Promise<ProjectModel | undefined> {
-    await DB.instance.updateTable('projects')
+    await db.updateTable('projects')
       .set(newProject)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('projects')
+      const model = await db.selectFrom('projects')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -609,6 +629,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
         throw new HttpError(500, 'Failed to retrieve updated Project')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -619,13 +640,13 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('projects')
+      await db.updateTable('projects')
         .set(this.attributes as ProjectUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('projects')
+      const model = await db.selectFrom('projects')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -634,16 +655,16 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
         throw new HttpError(500, 'Failed to retrieve updated Project')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('projects')
+      const result = await db.insertInto('projects')
         .values(this.attributes as NewProject)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('projects')
+      const model = await db.selectFrom('projects')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -652,6 +673,7 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
         throw new HttpError(500, 'Failed to retrieve created Project')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -666,21 +688,23 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
         ),
       ) as NewProject
 
+      
+
       return filteredValues
     })
 
-    await DB.instance.insertInto('projects')
+    await db.insertInto('projects')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newProject: NewProject): Promise<ProjectModel> {
-    const result = await DB.instance.insertInto('projects')
+    const result = await db.insertInto('projects')
       .values(newProject)
       .executeTakeFirst()
 
     const instance = new ProjectModel(undefined)
-    const model = await DB.instance.selectFrom('projects')
+    const model = await db.selectFrom('projects')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -689,6 +713,8 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
       throw new HttpError(500, 'Failed to retrieve created Project')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -696,8 +722,11 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('projects')
+    const deleted = await db.deleteFrom('projects')
       .where('id', '=', this.id)
       .execute()
 
@@ -705,48 +734,66 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('projects')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('projects')
       .where('id', '=', id)
       .execute()
   }
 
   static whereName(value: string): ProjectModel {
-    const instance = new ProjectModel(undefined)
+          const instance = new ProjectModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereDescription(value: string): ProjectModel {
-    const instance = new ProjectModel(undefined)
+static whereDescription(value: string): ProjectModel {
+          const instance = new ProjectModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereUrl(value: string): ProjectModel {
-    const instance = new ProjectModel(undefined)
+static whereUrl(value: string): ProjectModel {
+          const instance = new ProjectModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('url', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('url', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereStatus(value: string): ProjectModel {
-    const instance = new ProjectModel(undefined)
+static whereStatus(value: string): ProjectModel {
+          const instance = new ProjectModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof ProjectsTable, values: V[]): ProjectModel {
     const instance = new ProjectModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
   }
+
+  
+
+  
+
+  
+
+  
 
   static distinct(column: keyof ProjectJsonResponse): ProjectModel {
     const instance = new ProjectModel(undefined)
@@ -763,18 +810,18 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
   toJSON(): ProjectJsonResponse {
     const output = {
 
-      id: this.id,
-      name: this.name,
-      description: this.description,
-      url: this.url,
-      status: this.status,
+id: this.id,
+name: this.name,
+   description: this.description,
+   url: this.url,
+   status: this.status,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       ...this.customColumns,
-    }
+}
 
     return output
   }
@@ -787,9 +834,11 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<ProjectModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -804,15 +853,16 @@ export class ProjectModel extends BaseOrm<ProjectModel, ProjectsTable, ProjectJs
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<ProjectModel | undefined> {
-  const query = DB.instance.selectFrom('projects').where('id', '=', id).selectAll()
+  let query = db.selectFrom('projects').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new ProjectModel(undefined)
   return instance.createInstance(model)
@@ -830,42 +880,44 @@ export async function create(newProject: NewProject): Promise<ProjectModel> {
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('projects')
+  await db.deleteFrom('projects')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereName(value: string): Promise<ProjectModel[]> {
-  const query = DB.instance.selectFrom('projects').where('name', '=', value)
-  const results: ProjectJsonResponse = await query.execute()
+          const query = db.selectFrom('projects').where('name', '=', value)
+          const results: ProjectJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
-}
+          return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
+        } 
 
 export async function whereDescription(value: string): Promise<ProjectModel[]> {
-  const query = DB.instance.selectFrom('projects').where('description', '=', value)
-  const results: ProjectJsonResponse = await query.execute()
+          const query = db.selectFrom('projects').where('description', '=', value)
+          const results: ProjectJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
-}
+          return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
+        } 
 
 export async function whereUrl(value: string): Promise<ProjectModel[]> {
-  const query = DB.instance.selectFrom('projects').where('url', '=', value)
-  const results: ProjectJsonResponse = await query.execute()
+          const query = db.selectFrom('projects').where('url', '=', value)
+          const results: ProjectJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
-}
+          return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
+        } 
 
 export async function whereStatus(value: string): Promise<ProjectModel[]> {
-  const query = DB.instance.selectFrom('projects').where('status', '=', value)
-  const results: ProjectJsonResponse = await query.execute()
+          const query = db.selectFrom('projects').where('status', '=', value)
+          const results: ProjectJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
-}
+          return results.map((modelItem: ProjectJsonResponse) => new ProjectModel(modelItem))
+        } 
+
+
 
 export const Project = ProjectModel
 

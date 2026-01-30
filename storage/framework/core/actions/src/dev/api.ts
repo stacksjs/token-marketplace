@@ -1,21 +1,24 @@
-import { log, parseOptions, runCommand } from '@stacksjs/cli'
+import { parseOptions } from '@stacksjs/cli'
 import { config } from '@stacksjs/config'
-import { path as p } from '@stacksjs/path'
-import { serve } from '@stacksjs/router'
-import { initiateImports } from '@stacksjs/server'
+import { log } from '@stacksjs/logging'
+import { cors, route } from '@stacksjs/router'
 
 const options = parseOptions()
+const port = config.ports?.api || 3008
 
-log.debug('Running API dev server via', `bunx --bun vite --config ${p.viteConfigPath('src/api.ts')}`, options)
+log.info('[API] Starting development server...')
 
-initiateImports()
+// Enable CORS middleware
+route.use(cors().handle.bind(cors()))
 
-serve({
-  port: config.ports?.api, // defaults to 3008
+// Import routes
+await route.importRoutes()
+
+// Start server
+await route.serve({
+  port,
+  hostname: '127.0.0.1',
 })
 
-// the reason we start a Vite dev server next is because we need the Bun server proxied by vite
-await runCommand(`bunx --bun vite --config ${p.viteConfigPath('src/api.ts')}`, {
-  // ...options,
-  cwd: p.frameworkPath(),
-})
+log.success(`[API] Server running at http://127.0.0.1:${port}`)
+log.info('[API] Hot reload enabled - changes will auto-restart the server')

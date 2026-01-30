@@ -1,23 +1,37 @@
-import type { RawBuilder } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
+import { BaseOrm } from '../utils/base'
 import type { Operator } from '@stacksjs/orm'
-import type { NewReview, ReviewJsonResponse, ReviewsTable, ReviewUpdate } from '../types/ReviewType'
-import type { CustomerModel } from './Customer'
-import type { ProductModel } from './Product'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
 import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
-import { DB } from '@stacksjs/orm'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { ReviewModelType, ReviewJsonResponse, NewReview, ReviewUpdate, ReviewsTable } from '../types/ReviewType'
 
-import { BaseOrm } from '../utils/base'
+import type {ProductModel} from './Product'
+
+import type {CustomerModel} from './Customer'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonResponse> {
   private readonly hidden: Array<keyof ReviewJsonResponse> = []
-  private readonly fillable: Array<keyof ReviewJsonResponse> = ['rating', 'title', 'content', 'is_verified_purchase', 'is_approved', 'is_featured', 'helpful_votes', 'unhelpful_votes', 'purchase_date', 'images', 'uuid', 'customer_id', 'product_id']
+  private readonly fillable: Array<keyof ReviewJsonResponse> = ["rating","title","content","is_verified_purchase","is_approved","is_featured","helpful_votes","unhelpful_votes","purchase_date","images","uuid","customer_id","product_id"]
   private readonly guarded: Array<keyof ReviewJsonResponse> = []
   protected attributes = {} as ReviewJsonResponse
   protected originalAttributes = {} as ReviewJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -35,33 +49,33 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   constructor(review: ReviewJsonResponse | undefined) {
     super('reviews')
     if (review) {
+
       this.attributes = { ...review }
       this.originalAttributes = { ...review }
 
-      Object.keys(review).forEach((key) => {
+      Object.keys(review).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (review as ReviewJsonResponse)[key]
+           this.customColumns[key] = (review as ReviewJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('reviews')
-    this.updateFromQuery = DB.instance.updateTable('reviews')
-    this.deleteFromQuery = DB.instance.deleteFrom('reviews')
+    this.selectFromQuery = db.selectFrom('reviews')
+    this.updateFromQuery = db.updateTable('reviews')
+    this.deleteFromQuery = db.deleteFrom('reviews')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: ReviewJsonResponse | ReviewJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('review_id', 'in', modelIds)
         .selectAll()
@@ -76,8 +90,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { review_id: number }) => {
           return record.review_id === models.id
         })
@@ -98,10 +111,12 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
     if (Array.isArray(data)) {
       data.map((model: ReviewJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -110,14 +125,14 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -131,132 +146,136 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
   get product_id(): number {
-    return this.attributes.product_id
-  }
+        return this.attributes.product_id
+      }
 
-  get product(): ProductModel | undefined {
-    return this.attributes.product
-  }
+get product(): ProductModel | undefined {
+        return this.attributes.product
+      }
 
-  get customer_id(): number {
-    return this.attributes.customer_id
-  }
+get customer_id(): number {
+        return this.attributes.customer_id
+      }
 
-  get customer(): CustomerModel | undefined {
-    return this.attributes.customer
-  }
+get customer(): CustomerModel | undefined {
+        return this.attributes.customer
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get rating(): number {
-    return this.attributes.rating
-  }
+get rating(): number {
+      return this.attributes.rating
+    }
 
-  get title(): string {
-    return this.attributes.title
-  }
+get title(): string {
+      return this.attributes.title
+    }
 
-  get content(): string {
-    return this.attributes.content
-  }
+get content(): string {
+      return this.attributes.content
+    }
 
-  get is_verified_purchase(): boolean | undefined {
-    return this.attributes.is_verified_purchase
-  }
+get is_verified_purchase(): boolean | undefined {
+      return this.attributes.is_verified_purchase
+    }
 
-  get is_approved(): boolean | undefined {
-    return this.attributes.is_approved
-  }
+get is_approved(): boolean | undefined {
+      return this.attributes.is_approved
+    }
 
-  get is_featured(): boolean | undefined {
-    return this.attributes.is_featured
-  }
+get is_featured(): boolean | undefined {
+      return this.attributes.is_featured
+    }
 
-  get helpful_votes(): number | undefined {
-    return this.attributes.helpful_votes
-  }
+get helpful_votes(): number | undefined {
+      return this.attributes.helpful_votes
+    }
 
-  get unhelpful_votes(): number | undefined {
-    return this.attributes.unhelpful_votes
-  }
+get unhelpful_votes(): number | undefined {
+      return this.attributes.unhelpful_votes
+    }
 
-  get purchase_date(): string | undefined {
-    return this.attributes.purchase_date
-  }
+get purchase_date(): string | undefined {
+      return this.attributes.purchase_date
+    }
 
-  get images(): string | undefined {
-    return this.attributes.images
-  }
+get images(): string | undefined {
+      return this.attributes.images
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set rating(value: number) {
-    this.attributes.rating = value
-  }
+set rating(value: number) {
+      this.attributes.rating = value
+    }
 
-  set title(value: string) {
-    this.attributes.title = value
-  }
+set title(value: string) {
+      this.attributes.title = value
+    }
 
-  set content(value: string) {
-    this.attributes.content = value
-  }
+set content(value: string) {
+      this.attributes.content = value
+    }
 
-  set is_verified_purchase(value: boolean) {
-    this.attributes.is_verified_purchase = value
-  }
+set is_verified_purchase(value: boolean) {
+      this.attributes.is_verified_purchase = value
+    }
 
-  set is_approved(value: boolean) {
-    this.attributes.is_approved = value
-  }
+set is_approved(value: boolean) {
+      this.attributes.is_approved = value
+    }
 
-  set is_featured(value: boolean) {
-    this.attributes.is_featured = value
-  }
+set is_featured(value: boolean) {
+      this.attributes.is_featured = value
+    }
 
-  set helpful_votes(value: number) {
-    this.attributes.helpful_votes = value
-  }
+set helpful_votes(value: number) {
+      this.attributes.helpful_votes = value
+    }
 
-  set unhelpful_votes(value: number) {
-    this.attributes.unhelpful_votes = value
-  }
+set unhelpful_votes(value: number) {
+      this.attributes.unhelpful_votes = value
+    }
 
-  set purchase_date(value: string) {
-    this.attributes.purchase_date = value
-  }
+set purchase_date(value: string) {
+      this.attributes.purchase_date = value
+    }
 
-  set images(value: string) {
-    this.attributes.images = value
-  }
+set images(value: string) {
+      this.attributes.images = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof ReviewJsonResponse)[] | RawBuilder<string> | string): ReviewModel {
     const instance = new ReviewModel(undefined)
@@ -266,12 +285,11 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
   // Method to find a Review by ID
   static async find(id: number): Promise<ReviewModel | undefined> {
-    const query = DB.instance.selectFrom('reviews').where('id', '=', id).selectAll()
+    let query = db.selectFrom('reviews').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new ReviewModel(undefined)
     return instance.createInstance(model)
@@ -292,8 +310,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ReviewModel(model)
   }
@@ -307,7 +324,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   static async all(): Promise<ReviewModel[]> {
     const instance = new ReviewModel(undefined)
 
-    const models = await DB.instance.selectFrom('reviews').selectAll().execute()
+    const models = await db.selectFrom('reviews').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -326,7 +343,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
   static async findMany(ids: number[]): Promise<ReviewModel[]> {
     const instance = new ReviewModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ReviewJsonResponse) => instance.parseResult(new ReviewModel(modelItem)))
@@ -341,8 +358,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ReviewModel(model)
   }
@@ -356,8 +372,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ReviewModel(model)
   }
@@ -524,12 +539,12 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: ReviewModel[]
+    data: ReviewModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new ReviewModel(undefined)
@@ -539,7 +554,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     return {
       data: result.data.map((item: ReviewJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -551,19 +566,19 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   async applyCreate(newReview: NewReview): Promise<ReviewModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newReview).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewReview
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('reviews')
+    const result = await db.insertInto('reviews')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('reviews')
+    const model = await db.selectFrom('reviews')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -573,7 +588,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     }
 
     if (model)
-      dispatch('review:created', model)
+ dispatch('review:created', model)
     return this.createInstance(model)
   }
 
@@ -642,7 +657,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   async update(newReview: ReviewUpdate): Promise<ReviewModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newReview).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as ReviewUpdate
 
@@ -650,14 +665,14 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('reviews')
+    await db.updateTable('reviews')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('reviews')
+      const model = await db.selectFrom('reviews')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -667,7 +682,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       }
 
       if (model)
-        dispatch('review:updated', model)
+ dispatch('review:updated', model)
       return this.createInstance(model)
     }
 
@@ -675,14 +690,14 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   }
 
   async forceUpdate(newReview: ReviewUpdate): Promise<ReviewModel | undefined> {
-    await DB.instance.updateTable('reviews')
+    await db.updateTable('reviews')
       .set(newReview)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('reviews')
+      const model = await db.selectFrom('reviews')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -692,7 +707,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       }
 
       if (this)
-        dispatch('review:updated', model)
+ dispatch('review:updated', model)
       return this.createInstance(model)
     }
 
@@ -703,13 +718,13 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('reviews')
+      await db.updateTable('reviews')
         .set(this.attributes as ReviewUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('reviews')
+      const model = await db.selectFrom('reviews')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -719,17 +734,16 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       }
 
       if (this)
-        dispatch('review:updated', model)
+ dispatch('review:updated', model)
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('reviews')
+      const result = await db.insertInto('reviews')
         .values(this.attributes as NewReview)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('reviews')
+      const model = await db.selectFrom('reviews')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -739,7 +753,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
       }
 
       if (this)
-        dispatch('review:created', model)
+ dispatch('review:created', model)
       return this.createInstance(model)
     }
   }
@@ -754,23 +768,23 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
         ),
       ) as NewReview
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('reviews')
+    await db.insertInto('reviews')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newReview: NewReview): Promise<ReviewModel> {
-    const result = await DB.instance.insertInto('reviews')
+    const result = await db.insertInto('reviews')
       .values(newReview)
       .executeTakeFirst()
 
     const instance = new ReviewModel(undefined)
-    const model = await DB.instance.selectFrom('reviews')
+    const model = await db.selectFrom('reviews')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -780,7 +794,7 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     }
 
     if (model)
-      dispatch('review:created', model)
+ dispatch('review:created', model)
 
     return instance.createInstance(model)
   }
@@ -790,11 +804,11 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
-
+    
     if (model)
-      dispatch('review:deleted', model)
+ dispatch('review:deleted', model)
 
-    const deleted = await DB.instance.deleteFrom('reviews')
+    const deleted = await db.deleteFrom('reviews')
       .where('id', '=', this.id)
       .execute()
 
@@ -806,93 +820,97 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
 
     const model = await instance.find(Number(id))
 
-    if (model)
-      dispatch('review:deleted', model)
+    
 
-    return await DB.instance.deleteFrom('reviews')
+    if (model)
+ dispatch('review:deleted', model)
+
+    return await db.deleteFrom('reviews')
       .where('id', '=', id)
       .execute()
   }
 
   static whereRating(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('rating', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('rating', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereTitle(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereTitle(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('title', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('title', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereContent(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereContent(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('content', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('content', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsVerifiedPurchase(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereIsVerifiedPurchase(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_verified_purchase', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_verified_purchase', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsApproved(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereIsApproved(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_approved', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_approved', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsFeatured(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereIsFeatured(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_featured', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_featured', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereHelpfulVotes(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereHelpfulVotes(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('helpful_votes', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('helpful_votes', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereUnhelpfulVotes(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereUnhelpfulVotes(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('unhelpful_votes', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('unhelpful_votes', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static wherePurchaseDate(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static wherePurchaseDate(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('purchase_date', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('purchase_date', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereImages(value: string): ReviewModel {
-    const instance = new ReviewModel(undefined)
+static whereImages(value: string): ReviewModel {
+          const instance = new ReviewModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('images', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('images', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof ReviewsTable, values: V[]): ReviewModel {
     const instance = new ReviewModel(undefined)
@@ -900,45 +918,55 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async productBelong(): Promise<ProductModel> {
-    if (this.product_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async productBelong(): Promise<ProductModel> {
+          if (this.product_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await Product
-      .where('id', '=', this.product_id)
-      .first()
+          const model = await Product
+            .where('id', '=', this.product_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
 
-  async customerBelong(): Promise<CustomerModel> {
-    if (this.customer_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
 
-    const model = await Customer
-      .where('id', '=', this.customer_id)
-      .first()
+        async customerBelong(): Promise<CustomerModel> {
+          if (this.customer_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          const model = await Customer
+            .where('id', '=', this.customer_id)
+            .first()
 
-    return model
-  }
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-  toSearchableObject(): Partial<ReviewJsonResponse> {
-    return {
-      id: this.id,
-      product_id: this.product_id,
-      rating: this.rating,
-      title: this.title,
-      content: this.content,
-      is_verified_purchase: this.is_verified_purchase,
-      is_approved: this.is_approved,
-    }
-  }
+          return model
+        }
+
+
+
+  
+      toSearchableObject(): Partial<ReviewJsonResponse> {
+        return {
+          id: this.id,
+product_id: this.product_id,
+rating: this.rating,
+title: this.title,
+content: this.content,
+is_verified_purchase: this.is_verified_purchase,
+is_approved: this.is_approved
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof ReviewJsonResponse): ReviewModel {
     const instance = new ReviewModel(undefined)
@@ -955,30 +983,30 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
   toJSON(): ReviewJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      rating: this.rating,
-      title: this.title,
-      content: this.content,
-      is_verified_purchase: this.is_verified_purchase,
-      is_approved: this.is_approved,
-      is_featured: this.is_featured,
-      helpful_votes: this.helpful_votes,
-      unhelpful_votes: this.unhelpful_votes,
-      purchase_date: this.purchase_date,
-      images: this.images,
+id: this.id,
+rating: this.rating,
+   title: this.title,
+   content: this.content,
+   is_verified_purchase: this.is_verified_purchase,
+   is_approved: this.is_approved,
+   is_featured: this.is_featured,
+   helpful_votes: this.helpful_votes,
+   unhelpful_votes: this.unhelpful_votes,
+   purchase_date: this.purchase_date,
+   images: this.images,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       product_id: this.product_id,
-      product: this.product,
-      customer_id: this.customer_id,
-      customer: this.customer,
-      ...this.customColumns,
-    }
+   product: this.product,
+customer_id: this.customer_id,
+   customer: this.customer,
+...this.customColumns,
+}
 
     return output
   }
@@ -991,9 +1019,11 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<ReviewModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -1008,15 +1038,16 @@ export class ReviewModel extends BaseOrm<ReviewModel, ReviewsTable, ReviewJsonRe
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<ReviewModel | undefined> {
-  const query = DB.instance.selectFrom('reviews').where('id', '=', id).selectAll()
+  let query = db.selectFrom('reviews').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new ReviewModel(undefined)
   return instance.createInstance(model)
@@ -1034,84 +1065,86 @@ export async function create(newReview: NewReview): Promise<ReviewModel> {
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('reviews')
+  await db.deleteFrom('reviews')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereRating(value: number): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('rating', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('rating', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereTitle(value: string): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('title', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('title', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereContent(value: string): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('content', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('content', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereIsVerifiedPurchase(value: boolean): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('is_verified_purchase', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('is_verified_purchase', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereIsApproved(value: boolean): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('is_approved', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('is_approved', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereIsFeatured(value: boolean): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('is_featured', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('is_featured', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereHelpfulVotes(value: number): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('helpful_votes', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('helpful_votes', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereUnhelpfulVotes(value: number): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('unhelpful_votes', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('unhelpful_votes', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function wherePurchaseDate(value: string): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('purchase_date', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('purchase_date', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
 
 export async function whereImages(value: string): Promise<ReviewModel[]> {
-  const query = DB.instance.selectFrom('reviews').where('images', '=', value)
-  const results: ReviewJsonResponse = await query.execute()
+          const query = db.selectFrom('reviews').where('images', '=', value)
+          const results: ReviewJsonResponse = await query.execute()
 
-  return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
-}
+          return results.map((modelItem: ReviewJsonResponse) => new ReviewModel(modelItem))
+        } 
+
+
 
 export const Review = ReviewModel
 

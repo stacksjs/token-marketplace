@@ -1,19 +1,33 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewSubscriber, SubscriberJsonResponse, SubscribersTable, SubscriberUpdate } from '../types/SubscriberType'
-import { sql } from '@stacksjs/database'
-import { HttpError } from '@stacksjs/error-handling'
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { SubscriberModelType, SubscriberJsonResponse, NewSubscriber, SubscriberUpdate, SubscribersTable } from '../types/SubscriberType'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, SubscriberJsonResponse> {
   private readonly hidden: Array<keyof SubscriberJsonResponse> = []
-  private readonly fillable: Array<keyof SubscriberJsonResponse> = ['subscribed', 'user_id']
+  private readonly fillable: Array<keyof SubscriberJsonResponse> = ["subscribed","user_id"]
   private readonly guarded: Array<keyof SubscriberJsonResponse> = []
   protected attributes = {} as SubscriberJsonResponse
   protected originalAttributes = {} as SubscriberJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -31,33 +45,33 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   constructor(subscriber: SubscriberJsonResponse | undefined) {
     super('subscribers')
     if (subscriber) {
+
       this.attributes = { ...subscriber }
       this.originalAttributes = { ...subscriber }
 
-      Object.keys(subscriber).forEach((key) => {
+      Object.keys(subscriber).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (subscriber as SubscriberJsonResponse)[key]
+           this.customColumns[key] = (subscriber as SubscriberJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('subscribers')
-    this.updateFromQuery = DB.instance.updateTable('subscribers')
-    this.deleteFromQuery = DB.instance.deleteFrom('subscribers')
+    this.selectFromQuery = db.selectFrom('subscribers')
+    this.updateFromQuery = db.updateTable('subscribers')
+    this.deleteFromQuery = db.deleteFrom('subscribers')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: SubscriberJsonResponse | SubscriberJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('subscriber_id', 'in', modelIds)
         .selectAll()
@@ -72,8 +86,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { subscriber_id: number }) => {
           return record.subscriber_id === models.id
         })
@@ -94,10 +107,12 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
     if (Array.isArray(data)) {
       data.map((model: SubscriberJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -106,14 +121,14 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -127,10 +142,11 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
@@ -138,25 +154,28 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
     return this.attributes.id
   }
 
-  get subscribed(): boolean {
-    return this.attributes.subscribed
-  }
+get subscribed(): boolean {
+      return this.attributes.subscribed
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set subscribed(value: boolean) {
-    this.attributes.subscribed = value
-  }
+      this.attributes.subscribed = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof SubscriberJsonResponse)[] | RawBuilder<string> | string): SubscriberModel {
     const instance = new SubscriberModel(undefined)
@@ -166,12 +185,11 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
   // Method to find a Subscriber by ID
   static async find(id: number): Promise<SubscriberModel | undefined> {
-    const query = DB.instance.selectFrom('subscribers').where('id', '=', id).selectAll()
+    let query = db.selectFrom('subscribers').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new SubscriberModel(undefined)
     return instance.createInstance(model)
@@ -192,8 +210,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriberModel(model)
   }
@@ -207,7 +224,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   static async all(): Promise<SubscriberModel[]> {
     const instance = new SubscriberModel(undefined)
 
-    const models = await DB.instance.selectFrom('subscribers').selectAll().execute()
+    const models = await db.selectFrom('subscribers').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -226,7 +243,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
   static async findMany(ids: number[]): Promise<SubscriberModel[]> {
     const instance = new SubscriberModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: SubscriberJsonResponse) => instance.parseResult(new SubscriberModel(modelItem)))
@@ -241,8 +258,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriberModel(model)
   }
@@ -256,8 +272,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriberModel(model)
   }
@@ -424,12 +439,12 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: SubscriberModel[]
+    data: SubscriberModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new SubscriberModel(undefined)
@@ -439,7 +454,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
     return {
       data: result.data.map((item: SubscriberJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -451,17 +466,19 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   async applyCreate(newSubscriber: NewSubscriber): Promise<SubscriberModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newSubscriber).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewSubscriber
 
     await this.mapCustomSetters(filteredValues)
 
-    const result = await DB.instance.insertInto('subscribers')
+    
+
+    const result = await db.insertInto('subscribers')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('subscribers')
+    const model = await db.selectFrom('subscribers')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -470,6 +487,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
       throw new HttpError(500, 'Failed to retrieve created Subscriber')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -538,7 +556,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   async update(newSubscriber: SubscriberUpdate): Promise<SubscriberModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newSubscriber).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as SubscriberUpdate
 
@@ -546,14 +564,14 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('subscribers')
+    await db.updateTable('subscribers')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscribers')
+      const model = await db.selectFrom('subscribers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -562,6 +580,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
         throw new HttpError(500, 'Failed to retrieve updated Subscriber')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -569,14 +588,14 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   }
 
   async forceUpdate(newSubscriber: SubscriberUpdate): Promise<SubscriberModel | undefined> {
-    await DB.instance.updateTable('subscribers')
+    await db.updateTable('subscribers')
       .set(newSubscriber)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscribers')
+      const model = await db.selectFrom('subscribers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -585,6 +604,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
         throw new HttpError(500, 'Failed to retrieve updated Subscriber')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -595,13 +615,13 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('subscribers')
+      await db.updateTable('subscribers')
         .set(this.attributes as SubscriberUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscribers')
+      const model = await db.selectFrom('subscribers')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -610,16 +630,16 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
         throw new HttpError(500, 'Failed to retrieve updated Subscriber')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('subscribers')
+      const result = await db.insertInto('subscribers')
         .values(this.attributes as NewSubscriber)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('subscribers')
+      const model = await db.selectFrom('subscribers')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -628,6 +648,7 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
         throw new HttpError(500, 'Failed to retrieve created Subscriber')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -642,21 +663,23 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
         ),
       ) as NewSubscriber
 
+      
+
       return filteredValues
     })
 
-    await DB.instance.insertInto('subscribers')
+    await db.insertInto('subscribers')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newSubscriber: NewSubscriber): Promise<SubscriberModel> {
-    const result = await DB.instance.insertInto('subscribers')
+    const result = await db.insertInto('subscribers')
       .values(newSubscriber)
       .executeTakeFirst()
 
     const instance = new SubscriberModel(undefined)
-    const model = await DB.instance.selectFrom('subscribers')
+    const model = await db.selectFrom('subscribers')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -665,6 +688,8 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
       throw new HttpError(500, 'Failed to retrieve created Subscriber')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -672,8 +697,11 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('subscribers')
+    const deleted = await db.deleteFrom('subscribers')
       .where('id', '=', this.id)
       .execute()
 
@@ -681,24 +709,42 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('subscribers')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('subscribers')
       .where('id', '=', id)
       .execute()
   }
 
   static whereSubscribed(value: string): SubscriberModel {
-    const instance = new SubscriberModel(undefined)
+          const instance = new SubscriberModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('subscribed', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('subscribed', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof SubscribersTable, values: V[]): SubscriberModel {
     const instance = new SubscriberModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
   }
+
+  
+
+  
+
+  
+
+  
 
   static distinct(column: keyof SubscriberJsonResponse): SubscriberModel {
     const instance = new SubscriberModel(undefined)
@@ -715,15 +761,15 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
   toJSON(): SubscriberJsonResponse {
     const output = {
 
-      id: this.id,
-      subscribed: this.subscribed,
+id: this.id,
+subscribed: this.subscribed,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       ...this.customColumns,
-    }
+}
 
     return output
   }
@@ -736,9 +782,11 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<SubscriberModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -753,15 +801,16 @@ export class SubscriberModel extends BaseOrm<SubscriberModel, SubscribersTable, 
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<SubscriberModel | undefined> {
-  const query = DB.instance.selectFrom('subscribers').where('id', '=', id).selectAll()
+  let query = db.selectFrom('subscribers').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new SubscriberModel(undefined)
   return instance.createInstance(model)
@@ -779,21 +828,23 @@ export async function create(newSubscriber: NewSubscriber): Promise<SubscriberMo
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('subscribers')
+  await db.deleteFrom('subscribers')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereSubscribed(value: boolean): Promise<SubscriberModel[]> {
-  const query = DB.instance.selectFrom('subscribers').where('subscribed', '=', value)
-  const results: SubscriberJsonResponse = await query.execute()
+          const query = db.selectFrom('subscribers').where('subscribed', '=', value)
+          const results: SubscriberJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriberJsonResponse) => new SubscriberModel(modelItem))
-}
+          return results.map((modelItem: SubscriberJsonResponse) => new SubscriberModel(modelItem))
+        } 
+
+
 
 export const Subscriber = SubscriberModel
 

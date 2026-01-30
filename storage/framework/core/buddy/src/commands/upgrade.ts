@@ -10,11 +10,10 @@ export function upgrade(buddy: CLI): void {
   const descriptions = {
     command: 'Upgrade dependencies, framework, package manager, JS/TS runtime',
     framework: 'Upgrade the Stacks framework',
-    dependencies: 'Upgrade your dependencies (pkgx.yaml & package.json)',
+    dependencies: 'Upgrade your dependencies (pantry.yaml & package.json)',
     bun: 'Upgrade Bun to the latest version',
     shell: 'Upgrade the to the latest shell integration (currently only supports Oh My Zsh)',
-    binary:
-      'Upgrade the `stacks` binary to the latest version. Please note, the binary is moved to the `~/.stacks/bin` directory',
+    binary: 'Upgrade the `stacks` binary to the latest version. Please note, the binary is moved to the `~/.stacks/bin` directory',
     all: 'Upgrade Node, package manager, project dependencies, and framework',
     force: 'Overwrite possible local updates with remote framework updates',
     select: 'What are you trying to upgrade?',
@@ -72,7 +71,7 @@ export function upgrade(buddy: CLI): void {
 
       const result = await runAction(Action.Upgrade, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the buddy:upgrade command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -117,7 +116,7 @@ export function upgrade(buddy: CLI): void {
       const perf = await intro('buddy upgrade:bun')
       const result = await runAction(Action.UpgradeBun, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the buddy upgrade:bun command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -148,7 +147,7 @@ export function upgrade(buddy: CLI): void {
       const perf = await intro('buddy upgrade:shell')
       const result = await runAction(Action.UpgradeShell, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the buddy upgrade:shell command, there was an issue',
           { startTime: perf, useSeconds: true },
@@ -175,7 +174,7 @@ export function upgrade(buddy: CLI): void {
       const perf = await intro('buddy upgrade:binary')
       const result = await runAction(Action.UpgradeBinary, options)
 
-      if (result.isErr()) {
+      if (result.isErr) {
         await outro(
           'While running the buddy upgrade:binary command, there was an issue',
           { startTime: perf, useSeconds: true },

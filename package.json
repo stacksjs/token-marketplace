@@ -55,8 +55,16 @@
     "stx": "./buddy"
   },
   "dependencies": {
-    "bun-plugin-dotenvx": "^0.6.4",
-    "bun-plugin-yml": "^0.3.1",
+    "@cwcss/crosswind": "link:@cwcss/crosswind",
+    "@stacksjs/clarity": "^0.3.24",
+    "@stacksjs/stx": "link:@stacksjs/stx",
+    "@stacksjs/ts-cache": "link:@stacksjs/ts-cache",
+    "bun-plugin-dotenvx": "link:bun-plugin-dotenvx",
+    "bun-plugin-stx": "link:bun-plugin-stx",
+    "bun-plugin-yml": "link:bun-plugin-yml",
+    "bun-query-builder": "link:bun-query-builder",
+    "bun-queue": "link:bun-queue",
+    "bun-router": "file:../bun-router/packages/bun-router",
     "stacks": "workspace:*"
   },
   "config": {
@@ -65,22 +73,19 @@
     }
   },
   "workspaces": [
-    "storage/framework",
-    "storage/framework/core",
-    "storage/framework/core/*",
-    "storage/framework/core/bun-create/*",
-    "storage/framework/core/components/*",
-    "storage/framework/docs",
-    "storage/framework/email",
-    "storage/framework/libs/*",
-    "storage/framework/libs/functions",
-    "storage/framework/libs/components/*",
-    "storage/framework/views/*",
-    "storage/framework/server"
+    "storage/framework/**",
+    "!storage/framework/cloud/cdk.out",
+    "!storage/framework/cloud/cdk.out/**",
+    "!**/node_modules/**",
+    "!**/dist/**",
+    "!**/docs/deps/**",
+    "!storage/framework/server/storage/**",
+    "!storage/framework/cache/**"
   ],
   "devDependencies": {
     "buddy-bot": "0.9.4",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "better-dx": "0.2.5"
   },
   "overrides": {
     "unconfig": "0.3.10"

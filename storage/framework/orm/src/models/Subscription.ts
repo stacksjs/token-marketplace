@@ -1,21 +1,35 @@
-import type { RawBuilder } from '@stacksjs/database'
-import type { Operator } from '@stacksjs/orm'
-import type { NewSubscription, SubscriptionJsonResponse, SubscriptionsTable, SubscriptionUpdate } from '../types/SubscriptionType'
-import type { UserModel } from './User'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
-import { HttpError } from '@stacksjs/error-handling'
-import { DB } from '@stacksjs/orm'
-
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
 import { BaseOrm } from '../utils/base'
+import type { Operator } from '@stacksjs/orm'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import { HttpError } from '@stacksjs/error-handling'
+import { dispatch } from '@stacksjs/events'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { SubscriptionModelType, SubscriptionJsonResponse, NewSubscription, SubscriptionUpdate, SubscriptionsTable } from '../types/SubscriptionType'
+
+import type {UserModel} from './User'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsTable, SubscriptionJsonResponse> {
   private readonly hidden: Array<keyof SubscriptionJsonResponse> = []
-  private readonly fillable: Array<keyof SubscriptionJsonResponse> = ['type', 'plan', 'provider_id', 'provider_status', 'unit_price', 'provider_type', 'provider_price_id', 'quantity', 'trial_ends_at', 'ends_at', 'last_used_at', 'uuid']
+  private readonly fillable: Array<keyof SubscriptionJsonResponse> = ["type","plan","provider_id","provider_status","unit_price","provider_type","provider_price_id","quantity","trial_ends_at","ends_at","last_used_at","uuid"]
   private readonly guarded: Array<keyof SubscriptionJsonResponse> = []
   protected attributes = {} as SubscriptionJsonResponse
   protected originalAttributes = {} as SubscriptionJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -33,33 +47,33 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   constructor(subscription: SubscriptionJsonResponse | undefined) {
     super('subscriptions')
     if (subscription) {
+
       this.attributes = { ...subscription }
       this.originalAttributes = { ...subscription }
 
-      Object.keys(subscription).forEach((key) => {
+      Object.keys(subscription).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (subscription as SubscriptionJsonResponse)[key]
+           this.customColumns[key] = (subscription as SubscriptionJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('subscriptions')
-    this.updateFromQuery = DB.instance.updateTable('subscriptions')
-    this.deleteFromQuery = DB.instance.deleteFrom('subscriptions')
+    this.selectFromQuery = db.selectFrom('subscriptions')
+    this.updateFromQuery = db.updateTable('subscriptions')
+    this.deleteFromQuery = db.deleteFrom('subscriptions')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: SubscriptionJsonResponse | SubscriptionJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('subscription_id', 'in', modelIds)
         .selectAll()
@@ -74,8 +88,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { subscription_id: number }) => {
           return record.subscription_id === models.id
         })
@@ -96,10 +109,12 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
     if (Array.isArray(data)) {
       data.map((model: SubscriptionJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -108,14 +123,14 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -129,132 +144,136 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
   get user_id(): number {
-    return this.attributes.user_id
-  }
+        return this.attributes.user_id
+      }
 
-  get user(): UserModel | undefined {
-    return this.attributes.user
-  }
+get user(): UserModel | undefined {
+        return this.attributes.user
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get type(): string {
-    return this.attributes.type
-  }
+get type(): string {
+      return this.attributes.type
+    }
 
-  get plan(): string | undefined {
-    return this.attributes.plan
-  }
+get plan(): string | undefined {
+      return this.attributes.plan
+    }
 
-  get provider_id(): string {
-    return this.attributes.provider_id
-  }
+get provider_id(): string {
+      return this.attributes.provider_id
+    }
 
-  get provider_status(): string {
-    return this.attributes.provider_status
-  }
+get provider_status(): string {
+      return this.attributes.provider_status
+    }
 
-  get unit_price(): number {
-    return this.attributes.unit_price
-  }
+get unit_price(): number {
+      return this.attributes.unit_price
+    }
 
-  get provider_type(): string {
-    return this.attributes.provider_type
-  }
+get provider_type(): string {
+      return this.attributes.provider_type
+    }
 
-  get provider_price_id(): string | undefined {
-    return this.attributes.provider_price_id
-  }
+get provider_price_id(): string | undefined {
+      return this.attributes.provider_price_id
+    }
 
-  get quantity(): number | undefined {
-    return this.attributes.quantity
-  }
+get quantity(): number | undefined {
+      return this.attributes.quantity
+    }
 
-  get trial_ends_at(): Date | string | undefined {
-    return this.attributes.trial_ends_at
-  }
+get trial_ends_at(): Date | string | undefined {
+      return this.attributes.trial_ends_at
+    }
 
-  get ends_at(): Date | string | undefined {
-    return this.attributes.ends_at
-  }
+get ends_at(): Date | string | undefined {
+      return this.attributes.ends_at
+    }
 
-  get last_used_at(): Date | string | undefined {
-    return this.attributes.last_used_at
-  }
+get last_used_at(): Date | string | undefined {
+      return this.attributes.last_used_at
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set type(value: string) {
-    this.attributes.type = value
-  }
+set type(value: string) {
+      this.attributes.type = value
+    }
 
-  set plan(value: string) {
-    this.attributes.plan = value
-  }
+set plan(value: string) {
+      this.attributes.plan = value
+    }
 
-  set provider_id(value: string) {
-    this.attributes.provider_id = value
-  }
+set provider_id(value: string) {
+      this.attributes.provider_id = value
+    }
 
-  set provider_status(value: string) {
-    this.attributes.provider_status = value
-  }
+set provider_status(value: string) {
+      this.attributes.provider_status = value
+    }
 
-  set unit_price(value: number) {
-    this.attributes.unit_price = value
-  }
+set unit_price(value: number) {
+      this.attributes.unit_price = value
+    }
 
-  set provider_type(value: string) {
-    this.attributes.provider_type = value
-  }
+set provider_type(value: string) {
+      this.attributes.provider_type = value
+    }
 
-  set provider_price_id(value: string) {
-    this.attributes.provider_price_id = value
-  }
+set provider_price_id(value: string) {
+      this.attributes.provider_price_id = value
+    }
 
-  set quantity(value: number) {
-    this.attributes.quantity = value
-  }
+set quantity(value: number) {
+      this.attributes.quantity = value
+    }
 
-  set trial_ends_at(value: Date | string) {
-    this.attributes.trial_ends_at = value
-  }
+set trial_ends_at(value: Date | string) {
+      this.attributes.trial_ends_at = value
+    }
 
-  set ends_at(value: Date | string) {
-    this.attributes.ends_at = value
-  }
+set ends_at(value: Date | string) {
+      this.attributes.ends_at = value
+    }
 
-  set last_used_at(value: Date | string) {
-    this.attributes.last_used_at = value
-  }
+set last_used_at(value: Date | string) {
+      this.attributes.last_used_at = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof SubscriptionJsonResponse)[] | RawBuilder<string> | string): SubscriptionModel {
     const instance = new SubscriptionModel(undefined)
@@ -264,12 +283,11 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
   // Method to find a Subscription by ID
   static async find(id: number): Promise<SubscriptionModel | undefined> {
-    const query = DB.instance.selectFrom('subscriptions').where('id', '=', id).selectAll()
+    let query = db.selectFrom('subscriptions').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new SubscriptionModel(undefined)
     return instance.createInstance(model)
@@ -290,8 +308,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriptionModel(model)
   }
@@ -305,7 +322,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   static async all(): Promise<SubscriptionModel[]> {
     const instance = new SubscriptionModel(undefined)
 
-    const models = await DB.instance.selectFrom('subscriptions').selectAll().execute()
+    const models = await db.selectFrom('subscriptions').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -324,7 +341,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
   static async findMany(ids: number[]): Promise<SubscriptionModel[]> {
     const instance = new SubscriptionModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: SubscriptionJsonResponse) => instance.parseResult(new SubscriptionModel(modelItem)))
@@ -339,8 +356,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriptionModel(model)
   }
@@ -354,8 +370,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new SubscriptionModel(model)
   }
@@ -522,12 +537,12 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: SubscriptionModel[]
+    data: SubscriptionModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new SubscriptionModel(undefined)
@@ -537,7 +552,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
     return {
       data: result.data.map((item: SubscriptionJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -549,19 +564,19 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   async applyCreate(newSubscription: NewSubscription): Promise<SubscriptionModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newSubscription).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewSubscription
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('subscriptions')
+    const result = await db.insertInto('subscriptions')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('subscriptions')
+    const model = await db.selectFrom('subscriptions')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -570,6 +585,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
       throw new HttpError(500, 'Failed to retrieve created Subscription')
     }
 
+    
     return this.createInstance(model)
   }
 
@@ -638,7 +654,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   async update(newSubscription: SubscriptionUpdate): Promise<SubscriptionModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newSubscription).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as SubscriptionUpdate
 
@@ -646,14 +662,14 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('subscriptions')
+    await db.updateTable('subscriptions')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscriptions')
+      const model = await db.selectFrom('subscriptions')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -662,6 +678,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
         throw new HttpError(500, 'Failed to retrieve updated Subscription')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -669,14 +686,14 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   }
 
   async forceUpdate(newSubscription: SubscriptionUpdate): Promise<SubscriptionModel | undefined> {
-    await DB.instance.updateTable('subscriptions')
+    await db.updateTable('subscriptions')
       .set(newSubscription)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscriptions')
+      const model = await db.selectFrom('subscriptions')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -685,6 +702,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
         throw new HttpError(500, 'Failed to retrieve updated Subscription')
       }
 
+      
       return this.createInstance(model)
     }
 
@@ -695,13 +713,13 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('subscriptions')
+      await db.updateTable('subscriptions')
         .set(this.attributes as SubscriptionUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('subscriptions')
+      const model = await db.selectFrom('subscriptions')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -710,16 +728,16 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
         throw new HttpError(500, 'Failed to retrieve updated Subscription')
       }
 
+      
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('subscriptions')
+      const result = await db.insertInto('subscriptions')
         .values(this.attributes as NewSubscription)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('subscriptions')
+      const model = await db.selectFrom('subscriptions')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -728,6 +746,7 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
         throw new HttpError(500, 'Failed to retrieve created Subscription')
       }
 
+      
       return this.createInstance(model)
     }
   }
@@ -742,23 +761,23 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
         ),
       ) as NewSubscription
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('subscriptions')
+    await db.insertInto('subscriptions')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newSubscription: NewSubscription): Promise<SubscriptionModel> {
-    const result = await DB.instance.insertInto('subscriptions')
+    const result = await db.insertInto('subscriptions')
       .values(newSubscription)
       .executeTakeFirst()
 
     const instance = new SubscriptionModel(undefined)
-    const model = await DB.instance.selectFrom('subscriptions')
+    const model = await db.selectFrom('subscriptions')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -767,6 +786,8 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
       throw new HttpError(500, 'Failed to retrieve created Subscription')
     }
 
+    
+
     return instance.createInstance(model)
   }
 
@@ -774,8 +795,11 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   async delete(): Promise<number> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
+    
+    
+    
 
-    const deleted = await DB.instance.deleteFrom('subscriptions')
+    const deleted = await db.deleteFrom('subscriptions')
       .where('id', '=', this.id)
       .execute()
 
@@ -783,98 +807,108 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   }
 
   static async remove(id: number): Promise<any> {
-    return await DB.instance.deleteFrom('subscriptions')
+    
+
+    
+
+    
+
+    
+
+    return await db.deleteFrom('subscriptions')
       .where('id', '=', id)
       .execute()
   }
 
   static whereType(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static wherePlan(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static wherePlan(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('plan', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('plan', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereProviderId(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereProviderId(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('provider_id', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('provider_id', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereProviderStatus(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereProviderStatus(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('provider_status', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('provider_status', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereUnitPrice(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereUnitPrice(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('unit_price', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('unit_price', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereProviderType(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereProviderType(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('provider_type', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('provider_type', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereProviderPriceId(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereProviderPriceId(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('provider_price_id', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('provider_price_id', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereQuantity(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereQuantity(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('quantity', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('quantity', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereTrialEndsAt(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereTrialEndsAt(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('trial_ends_at', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('trial_ends_at', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereEndsAt(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereEndsAt(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('ends_at', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('ends_at', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereLastUsedAt(value: string): SubscriptionModel {
-    const instance = new SubscriptionModel(undefined)
+static whereLastUsedAt(value: string): SubscriptionModel {
+          const instance = new SubscriptionModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('last_used_at', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('last_used_at', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof SubscriptionsTable, values: V[]): SubscriptionModel {
     const instance = new SubscriptionModel(undefined)
@@ -882,19 +916,28 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async userBelong(): Promise<UserModel> {
-    if (this.user_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async userBelong(): Promise<UserModel> {
+          if (this.user_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await User
-      .where('id', '=', this.user_id)
-      .first()
+          const model = await User
+            .where('id', '=', this.user_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
+
+
+
+  
+
+  
+
+  
 
   static distinct(column: keyof SubscriptionJsonResponse): SubscriptionModel {
     const instance = new SubscriptionModel(undefined)
@@ -911,29 +954,29 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
   toJSON(): SubscriptionJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      type: this.type,
-      plan: this.plan,
-      provider_id: this.provider_id,
-      provider_status: this.provider_status,
-      unit_price: this.unit_price,
-      provider_type: this.provider_type,
-      provider_price_id: this.provider_price_id,
-      quantity: this.quantity,
-      trial_ends_at: this.trial_ends_at,
-      ends_at: this.ends_at,
-      last_used_at: this.last_used_at,
+id: this.id,
+type: this.type,
+   plan: this.plan,
+   provider_id: this.provider_id,
+   provider_status: this.provider_status,
+   unit_price: this.unit_price,
+   provider_type: this.provider_type,
+   provider_price_id: this.provider_price_id,
+   quantity: this.quantity,
+   trial_ends_at: this.trial_ends_at,
+   ends_at: this.ends_at,
+   last_used_at: this.last_used_at,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       user_id: this.user_id,
-      user: this.user,
-      ...this.customColumns,
-    }
+   user: this.user,
+...this.customColumns,
+}
 
     return output
   }
@@ -946,9 +989,11 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<SubscriptionModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -963,15 +1008,16 @@ export class SubscriptionModel extends BaseOrm<SubscriptionModel, SubscriptionsT
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<SubscriptionModel | undefined> {
-  const query = DB.instance.selectFrom('subscriptions').where('id', '=', id).selectAll()
+  let query = db.selectFrom('subscriptions').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new SubscriptionModel(undefined)
   return instance.createInstance(model)
@@ -989,91 +1035,93 @@ export async function create(newSubscription: NewSubscription): Promise<Subscrip
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('subscriptions')
+  await db.deleteFrom('subscriptions')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereType(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('type', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('type', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function wherePlan(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('plan', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('plan', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereProviderId(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('provider_id', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('provider_id', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereProviderStatus(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('provider_status', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('provider_status', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereUnitPrice(value: number): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('unit_price', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('unit_price', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereProviderType(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('provider_type', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('provider_type', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereProviderPriceId(value: string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('provider_price_id', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('provider_price_id', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereQuantity(value: number): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('quantity', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('quantity', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereTrialEndsAt(value: Date | string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('trial_ends_at', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('trial_ends_at', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereEndsAt(value: Date | string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('ends_at', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('ends_at', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
 
 export async function whereLastUsedAt(value: Date | string): Promise<SubscriptionModel[]> {
-  const query = DB.instance.selectFrom('subscriptions').where('last_used_at', '=', value)
-  const results: SubscriptionJsonResponse = await query.execute()
+          const query = db.selectFrom('subscriptions').where('last_used_at', '=', value)
+          const results: SubscriptionJsonResponse = await query.execute()
 
-  return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
-}
+          return results.map((modelItem: SubscriptionJsonResponse) => new SubscriptionModel(modelItem))
+        } 
+
+
 
 export const Subscription = SubscriptionModel
 

@@ -1,22 +1,35 @@
-import type { RawBuilder } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} from '@stacksjs/database'
+import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaymentMethod, manageSubscription, manageTransaction, managePrice, manageSetupIntent } from '@stacksjs/payments'
+import Stripe from 'stripe'
+import { db, sql } from '@stacksjs/database'
+import { BaseOrm } from '../utils/base'
 import type { Operator } from '@stacksjs/orm'
-import type { NewProductUnit, ProductUnitJsonResponse, ProductUnitsTable, ProductUnitUpdate } from '../types/ProductUnitType'
-import type { ProductModel } from './Product'
-import { randomUUIDv7 } from 'bun'
-import { sql } from '@stacksjs/database'
+import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
 import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
-import { DB } from '@stacksjs/orm'
+import { generateTwoFactorSecret } from '@stacksjs/auth'
+import { verifyTwoFactorCode } from '@stacksjs/auth'
+import { randomUUIDv7 } from 'bun'
+import type { ProductUnitModelType, ProductUnitJsonResponse, NewProductUnit, ProductUnitUpdate, ProductUnitsTable } from '../types/ProductUnitType'
 
-import { BaseOrm } from '../utils/base'
+import type {ProductModel} from './Product'
+
+
+
+
+import type { Model } from '@stacksjs/types';
+import { schema } from '@stacksjs/validation';
+
+
+
 
 export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTable, ProductUnitJsonResponse> {
   private readonly hidden: Array<keyof ProductUnitJsonResponse> = []
-  private readonly fillable: Array<keyof ProductUnitJsonResponse> = ['name', 'abbreviation', 'type', 'description', 'is_default', 'uuid', 'product_id']
+  private readonly fillable: Array<keyof ProductUnitJsonResponse> = ["name","abbreviation","type","description","is_default","uuid","product_id"]
   private readonly guarded: Array<keyof ProductUnitJsonResponse> = []
   protected attributes = {} as ProductUnitJsonResponse
   protected originalAttributes = {} as ProductUnitJsonResponse
-
+  
   protected selectFromQuery: any
   protected updateFromQuery: any
   protected deleteFromQuery: any
@@ -34,33 +47,33 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   constructor(productUnit: ProductUnitJsonResponse | undefined) {
     super('product_units')
     if (productUnit) {
+
       this.attributes = { ...productUnit }
       this.originalAttributes = { ...productUnit }
 
-      Object.keys(productUnit).forEach((key) => {
+      Object.keys(productUnit).forEach(key => {
         if (!(key in this)) {
-          this.customColumns[key] = (productUnit as ProductUnitJsonResponse)[key]
+           this.customColumns[key] = (productUnit as ProductUnitJsonResponse)[key]
         }
       })
     }
 
     this.withRelations = []
-    this.selectFromQuery = DB.instance.selectFrom('product_units')
-    this.updateFromQuery = DB.instance.updateTable('product_units')
-    this.deleteFromQuery = DB.instance.deleteFrom('product_units')
+    this.selectFromQuery = db.selectFrom('product_units')
+    this.updateFromQuery = db.updateTable('product_units')
+    this.deleteFromQuery = db.deleteFrom('product_units')
     this.hasSelect = false
   }
 
   protected async loadRelations(models: ProductUnitJsonResponse | ProductUnitJsonResponse[]): Promise<void> {
     // Handle both single model and array of models
     const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
+    if (!modelArray.length) return
 
     const modelIds = modelArray.map(model => model.id)
 
     for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
+      const relatedRecords = await db
         .selectFrom(relation)
         .where('productUnit_id', 'in', modelIds)
         .selectAll()
@@ -75,8 +88,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
           model[relation] = records.length === 1 ? records[0] : records
           return model
         })
-      }
-      else {
+      } else {
         const records = relatedRecords.filter((record: { productUnit_id: number }) => {
           return record.productUnit_id === models.id
         })
@@ -97,10 +109,12 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
     if (Array.isArray(data)) {
       data.map((model: ProductUnitJsonResponse) => {
+
         const customGetter = {
           default: () => {
           },
 
+          
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
@@ -109,14 +123,14 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
         return model
       })
-    }
-    else {
+    } else {
       const model = data
 
       const customGetter = {
         default: () => {
         },
 
+        
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
@@ -130,84 +144,88 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       default: () => {
       },
 
+      
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      (model as any)[key] = await fn()
+        (model as any)[key] = await fn()
     }
   }
 
   get product_id(): number {
-    return this.attributes.product_id
-  }
+        return this.attributes.product_id
+      }
 
-  get product(): ProductModel | undefined {
-    return this.attributes.product
-  }
+get product(): ProductModel | undefined {
+        return this.attributes.product
+      }
 
-  get id(): number {
+get id(): number {
     return this.attributes.id
   }
 
-  get uuid(): string | undefined {
-    return this.attributes.uuid
-  }
+get uuid(): string | undefined {
+      return this.attributes.uuid
+    }
 
-  get name(): string {
-    return this.attributes.name
-  }
+get name(): string {
+      return this.attributes.name
+    }
 
-  get abbreviation(): string {
-    return this.attributes.abbreviation
-  }
+get abbreviation(): string {
+      return this.attributes.abbreviation
+    }
 
-  get type(): string {
-    return this.attributes.type
-  }
+get type(): string {
+      return this.attributes.type
+    }
 
-  get description(): string | undefined {
-    return this.attributes.description
-  }
+get description(): string | undefined {
+      return this.attributes.description
+    }
 
-  get is_default(): boolean | undefined {
-    return this.attributes.is_default
-  }
+get is_default(): boolean | undefined {
+      return this.attributes.is_default
+    }
 
-  get created_at(): string | undefined {
-    return this.attributes.created_at
-  }
+get created_at(): string | undefined {
+      return this.attributes.created_at
+    }
 
-  get updated_at(): string | undefined {
-    return this.attributes.updated_at
-  }
+    get updated_at(): string | undefined {
+      return this.attributes.updated_at
+    }
+
 
   set uuid(value: string) {
-    this.attributes.uuid = value
-  }
+      this.attributes.uuid = value
+    }
 
-  set name(value: string) {
-    this.attributes.name = value
-  }
+set name(value: string) {
+      this.attributes.name = value
+    }
 
-  set abbreviation(value: string) {
-    this.attributes.abbreviation = value
-  }
+set abbreviation(value: string) {
+      this.attributes.abbreviation = value
+    }
 
-  set type(value: string) {
-    this.attributes.type = value
-  }
+set type(value: string) {
+      this.attributes.type = value
+    }
 
-  set description(value: string) {
-    this.attributes.description = value
-  }
+set description(value: string) {
+      this.attributes.description = value
+    }
 
-  set is_default(value: boolean) {
-    this.attributes.is_default = value
-  }
+set is_default(value: boolean) {
+      this.attributes.is_default = value
+    }
 
-  set updated_at(value: string) {
-    this.attributes.updated_at = value
-  }
+set updated_at(value: string) {
+      this.attributes.updated_at = value
+    }
+
+
 
   static select(params: (keyof ProductUnitJsonResponse)[] | RawBuilder<string> | string): ProductUnitModel {
     const instance = new ProductUnitModel(undefined)
@@ -217,12 +235,11 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
   // Method to find a ProductUnit by ID
   static async find(id: number): Promise<ProductUnitModel | undefined> {
-    const query = DB.instance.selectFrom('product_units').where('id', '=', id).selectAll()
+    let query = db.selectFrom('product_units').where('id', '=', id).selectAll()
 
     const model = await query.executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     const instance = new ProductUnitModel(undefined)
     return instance.createInstance(model)
@@ -243,8 +260,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
     const model = await instance.applyLast()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductUnitModel(model)
   }
@@ -258,7 +274,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   static async all(): Promise<ProductUnitModel[]> {
     const instance = new ProductUnitModel(undefined)
 
-    const models = await DB.instance.selectFrom('product_units').selectAll().execute()
+    const models = await db.selectFrom('product_units').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
@@ -277,7 +293,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
   static async findMany(ids: number[]): Promise<ProductUnitModel[]> {
     const instance = new ProductUnitModel(undefined)
-
+     
     const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ProductUnitJsonResponse) => instance.parseResult(new ProductUnitModel(modelItem)))
@@ -292,8 +308,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductUnitModel(model)
   }
@@ -307,8 +322,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       .limit(1)
       .executeTakeFirst()
 
-    if (!model)
-      return undefined
+    if (!model) return undefined
 
     return new ProductUnitModel(model)
   }
@@ -475,12 +489,12 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   }
 
   static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
-    data: ProductUnitModel[]
+    data: ProductUnitModel[],
     paging: {
-      total_records: number
-      page: number
+      total_records: number,
+      page: number,
       total_pages: number
-    }
+    },
     next_cursor: number | null
   }> {
     const instance = new ProductUnitModel(undefined)
@@ -490,7 +504,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     return {
       data: result.data.map((item: ProductUnitJsonResponse) => instance.createInstance(item)),
       paging: result.paging,
-      next_cursor: result.next_cursor,
+      next_cursor: result.next_cursor
     }
   }
 
@@ -502,19 +516,19 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   async applyCreate(newProductUnit: NewProductUnit): Promise<ProductUnitModel> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProductUnit).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as NewProductUnit
 
     await this.mapCustomSetters(filteredValues)
 
-    filteredValues.uuid = randomUUIDv7()
+    filteredValues['uuid'] = randomUUIDv7()
 
-    const result = await DB.instance.insertInto('product_units')
+    const result = await db.insertInto('product_units')
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await DB.instance.selectFrom('product_units')
+    const model = await db.selectFrom('product_units')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -524,7 +538,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     }
 
     if (model)
-      dispatch('productUnit:created', model)
+ dispatch('productUnit:created', model)
     return this.createInstance(model)
   }
 
@@ -593,7 +607,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   async update(newProductUnit: ProductUnitUpdate): Promise<ProductUnitModel | undefined> {
     const filteredValues = Object.fromEntries(
       Object.entries(newProductUnit).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
+        !this.guarded.includes(key) && this.fillable.includes(key)
       ),
     ) as ProductUnitUpdate
 
@@ -601,14 +615,14 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
     filteredValues.updated_at = new Date().toISOString()
 
-    await DB.instance.updateTable('product_units')
+    await db.updateTable('product_units')
       .set(filteredValues)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('product_units')
+      const model = await db.selectFrom('product_units')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -618,7 +632,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       }
 
       if (model)
-        dispatch('productUnit:updated', model)
+ dispatch('productUnit:updated', model)
       return this.createInstance(model)
     }
 
@@ -626,14 +640,14 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   }
 
   async forceUpdate(newProductUnit: ProductUnitUpdate): Promise<ProductUnitModel | undefined> {
-    await DB.instance.updateTable('product_units')
+    await db.updateTable('product_units')
       .set(newProductUnit)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
     if (this.id) {
       // Get the updated data
-      const model = await DB.instance.selectFrom('product_units')
+      const model = await db.selectFrom('product_units')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -643,7 +657,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       }
 
       if (this)
-        dispatch('productUnit:updated', model)
+ dispatch('productUnit:updated', model)
       return this.createInstance(model)
     }
 
@@ -654,13 +668,13 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     // If the model has an ID, update it; otherwise, create a new record
     if (this.id) {
       // Update existing record
-      await DB.instance.updateTable('product_units')
+      await db.updateTable('product_units')
         .set(this.attributes as ProductUnitUpdate)
         .where('id', '=', this.id)
         .executeTakeFirst()
 
       // Get the updated data
-      const model = await DB.instance.selectFrom('product_units')
+      const model = await db.selectFrom('product_units')
         .where('id', '=', this.id)
         .selectAll()
         .executeTakeFirst()
@@ -670,17 +684,16 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       }
 
       if (this)
-        dispatch('productUnit:updated', model)
+ dispatch('productUnit:updated', model)
       return this.createInstance(model)
-    }
-    else {
+    } else {
       // Create new record
-      const result = await DB.instance.insertInto('product_units')
+      const result = await db.insertInto('product_units')
         .values(this.attributes as NewProductUnit)
         .executeTakeFirst()
 
       // Get the created data
-      const model = await DB.instance.selectFrom('product_units')
+      const model = await db.selectFrom('product_units')
         .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
         .selectAll()
         .executeTakeFirst()
@@ -690,7 +703,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
       }
 
       if (this)
-        dispatch('productUnit:created', model)
+ dispatch('productUnit:created', model)
       return this.createInstance(model)
     }
   }
@@ -705,23 +718,23 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
         ),
       ) as NewProductUnit
 
-      filteredValues.uuid = randomUUIDv7()
+      filteredValues['uuid'] = randomUUIDv7()
 
       return filteredValues
     })
 
-    await DB.instance.insertInto('product_units')
+    await db.insertInto('product_units')
       .values(valuesFiltered)
       .executeTakeFirst()
   }
 
   static async forceCreate(newProductUnit: NewProductUnit): Promise<ProductUnitModel> {
-    const result = await DB.instance.insertInto('product_units')
+    const result = await db.insertInto('product_units')
       .values(newProductUnit)
       .executeTakeFirst()
 
     const instance = new ProductUnitModel(undefined)
-    const model = await DB.instance.selectFrom('product_units')
+    const model = await db.selectFrom('product_units')
       .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
       .selectAll()
       .executeTakeFirst()
@@ -731,7 +744,7 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     }
 
     if (model)
-      dispatch('productUnit:created', model)
+ dispatch('productUnit:created', model)
 
     return instance.createInstance(model)
   }
@@ -741,11 +754,11 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
-
+    
     if (model)
-      dispatch('productUnit:deleted', model)
+ dispatch('productUnit:deleted', model)
 
-    const deleted = await DB.instance.deleteFrom('product_units')
+    const deleted = await db.deleteFrom('product_units')
       .where('id', '=', this.id)
       .execute()
 
@@ -757,53 +770,57 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
 
     const model = await instance.find(Number(id))
 
-    if (model)
-      dispatch('productUnit:deleted', model)
+    
 
-    return await DB.instance.deleteFrom('product_units')
+    if (model)
+ dispatch('productUnit:deleted', model)
+
+    return await db.deleteFrom('product_units')
       .where('id', '=', id)
       .execute()
   }
 
   static whereName(value: string): ProductUnitModel {
-    const instance = new ProductUnitModel(undefined)
+          const instance = new ProductUnitModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereAbbreviation(value: string): ProductUnitModel {
-    const instance = new ProductUnitModel(undefined)
+static whereAbbreviation(value: string): ProductUnitModel {
+          const instance = new ProductUnitModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('abbreviation', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('abbreviation', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereType(value: string): ProductUnitModel {
-    const instance = new ProductUnitModel(undefined)
+static whereType(value: string): ProductUnitModel {
+          const instance = new ProductUnitModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('type', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereDescription(value: string): ProductUnitModel {
-    const instance = new ProductUnitModel(undefined)
+static whereDescription(value: string): ProductUnitModel {
+          const instance = new ProductUnitModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
 
-  static whereIsDefault(value: string): ProductUnitModel {
-    const instance = new ProductUnitModel(undefined)
+static whereIsDefault(value: string): ProductUnitModel {
+          const instance = new ProductUnitModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where('is_default', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_default', '=', value)
 
-    return instance
-  }
+          return instance
+        } 
+
+
 
   static whereIn<V = number>(column: keyof ProductUnitsTable, values: V[]): ProductUnitModel {
     const instance = new ProductUnitModel(undefined)
@@ -811,30 +828,39 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     return instance.applyWhereIn<V>(column, values)
   }
 
-  async productBelong(): Promise<ProductModel> {
-    if (this.product_id === undefined)
-      throw new HttpError(500, 'Relation Error!')
+  
+        async productBelong(): Promise<ProductModel> {
+          if (this.product_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
 
-    const model = await Product
-      .where('id', '=', this.product_id)
-      .first()
+          const model = await Product
+            .where('id', '=', this.product_id)
+            .first()
 
-    if (!model)
-      throw new HttpError(500, 'Model Relation Not Found!')
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
 
-    return model
-  }
+          return model
+        }
 
-  toSearchableObject(): Partial<ProductUnitJsonResponse> {
-    return {
-      id: this.id,
-      name: this.name,
-      abbreviation: this.abbreviation,
-      type: this.type,
-      description: this.description,
-      is_default: this.is_default,
-    }
-  }
+
+
+  
+      toSearchableObject(): Partial<ProductUnitJsonResponse> {
+        return {
+          id: this.id,
+name: this.name,
+abbreviation: this.abbreviation,
+type: this.type,
+description: this.description,
+is_default: this.is_default
+        }
+      }
+    
+
+  
+
+  
 
   static distinct(column: keyof ProductUnitJsonResponse): ProductUnitModel {
     const instance = new ProductUnitModel(undefined)
@@ -851,23 +877,23 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
   toJSON(): ProductUnitJsonResponse {
     const output = {
 
-      uuid: this.uuid,
+ uuid: this.uuid,
 
-      id: this.id,
-      name: this.name,
-      abbreviation: this.abbreviation,
-      type: this.type,
-      description: this.description,
-      is_default: this.is_default,
+id: this.id,
+name: this.name,
+   abbreviation: this.abbreviation,
+   type: this.type,
+   description: this.description,
+   is_default: this.is_default,
+   
+        created_at: this.created_at,
 
-      created_at: this.created_at,
-
-      updated_at: this.updated_at,
+        updated_at: this.updated_at,
 
       product_id: this.product_id,
-      product: this.product,
-      ...this.customColumns,
-    }
+   product: this.product,
+...this.customColumns,
+}
 
     return output
   }
@@ -880,9 +906,11 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     return model
   }
 
+  
+
   // Add a protected applyFind implementation
   protected async applyFind(id: number): Promise<ProductUnitModel | undefined> {
-    const model = await DB.instance.selectFrom(this.tableName)
+    const model = await db.selectFrom(this.tableName)
       .where('id', '=', id)
       .selectAll()
       .executeTakeFirst()
@@ -897,15 +925,16 @@ export class ProductUnitModel extends BaseOrm<ProductUnitModel, ProductUnitsTabl
     // Return a proper instance using the factory method
     return this.createInstance(model)
   }
+
+  
 }
 
 export async function find(id: number): Promise<ProductUnitModel | undefined> {
-  const query = DB.instance.selectFrom('product_units').where('id', '=', id).selectAll()
+  let query = db.selectFrom('product_units').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
 
-  if (!model)
-    return undefined
+  if (!model) return undefined
 
   const instance = new ProductUnitModel(undefined)
   return instance.createInstance(model)
@@ -923,49 +952,51 @@ export async function create(newProductUnit: NewProductUnit): Promise<ProductUni
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {
-  return await sql`${rawQuery}`.execute(DB.instance)
+  return await sql`${rawQuery}`.execute(db)
 }
 
 export async function remove(id: number): Promise<void> {
-  await DB.instance.deleteFrom('product_units')
+  await db.deleteFrom('product_units')
     .where('id', '=', id)
     .execute()
 }
 
 export async function whereName(value: string): Promise<ProductUnitModel[]> {
-  const query = DB.instance.selectFrom('product_units').where('name', '=', value)
-  const results: ProductUnitJsonResponse = await query.execute()
+          const query = db.selectFrom('product_units').where('name', '=', value)
+          const results: ProductUnitJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
-}
+          return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
+        } 
 
 export async function whereAbbreviation(value: string): Promise<ProductUnitModel[]> {
-  const query = DB.instance.selectFrom('product_units').where('abbreviation', '=', value)
-  const results: ProductUnitJsonResponse = await query.execute()
+          const query = db.selectFrom('product_units').where('abbreviation', '=', value)
+          const results: ProductUnitJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
-}
+          return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
+        } 
 
 export async function whereType(value: string): Promise<ProductUnitModel[]> {
-  const query = DB.instance.selectFrom('product_units').where('type', '=', value)
-  const results: ProductUnitJsonResponse = await query.execute()
+          const query = db.selectFrom('product_units').where('type', '=', value)
+          const results: ProductUnitJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
-}
+          return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
+        } 
 
 export async function whereDescription(value: string): Promise<ProductUnitModel[]> {
-  const query = DB.instance.selectFrom('product_units').where('description', '=', value)
-  const results: ProductUnitJsonResponse = await query.execute()
+          const query = db.selectFrom('product_units').where('description', '=', value)
+          const results: ProductUnitJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
-}
+          return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
+        } 
 
 export async function whereIsDefault(value: boolean): Promise<ProductUnitModel[]> {
-  const query = DB.instance.selectFrom('product_units').where('is_default', '=', value)
-  const results: ProductUnitJsonResponse = await query.execute()
+          const query = db.selectFrom('product_units').where('is_default', '=', value)
+          const results: ProductUnitJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
-}
+          return results.map((modelItem: ProductUnitJsonResponse) => new ProductUnitModel(modelItem))
+        } 
+
+
 
 export const ProductUnit = ProductUnitModel
 
