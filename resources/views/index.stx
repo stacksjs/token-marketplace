@@ -6,15 +6,32 @@
   <meta name="description" content="Discover & collect NFTs in the world's first cross-chain marketplace">
   <title>Home | Naked NFTs - Cross-Chain NFT Marketplace</title>
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    /* Custom Gradients */
+    .bg-hero-gradient {
+      background: linear-gradient(45deg, #010123 0%, #010124 53.95%, #010125 100%);
+    }
+    .bg-cta-gradient {
+      background: linear-gradient(95.34deg, #010120 1.04%, #07073b 93.77%);
+    }
+    /* Minting Live Animation */
+    .blink {
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
   <script>
     import MainLayout from './components/MainLayout.stx'
 
     // Featured Collections Data
-    export const featuredCollections = [
+    const featuredCollections = [
       {
         name: "Hoodratz",
         slug: "hoodratz",
-        image: "/assets/images/king-hoodrat.png",
+        imageUrl: "/assets/images/king-hoodrat.png",
         description: "A collection of 10,000 unique Hoodratz NFTs",
         isMinting: true,
         isFeatured: false
@@ -22,30 +39,58 @@
       {
         name: "Crypto Punks",
         slug: "crypto-punks",
-        image: "/assets/images/hoodie.png",
+        imageUrl: "/assets/images/hoodie.png",
         description: "The original pixel art NFT collection",
         isMinting: false,
         isFeatured: true
       }
-    ];
+    ]
 
     // Popular Collections Data
-    export const popularCollections = [
+    const popularCollections = [
       {
         name: "Bored Apes",
         slug: "bored-apes",
-        image: "/assets/images/anonymouse.png",
+        imageUrl: "/assets/images/anonymouse.png",
         description: "A collection of 10,000 unique Bored Apes",
         website: "https://boredapeyachtclub.com"
       },
       {
         name: "Cool Cats",
         slug: "cool-cats",
-        image: "/assets/images/hoodie.png",
+        imageUrl: "/assets/images/hoodie.png",
         description: "Cool Cats is a collection of 9,999 randomly generated cats",
         website: "https://coolcatsnft.com"
       }
-    ];
+    ]
+
+    // Available NFTs Data
+    const availableNfts = [
+      {
+        id: 1,
+        name: "King Hoodrat",
+        imageUrl: "/assets/images/king-hoodrat.png",
+        collectionName: "Hoodratz",
+        isMinting: true,
+        mintUrl: "https://hoodratz.nakednfts.io/"
+      },
+      {
+        id: 2,
+        name: "Hoodie #1234",
+        imageUrl: "/assets/images/hoodie.png",
+        collectionName: "Hoodratz",
+        isMinting: true,
+        mintUrl: "https://hoodratz.nakednfts.io/"
+      },
+      {
+        id: 3,
+        name: "Anonymouse",
+        imageUrl: "/assets/images/anonymouse.png",
+        collectionName: "Hoodratz",
+        isMinting: true,
+        mintUrl: "https://hoodratz.nakednfts.io/"
+      }
+    ]
   </script>
 </head>
 <body class="antialiased font-sans bg-white text-gray-9">
@@ -119,7 +164,7 @@
             @foreach(featuredCollections as collection)
               <div class="group relative mb-6 sm:mb-0">
                 <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                  <img src="{{ collection.image }}" alt="{{ collection.name }} Profile Image" class="h-full w-full object-cover object-center" />
+                  <img src="{{ collection.imageUrl }}" alt="{{ collection.name }} Profile Image" class="h-full w-full object-cover object-center" />
                 </div>
 
                 <h3 class="mt-2 text-2xl font-semibold text-gray-9">
@@ -206,7 +251,7 @@
               <div class="group relative mb-6 sm:mb-0">
                 <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
                   <a href="{{ collection.website }}" target="_blank">
-                    <img src="{{ collection.image }}" alt="{{ collection.name }}" class="h-full w-full object-cover object-center" />
+                    <img src="{{ collection.imageUrl }}" alt="{{ collection.name }}" class="h-full w-full object-cover object-center" />
                   </a>
                 </div>
 
@@ -290,68 +335,29 @@
           </div>
 
           <div class="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            <!-- NFT Card 1 -->
-            <div class="relative mb-6 sm:mb-0">
-              <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                <img src="/assets/images/king-hoodrat.png" alt="Hoodratz NFT" class="h-full w-full object-cover object-center" />
+            @foreach(availableNfts as nft)
+              <div class="relative mb-6 sm:mb-0">
+                <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
+                  <img src="{{ nft.imageUrl }}" alt="{{ nft.name }}" class="h-full w-full object-cover object-center" />
+                </div>
+                <h3 class="mt-2 text-2xl font-semibold text-gray-9">
+                  <a href="/nfts/{{ nft.id }}" class="focus:outline-none">{{ nft.collectionName }}</a>
+                </h3>
+                @if(nft.isMinting)
+                  <div class="mt-2 flex items-center text-emerald-500">
+                    <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></div>
+                    <span class="ml-2 cursor-pointer text-sm font-semibold uppercase text-emerald-500">Minting Live</span>
+                  </div>
+                  <div class="mt-2">
+                    <a href="{{ nft.mintUrl }}" target="_blank">
+                      <button type="button" class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2">
+                        Mint Now
+                      </button>
+                    </a>
+                  </div>
+                @endif
               </div>
-              <h3 class="mt-2 text-2xl font-semibold text-gray-9">
-                <a href="#" class="focus:outline-none">Hoodratz</a>
-              </h3>
-              <div class="mt-2 flex items-center text-emerald-500">
-                <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></div>
-                <span class="ml-2 cursor-pointer text-sm font-semibold uppercase text-emerald-500">Minting Live</span>
-              </div>
-              <div class="mt-2">
-                <a href="https://hoodratz.nakednfts.io/" target="_blank">
-                  <button type="button" class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2">
-                    Mint Now
-                  </button>
-                </a>
-              </div>
-            </div>
-
-            <!-- NFT Card 2 -->
-            <div class="relative mb-6 sm:mb-0">
-              <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                <img src="/assets/images/hoodie.png" alt="Hoodratz NFT" class="h-full w-full object-cover object-center" />
-              </div>
-              <h3 class="mt-2 text-2xl font-semibold text-gray-9">
-                <a href="#" class="focus:outline-none">Hoodratz</a>
-              </h3>
-              <div class="mt-2 flex items-center text-emerald-500">
-                <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></div>
-                <span class="ml-2 cursor-pointer text-sm font-semibold uppercase text-emerald-500">Minting Live</span>
-              </div>
-              <div class="mt-2">
-                <a href="https://hoodratz.nakednfts.io/" target="_blank">
-                  <button type="button" class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2">
-                    Mint Now
-                  </button>
-                </a>
-              </div>
-            </div>
-
-            <!-- NFT Card 3 -->
-            <div class="relative mb-6 sm:mb-0">
-              <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                <img src="/assets/images/anonymouse.png" alt="Hoodratz NFT" class="h-full w-full object-cover object-center" />
-              </div>
-              <h3 class="mt-2 text-2xl font-semibold text-gray-9">
-                <a href="#" class="focus:outline-none">Hoodratz</a>
-              </h3>
-              <div class="mt-2 flex items-center text-emerald-500">
-                <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></div>
-                <span class="ml-2 cursor-pointer text-sm font-semibold uppercase text-emerald-500">Minting Live</span>
-              </div>
-              <div class="mt-2">
-                <a href="https://hoodratz.nakednfts.io/" target="_blank">
-                  <button type="button" class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2">
-                    Mint Now
-                  </button>
-                </a>
-              </div>
-            </div>
+            @endforeach
           </div>
         </div>
       </div>

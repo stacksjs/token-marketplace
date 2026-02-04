@@ -379,3 +379,21 @@ route.group({ middleware: 'auth' }, () => {
   route.get('/me', 'Actions/Auth/AuthUserAction')
   route.post('/logout', 'Actions/Auth/LogoutAction')
 })
+
+// NFT Marketplace routes (public)
+route.group({ prefix: '/marketplace' }, () => {
+  // Home page data - all data needed for the landing page
+  route.get('/home', 'Actions/Marketplace/HomePageDataAction')
+
+  // Collections
+  route.get('/collections', 'Actions/Marketplace/CollectionIndexAction')
+  route.get('/collections/{slug}', 'Actions/Marketplace/CollectionShowAction')
+
+  // NFTs
+  route.get('/nfts', 'Actions/Marketplace/NftIndexAction')
+  route.get('/nfts/{id}', 'Actions/Marketplace/NftShowAction')
+
+  // Rarity data
+  route.get('/rarity', 'Actions/Marketplace/RarityIndexAction')
+  route.get('/rarity/{slug}', 'Actions/Marketplace/RarityShowAction')
+})

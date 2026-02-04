@@ -40,9 +40,9 @@ describe('Collections Page (collections.stx)', () => {
     expect(content).toContain('placeholder="Search Collections..."')
   })
 
-  test('has collections data', () => {
+  test('has static collections data', () => {
     const content = readFileSync(viewPath, 'utf-8')
-    expect(content).toContain('export const collections')
+    expect(content).toContain('const collections = [')
   })
 
   test('uses @foreach for collections grid', () => {
@@ -62,9 +62,22 @@ describe('Collections Page (collections.stx)', () => {
     expect(content).toContain('@endif')
   })
 
-  test('displays collection images', () => {
+  test('uses correct field names for images', () => {
     const content = readFileSync(viewPath, 'utf-8')
-    expect(content).toContain('{{ collection.hero_image }}')
-    expect(content).toContain('{{ collection.profile_image }}')
+    expect(content).toContain('{{ collection.heroImageUrl }}')
+    expect(content).toContain('{{ collection.imageUrl }}')
+  })
+
+  test('displays collection name and description', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('{{ collection.name }}')
+    expect(content).toContain('{{ collection.description }}')
+  })
+
+  test('contains sample collection data', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('Hoodratz')
+    expect(content).toContain('Crypto Punks')
+    expect(content).toContain('Bored Apes')
   })
 })

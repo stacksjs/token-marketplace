@@ -1,12 +1,12 @@
 <script>
   // Navigation Links
-  export const navLinks = [
+  const navLinks = [
     { name: "Home", href: "/", active: true },
     { name: "Explore", href: "/collections", active: true },
     { name: "Rarity", href: "/rarity", active: true },
     { name: "Staking", href: "#", active: false, tooltip: "Coming soon" },
     { name: "Grassroots", href: "#", active: false, tooltip: "Our DAO & DAO framework. Coming soon." }
-  ];
+  ]
 </script>
 
 <header>

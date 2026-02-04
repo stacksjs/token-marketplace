@@ -9,25 +9,33 @@
   <script>
     import MainLayout from './components/MainLayout.stx'
 
-    // Sample collections data
-    export const collections = [
+    // Collections Data
+    const collections = [
       {
         name: "Hoodratz",
         slug: "hoodratz",
-        hero_image: "/assets/images/king-hoodrat.png",
-        profile_image: "/assets/images/hoodie.png",
         description: "A collection of 10,000 unique Hoodratz NFTs",
+        imageUrl: "/assets/images/hoodie.png",
+        heroImageUrl: "/assets/images/king-hoodrat.png",
         isLive: true
       },
       {
         name: "Crypto Punks",
         slug: "crypto-punks",
-        hero_image: "/assets/images/anonymouse.png",
-        profile_image: "/assets/images/hoodie.png",
         description: "The original pixel art NFT collection",
-        isLive: false
+        imageUrl: "/assets/images/hoodie.png",
+        heroImageUrl: "/assets/images/anonymouse.png",
+        isLive: true
+      },
+      {
+        name: "Bored Apes",
+        slug: "bored-apes",
+        description: "A collection of 10,000 unique Bored Apes",
+        imageUrl: "/assets/images/anonymouse.png",
+        heroImageUrl: "/assets/images/hoodie.png",
+        isLive: true
       }
-    ];
+    ]
   </script>
 </head>
 <body class="antialiased font-sans bg-white text-gray-9">
@@ -70,7 +78,7 @@
               <!-- Hero Image -->
               <span aria-hidden="true" class="absolute inset-0">
                 <img
-                  src="{{ collection.hero_image }}"
+                  src="{{ collection.heroImageUrl }}"
                   alt="{{ collection.name }} Portrait"
                   class="h-1/2 w-full object-cover object-center"
                 />
@@ -79,7 +87,7 @@
               <!-- Profile Image -->
               <span aria-hidden="true" class="relative top-32">
                 <img
-                  src="{{ collection.profile_image }}"
+                  src="{{ collection.imageUrl }}"
                   alt="{{ collection.name }} Profile"
                   class="h-36 w-36 rounded-full border-4 border-white object-cover object-center"
                 />

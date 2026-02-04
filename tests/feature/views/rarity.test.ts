@@ -40,9 +40,9 @@ describe('Rarity Page (rarity.stx)', () => {
     expect(content).toContain('placeholder="Search Collections..."')
   })
 
-  test('has rarity collections data', () => {
+  test('has static rarity collections data', () => {
     const content = readFileSync(viewPath, 'utf-8')
-    expect(content).toContain('export const rarityCollections')
+    expect(content).toContain('const rarityCollections = [')
   })
 
   test('uses @foreach for collections grid', () => {
@@ -69,6 +69,11 @@ describe('Rarity Page (rarity.stx)', () => {
     expect(content).toContain('@endif')
   })
 
+  test('uses correct field name for image', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('{{ collection.profileImage }}')
+  })
+
   test('contains sort dropdown', () => {
     const content = readFileSync(viewPath, 'utf-8')
     expect(content).toContain('Relevant')
@@ -78,5 +83,13 @@ describe('Rarity Page (rarity.stx)', () => {
     const content = readFileSync(viewPath, 'utf-8')
     expect(content).toContain('<main')
     expect(content).toContain('</main>')
+  })
+
+  test('contains sample collection data', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('Hoodratz')
+    expect(content).toContain('HOODZ')
+    expect(content).toContain('Crypto Punks')
+    expect(content).toContain('PUNK')
   })
 })

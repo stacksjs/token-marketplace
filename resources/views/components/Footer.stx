@@ -1,6 +1,6 @@
 <script>
   // Footer Links
-  export const footerLinks = {
+  const footerLinks = {
     collections: [
       { name: "All NFTs", href: "/collections", active: true },
       { name: "Popular", href: "#", active: false },
@@ -25,12 +25,12 @@
     legal: [
       { name: "Privacy Policy", href: "/privacy-policy" }
     ]
-  };
+  }
 
-  export const siteInfo = {
+  const siteInfo = {
     name: "NAKED /NFTs",
     year: 2022
-  };
+  }
 </script>
 
 <footer class="border-gray-7 bg-gray-9" aria-labelledby="footer-heading">

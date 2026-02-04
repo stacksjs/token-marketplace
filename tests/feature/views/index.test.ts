@@ -58,25 +58,41 @@ describe('Home Page (index.stx)', () => {
     expect(content).toContain('id="create-nft"')
   })
 
-  test('has featured collections data', () => {
+  test('has static data for collections', () => {
     const content = readFileSync(viewPath, 'utf-8')
-    expect(content).toContain('featuredCollections')
-  })
-
-  test('has popular collections data', () => {
-    const content = readFileSync(viewPath, 'utf-8')
-    expect(content).toContain('popularCollections')
+    expect(content).toContain('const featuredCollections = [')
+    expect(content).toContain('const popularCollections = [')
+    expect(content).toContain('const availableNfts = [')
   })
 
   test('uses @foreach for collections', () => {
     const content = readFileSync(viewPath, 'utf-8')
     expect(content).toContain('@foreach(featuredCollections')
     expect(content).toContain('@foreach(popularCollections')
+    expect(content).toContain('@foreach(availableNfts')
+  })
+
+  test('uses correct field names for images', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('{{ collection.imageUrl }}')
+    expect(content).toContain('{{ nft.imageUrl }}')
   })
 
   test('contains Explore collections button', () => {
     const content = readFileSync(viewPath, 'utf-8')
     expect(content).toContain('Explore collections')
     expect(content).toContain('href="/collections"')
+  })
+
+  test('has custom gradient styles', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('.bg-hero-gradient')
+    expect(content).toContain('.bg-cta-gradient')
+  })
+
+  test('contains sample collection data', () => {
+    const content = readFileSync(viewPath, 'utf-8')
+    expect(content).toContain('Hoodratz')
+    expect(content).toContain('Crypto Punks')
   })
 })
