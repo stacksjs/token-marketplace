@@ -1,5 +1,3 @@
-import { setupTestEnvironment } from '@stacksjs/testing'
-
 /**
  * Test Setup
  *
@@ -8,4 +6,10 @@ import { setupTestEnvironment } from '@stacksjs/testing'
  * to prevent the original module from being evaluated.
  */
 
-setupTestEnvironment()
+try {
+  const { setupTestEnvironment } = await import('@stacksjs/testing')
+  setupTestEnvironment()
+} catch (error) {
+  // Framework testing setup not available, running tests without it
+  console.warn('[Test Setup] Framework testing environment not available, running with minimal setup')
+}

@@ -57,10 +57,11 @@
     "stx": "./buddy"
   },
   "dependencies": {
+    "@cwcss/crosswind": "link:@cwcss/crosswind",
     "@stacksjs/clarity": "^0.3.24",
     "@stacksjs/stx": "link:@stacksjs/stx",
     "bun-plugin-stx": "link:bun-plugin-stx",
-    "@cwcss/crosswind": "link:@cwcss/crosswind",
+    "bun-query-builder": "^0.1.10",
     "stacks": "workspace:*"
   },
   "workspaces": [
