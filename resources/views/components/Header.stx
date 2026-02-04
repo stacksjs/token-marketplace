@@ -1,0 +1,60 @@
+<script>
+  // Navigation Links
+  export const navLinks = [
+    { name: "Home", href: "/", active: true },
+    { name: "Explore", href: "/collections", active: true },
+    { name: "Rarity", href: "/rarity", active: true },
+    { name: "Staking", href: "#", active: false, tooltip: "Coming soon" },
+    { name: "Grassroots", href: "#", active: false, tooltip: "Our DAO & DAO framework. Coming soon." }
+  ];
+</script>
+
+<header>
+  <nav class="border-b border-gray-7 bg-gray-9">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-20 justify-between">
+        <div class="flex justify-between">
+          <div class="flex shrink-0 items-center">
+            <a href="/" class="rounded-md focus:bg-pink-custom-2 focus:outline-none lg:px-2">
+              <h1 class="font-serif text-xl uppercase text-gray-50 md:text-2xl font-medium">
+                Naked <span class="text-pink-8"> /NFT<span class="lowercase">s</span> </span>
+              </h1>
+            </a>
+          </div>
+
+          <div class="font-gilroy hidden md:ml-6 md:flex md:items-center lg:space-x-4">
+            @foreach(navLinks as link)
+              @if(link.active)
+                <a
+                  href="{{ link.href }}"
+                  class="rounded-md px-3 py-2 font-bold text-gray-100 transition duration-150 ease-in-out hover:text-pink-8 focus:bg-pink-custom-2 focus:outline-none"
+                >
+                  {{ link.name }}
+                </a>
+              @else
+                <a
+                  href="#"
+                  data-tippy-content="{{ link.tooltip }}"
+                  class="rounded-md px-3 py-2 font-bold text-gray-5 transition duration-150 ease-in-out hover:text-pink-8 focus:bg-pink-custom-2 focus:outline-none"
+                >
+                  {{ link.name }}
+                </a>
+              @endif
+            @endforeach
+          </div>
+        </div>
+
+        <div class="hidden items-center md:flex">
+          <div class="shrink-0">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2"
+            >
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>

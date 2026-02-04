@@ -1,0 +1,14 @@
+<script>
+  import Header from './Header.stx'
+  import Footer from './Footer.stx'
+</script>
+
+<div class="min-h-screen w-full">
+  <Header />
+
+  <main>
+    <slot />
+  </main>
+
+  <Footer />
+</div>
