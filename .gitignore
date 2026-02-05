@@ -36,3 +36,11 @@ storage/framework/core/commerce/storage/logs/stacks.log
 storage/framework/views/dashboard/storage/logs/stacks.log
 storage/framework/core/commerce/src/tests/storage/logs/stacks.log
 .stx/
+
+CLAUDE.md
+
+.qb/model-snapshot.sqlite.json
+
+database/stacks.sqlite-shm
+
+database/stacks.sqlite-wal
