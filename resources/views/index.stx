@@ -23,75 +23,14 @@
       50% { opacity: 0.3; }
     }
   </style>
-  <script>
-    import MainLayout from './components/MainLayout.stx'
+<script server>
+import MainLayout from './components/MainLayout.stx'
 
-    // Featured Collections Data
-    const featuredCollections = [
-      {
-        name: "Hoodratz",
-        slug: "hoodratz",
-        imageUrl: "/assets/images/king-hoodrat.png",
-        description: "A collection of 10,000 unique Hoodratz NFTs",
-        isMinting: true,
-        isFeatured: false
-      },
-      {
-        name: "Crypto Punks",
-        slug: "crypto-punks",
-        imageUrl: "/assets/images/hoodie.png",
-        description: "The original pixel art NFT collection",
-        isMinting: false,
-        isFeatured: true
-      }
-    ]
-
-    // Popular Collections Data
-    const popularCollections = [
-      {
-        name: "Bored Apes",
-        slug: "bored-apes",
-        imageUrl: "/assets/images/anonymouse.png",
-        description: "A collection of 10,000 unique Bored Apes",
-        website: "https://boredapeyachtclub.com"
-      },
-      {
-        name: "Cool Cats",
-        slug: "cool-cats",
-        imageUrl: "/assets/images/hoodie.png",
-        description: "Cool Cats is a collection of 9,999 randomly generated cats",
-        website: "https://coolcatsnft.com"
-      }
-    ]
-
-    // Available NFTs Data
-    const availableNfts = [
-      {
-        id: 1,
-        name: "King Hoodrat",
-        imageUrl: "/assets/images/king-hoodrat.png",
-        collectionName: "Hoodratz",
-        isMinting: true,
-        mintUrl: "https://hoodratz.nakednfts.io/"
-      },
-      {
-        id: 2,
-        name: "Hoodie #1234",
-        imageUrl: "/assets/images/hoodie.png",
-        collectionName: "Hoodratz",
-        isMinting: true,
-        mintUrl: "https://hoodratz.nakednfts.io/"
-      },
-      {
-        id: 3,
-        name: "Anonymouse",
-        imageUrl: "/assets/images/anonymouse.png",
-        collectionName: "Hoodratz",
-        isMinting: true,
-        mintUrl: "https://hoodratz.nakednfts.io/"
-      }
-    ]
-  </script>
+// Fetch data from API
+const API_URL = 'http://localhost:3008'
+const response = await fetch(`${API_URL}/marketplace/home`)
+const { featuredCollections, popularCollections, availableNfts, stats } = await response.json()
+</script>
 </head>
 <body class="antialiased font-sans bg-white text-gray-9">
   <MainLayout>
