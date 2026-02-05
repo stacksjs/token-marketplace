@@ -1,3 +1,22 @@
+<script server>
+// Fetch data from API
+const API_URL = 'http://localhost:3008'
+let featuredCollections = []
+let popularCollections = []
+let availableNfts = []
+let stats = {}
+
+try {
+  const res = await fetch(`${API_URL}/marketplace/home`)
+  const data = await res.json()
+  featuredCollections = data.featuredCollections || []
+  popularCollections = data.popularCollections || []
+  availableNfts = data.availableNfts || []
+  stats = data.stats || {}
+} catch (err) {
+  console.error('Failed to fetch marketplace data:', err)
+}
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,14 +42,6 @@
       50% { opacity: 0.3; }
     }
   </style>
-<script server>
-import MainLayout from './components/MainLayout.stx'
-
-// Fetch data from API
-const API_URL = 'http://localhost:3008'
-const response = await fetch(`${API_URL}/marketplace/home`)
-const { featuredCollections, popularCollections, availableNfts, stats } = await response.json()
-</script>
 </head>
 <body class="antialiased font-sans bg-white text-gray-9">
   <MainLayout>

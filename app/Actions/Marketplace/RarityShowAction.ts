@@ -1,4 +1,5 @@
 import { Action } from '@stacksjs/actions'
+import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
 
@@ -10,45 +11,59 @@ export default new Action({
   async handle(request: RequestInstance) {
     const slug = request.getParam('slug')
 
-    // TODO: Replace with actual ORM query
-    // const collection = await Collection.where('slug', slug).with('nfts').first()
-
-    const collections: Record<string, any> = {
-      'hoodratz': {
-        id: 1,
-        name: 'Hoodratz',
-        slug: 'hoodratz',
-        symbol: 'HDRZ',
-        profileImage: '/assets/images/king-hoodrat.png',
-        twitter: 'https://twitter.com/hoodratz',
-        totalSupply: 10000,
-        floorPrice: 0.25,
-        rarityDistribution: {
-          legendary: { count: 100, percentage: 1 },
-          epic: { count: 500, percentage: 5 },
-          rare: { count: 1500, percentage: 15 },
-          uncommon: { count: 3000, percentage: 30 },
-          common: { count: 4900, percentage: 49 },
-        },
-        attributes: [
-          { name: 'Background', values: ['Gold', 'Blue', 'Red', 'Green', 'Purple'] },
-          { name: 'Body', values: ['Standard', 'Gold', 'Diamond'] },
-          { name: 'Accessory', values: ['Crown', 'Glasses', 'Hat', 'None'] },
-        ],
-        topRanked: [
-          { id: 1, name: 'King Hoodrat', rank: 1, rarity: 'Legendary', imageUrl: '/assets/images/king-hoodrat.png' },
-          { id: 2, name: 'Hoodie #1234', rank: 2, rarity: 'Epic', imageUrl: '/assets/images/hoodie.png' },
-          { id: 3, name: 'Anonymouse', rank: 3, rarity: 'Rare', imageUrl: '/assets/images/anonymouse.png' },
-        ],
-      },
-    }
-
-    const collection = collections[slug as string]
+    const collection = await db
+      .selectFrom('collections')
+      .selectAll()
+      .where('slug', '=', slug)
+      .executeTakeFirst()
 
     if (!collection) {
-      return response.json({ error: 'Collection not found' }, 404)
+      return response.notFound({ error: 'Collection not found' })
     }
 
-    return response.json({ collection })
+    // Fetch NFTs for this collection
+    const nfts = await db
+      .selectFrom('nfts')
+      .selectAll()
+      .where('collection_id', '=', collection.id)
+      .execute()
+
+    // Calculate rarity distribution
+    const rarityCount: Record<string, number> = {}
+    for (const nft of nfts) {
+      const rarity = (nft as any).rarity || 'Common'
+      rarityCount[rarity] = (rarityCount[rarity] || 0) + 1
+    }
+
+    const totalNfts = nfts.length
+    const rarityDistribution: Record<string, { count: number; percentage: number }> = {}
+    for (const [rarity, count] of Object.entries(rarityCount)) {
+      rarityDistribution[rarity.toLowerCase()] = {
+        count,
+        percentage: totalNfts > 0 ? Math.round((count / totalNfts) * 100) : 0,
+      }
+    }
+
+    // Get top ranked NFTs (sorted by rarity)
+    const rarityOrder = ['Legendary', 'Epic', 'Rare', 'Uncommon', 'Common']
+    const topRanked = nfts
+      .sort((a, b) => rarityOrder.indexOf((a as any).rarity || 'Common') - rarityOrder.indexOf((b as any).rarity || 'Common'))
+      .slice(0, 10)
+      .map((nft: any, index) => ({
+        id: nft.id,
+        name: nft.name,
+        rank: index + 1,
+        rarity: nft.rarity,
+        imageUrl: nft.image_url,
+      }))
+
+    return response.json({
+      collection: {
+        ...collection,
+        totalSupply: totalNfts,
+        rarityDistribution,
+        topRanked,
+      },
+    })
   },
 })

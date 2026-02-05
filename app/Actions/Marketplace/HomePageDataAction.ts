@@ -1,5 +1,16 @@
 import { Action } from '@stacksjs/actions'
+import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
+
+// Helper to transform snake_case to camelCase
+function toCamelCase(obj: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+    result[camelKey] = value
+  }
+  return result
+}
 
 export default new Action({
   name: 'Home Page Data',
@@ -7,82 +18,50 @@ export default new Action({
   method: 'GET',
 
   async handle() {
-    // TODO: Replace with actual ORM queries when migrations are run
-    // const featuredCollections = await Collection.where('isFeatured', true).limit(3).get()
-    // const popularCollections = await Collection.where('isLive', true).limit(3).get()
-    // const availableNfts = await Nft.where('isForSale', true).limit(6).get()
+    // Fetch featured collections (minting or featured)
+    const featuredCollectionsRaw = await db
+      .selectFrom('collections')
+      .selectAll()
+      .where('is_minting', '=', 1)
+      .orWhere('is_featured', '=', 1)
+      .limit(3)
+      .execute()
 
-    const featuredCollections = [
-      {
-        id: 1,
-        name: 'Hoodratz',
-        slug: 'hoodratz',
-        description: 'A collection of 10,000 unique Hoodratz NFTs',
-        imageUrl: '/assets/images/king-hoodrat.png',
-        isMinting: true,
-        isFeatured: false,
-      },
-      {
-        id: 2,
-        name: 'Crypto Punks',
-        slug: 'crypto-punks',
-        description: 'The original pixel art NFT collection',
-        imageUrl: '/assets/images/hoodie.png',
-        isMinting: false,
-        isFeatured: true,
-      },
-    ]
+    // Fetch popular/live collections
+    const popularCollectionsRaw = await db
+      .selectFrom('collections')
+      .selectAll()
+      .where('is_live', '=', 1)
+      .limit(3)
+      .execute()
 
-    const popularCollections = [
-      {
-        id: 3,
-        name: 'Bored Apes',
-        slug: 'bored-apes',
-        description: 'A collection of 10,000 unique Bored Apes',
-        imageUrl: '/assets/images/anonymouse.png',
-        website: 'https://boredapeyachtclub.com',
-      },
-      {
-        id: 4,
-        name: 'Cool Cats',
-        slug: 'cool-cats',
-        description: 'Cool Cats is a collection of 9,999 randomly generated cats',
-        imageUrl: '/assets/images/hoodie.png',
-        website: 'https://coolcatsnft.com',
-      },
-    ]
+    // Fetch available NFTs (for sale or minting)
+    const availableNftsRaw = await db
+      .selectFrom('nfts')
+      .selectAll()
+      .where('is_for_sale', '=', 1)
+      .orWhere('is_minting', '=', 1)
+      .limit(6)
+      .execute()
 
-    const availableNfts = [
-      {
-        id: 1,
-        name: 'King Hoodrat',
-        imageUrl: '/assets/images/king-hoodrat.png',
-        collectionName: 'Hoodratz',
-        isMinting: true,
-        mintUrl: 'https://hoodratz.nakednfts.io/',
-      },
-      {
-        id: 2,
-        name: 'Hoodie #1234',
-        imageUrl: '/assets/images/hoodie.png',
-        collectionName: 'Hoodratz',
-        isMinting: true,
-        mintUrl: 'https://hoodratz.nakednfts.io/',
-      },
-      {
-        id: 3,
-        name: 'Anonymouse',
-        imageUrl: '/assets/images/anonymouse.png',
-        collectionName: 'Hoodratz',
-        isMinting: true,
-        mintUrl: 'https://hoodratz.nakednfts.io/',
-      },
-    ]
+    // Transform to camelCase for frontend
+    const featuredCollections = featuredCollectionsRaw.map(toCamelCase)
+    const popularCollections = popularCollectionsRaw.map(toCamelCase)
+    const availableNfts = availableNftsRaw.map(toCamelCase)
+
+    // Calculate stats using count() method
+    const totalCollections = await db
+      .selectFrom('collections')
+      .count()
+
+    const totalNfts = await db
+      .selectFrom('nfts')
+      .count()
 
     const stats = {
-      totalCollections: 24,
-      totalNfts: 10000,
-      totalVolume: '1,234 ETH',
+      totalCollections: Number(totalCollections || 0),
+      totalNfts: Number(totalNfts || 0),
+      totalVolume: '0 ETH',
     }
 
     return response.json({
