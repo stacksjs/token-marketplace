@@ -1,0 +1,202 @@
+<script server>
+// Fetch collections from API
+const API_URL = 'http://localhost:3008'
+let collections = []
+let error = null
+
+try {
+  const res = await fetch(`${API_URL}/marketplace/collections`)
+  if (res.ok) {
+    const data = await res.json()
+    collections = data.collections || []
+  }
+} catch (err) {
+  console.error('Failed to fetch collections:', err)
+  error = 'Failed to load collections'
+}
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse all NFT collections on Naked NFTs marketplace">
+  <title>All Collections | Naked NFTs - Cross-Chain NFT Marketplace</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    .blink {
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body class="antialiased font-sans bg-white text-gray-9">
+  <MainLayout>
+    <!-- Page Content -->
+    <div class="pb-10">
+      <!-- Page Header -->
+      <div class="px-4 pt-24 sm:flex sm:flex-col sm:items-center sm:justify-center sm:px-6 lg:px-8 xl:px-0">
+        <h1 class="mt-4 text-6xl font-bold tracking-tight text-gray-8">All Collections</h1>
+
+        <!-- Search Bar -->
+        <div class="mt-5 mb-10">
+          <div class="relative mt-1 flex items-center">
+            <input
+              type="text"
+              name="search"
+              id="search"
+              class="block h-12 w-full sm:w-110 rounded-md border-gray-300 border pr-12 shadow-sm focus:border-pink-8 focus:ring-pink-8 sm:text-sm px-4"
+              placeholder="Search Collections..."
+            />
+            <div class="absolute inset-y-0 right-0 flex py-1.5 pr-1.5">
+              <button class="inline-flex items-center px-2 font-sans text-sm font-medium text-gray-700 transition duration-150 ease-in-out hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      @if(error)
+        <div class="text-center py-12">
+          <p class="text-gray-5">{{ error }}</p>
+        </div>
+      @elseif(collections.length === 0)
+        <div class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <p class="mt-4 text-gray-5">No collections yet</p>
+        </div>
+      @else
+        <!-- Collections Grid -->
+        <div class="mt-10 mb-24 xl:mx-auto xl:max-w-7xl">
+          <div class="grid grid-cols-1 gap-8 px-4 md:grid-cols-2 lg:grid-cols-3">
+            @foreach(collections as collection)
+              <a
+                href="/collections/{{ collection.slug }}"
+                class="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-150 ease-in-out hover:opacity-75 hover:shadow-lg xl:w-auto"
+              >
+                <!-- Hero Image -->
+                <span aria-hidden="true" class="absolute inset-0">
+                  <img
+                    src="{{ collection.banner_url || collection.image_url || '/assets/images/placeholder.png' }}"
+                    alt="{{ collection.name }} Banner"
+                    class="h-1/2 w-full object-cover object-center"
+                  />
+                </span>
+
+                <!-- Profile Image -->
+                <span aria-hidden="true" class="relative top-32">
+                  <img
+                    src="{{ collection.image_url || '/assets/images/placeholder.png' }}"
+                    alt="{{ collection.name }}"
+                    class="h-36 w-36 rounded-full border-4 border-white object-cover object-center shadow-lg"
+                  />
+                </span>
+
+                <!-- Status Indicators -->
+                <div class="relative top-36 flex items-center justify-center font-semibold text-gray-8">
+                  @if(collection.is_minting)
+                    <div class="flex items-center text-emerald-600">
+                      <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-600"></div>
+                      <span class="ml-2 text-sm uppercase">Minting Live</span>
+                    </div>
+                  @elseif(collection.is_verified)
+                    <div class="flex items-center text-blue-600">
+                      <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                      </svg>
+                      <span class="ml-1 text-sm uppercase">Verified</span>
+                    </div>
+                  @elseif(collection.is_featured)
+                    <div class="flex items-center text-violet-600">
+                      <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      <span class="ml-1 text-sm uppercase">Featured</span>
+                    </div>
+                  @endif
+                </div>
+
+                <!-- Collection Name -->
+                <span class="relative mt-40 break-all text-center text-xl font-bold text-gray-8">{{ collection.name }}</span>
+
+                <!-- Description -->
+                <p class="relative text-center text-sm text-gray-6 mt-2 line-clamp-2">
+                  {{ collection.description }}
+                </p>
+
+                <!-- Stats -->
+                <div class="relative mt-4 flex space-x-6 text-sm text-gray-5">
+                  <div class="text-center">
+                    <p class="font-semibold text-gray-8">{{ collection.total_amount_of_nfts || 0 }}</p>
+                    <p>Items</p>
+                  </div>
+                  @if(collection.floor_price)
+                    <div class="text-center">
+                      <p class="font-semibold text-gray-8">{{ collection.floor_price }} SOL</p>
+                      <p>Floor</p>
+                    </div>
+                  @endif
+                </div>
+
+                <!-- Mint Button -->
+                @if(collection.is_minting)
+                  <div class="relative mt-4 w-full">
+                    <span class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white">
+                      Mint Now
+                    </span>
+                  </div>
+                @endif
+              </a>
+            @endforeach
+
+            <!-- Get Listed Card -->
+            <div class="group relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-500 hover:shadow-lg">
+              <a href="mailto:chris@meema.io" class="flex flex-col items-center">
+                <div class="relative mb-3 h-80 w-full overflow-hidden rounded-lg bg-white sm:aspect-w-2 sm:aspect-h-1 sm:h-64 md:aspect-w-1 md:aspect-h-1">
+                  <div class="flex flex-row justify-center">
+                    <img src="/assets/images/get-listed.png" alt="" class="h-full w-full object-cover object-center" />
+                    <div class="absolute inset-y-40 mt-12">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-pink-8 group-hover:text-pink-9" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <h3 class="mt-2 text-2xl font-semibold text-gray-9 group-hover:text-pink-9">Get Listed</h3>
+                <p class="mt-2 text-base text-gray-400 text-center">Are you interested in getting your collection listed?</p>
+              </a>
+            </div>
+          </div>
+        </div>
+      @endif
+    </div>
+
+    <!-- Client-side search functionality -->
+    <script>
+      document.getElementById('search')?.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase()
+        const cards = document.querySelectorAll('[data-collection-card]')
+
+        cards.forEach(card => {
+          const name = card.getAttribute('data-name')?.toLowerCase() || ''
+          const desc = card.getAttribute('data-desc')?.toLowerCase() || ''
+
+          if (name.includes(query) || desc.includes(query)) {
+            card.style.display = ''
+          } else {
+            card.style.display = 'none'
+          }
+        })
+      })
+    </script>
+  </MainLayout>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<script server>
+// Fetch collection data from API
+const API_URL = 'http://localhost:3008'
+const slug = route.params?.slug || ''
+let collection = null
+let nfts = []
+let error = null
+
+try {
+  const res = await fetch(`${API_URL}/marketplace/collections/${slug}`)
+  if (res.ok) {
+    const data = await res.json()
+    collection = data.collection
+    nfts = data.collection?.nfts || []
+  } else {
+    error = 'Collection not found'
+  }
+} catch (err) {
+  console.error('Failed to fetch collection:', err)
+  error = 'Failed to load collection'
+}
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ collection?.description || 'NFT Collection' }}">
+  <title>{{ collection?.name || 'Collection' }} | Naked NFTs</title>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <style>
+    .blink {
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .progress-bar {
+      transition: width 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body class="antialiased font-sans bg-white text-gray-9">
+  <MainLayout>
+    @if(error)
+      <div class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+          <h1 class="text-4xl font-bold text-gray-8 mb-4">{{ error }}</h1>
+          <a href="/collections" class="text-pink-8 hover:text-pink-9">Browse all collections</a>
+        </div>
+      </div>
+    @else
+      <!-- Collection Header -->
+      <div class="relative">
+        <!-- Banner Image -->
+        <div class="h-64 md:h-80 bg-gradient-to-r from-gray-9 to-gray-7 relative overflow-hidden">
+          @if(collection.banner_url)
+            <img src="{{ collection.banner_url }}" alt="{{ collection.name }} Banner" class="w-full h-full object-cover" />
+          @endif
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+        </div>
+
+        <!-- Collection Info Overlay -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="relative -mt-20 sm:-mt-24">
+            <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
+              <!-- Profile Image -->
+              <div class="shrink-0">
+                <img
+                  src="{{ collection.image_url || '/assets/images/placeholder.png' }}"
+                  alt="{{ collection.name }}"
+                  class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
+                />
+              </div>
+
+              <!-- Collection Details -->
+              <div class="mt-4 sm:mt-0 sm:pb-2">
+                <div class="flex items-center space-x-3">
+                  <h1 class="text-3xl sm:text-4xl font-bold text-gray-9">{{ collection.name }}</h1>
+                  @if(collection.is_verified)
+                    <svg class="h-6 w-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                  @endif
+                </div>
+                @if(collection.is_minting)
+                  <div class="mt-2 flex items-center text-emerald-500">
+                    <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></div>
+                    <span class="ml-2 text-sm font-semibold uppercase">Minting Live</span>
+                  </div>
+                @endif
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats and Description -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Description -->
+          <div class="lg:col-span-2">
+            <p class="text-gray-6 text-lg leading-relaxed">{{ collection.description }}</p>
+
+            <!-- Social Links -->
+            <div class="mt-6 flex space-x-4">
+              @if(collection.website)
+                <a href="{{ collection.website }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
+                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                </a>
+              @endif
+              @if(collection.twitter)
+                <a href="https://twitter.com/{{ collection.twitter }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
+                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                  </svg>
+                </a>
+              @endif
+              @if(collection.discord)
+                <a href="{{ collection.discord }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
+                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                  </svg>
+                </a>
+              @endif
+            </div>
+          </div>
+
+          <!-- Stats Card -->
+          <div class="bg-gray-0.25 rounded-xl p-6">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-9">{{ collection.total_amount_of_nfts || nfts.length || 0 }}</p>
+                <p class="text-sm text-gray-5">Total Items</p>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-9">{{ collection.floor_price || '—' }}</p>
+                <p class="text-sm text-gray-5">Floor Price</p>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-9">{{ collection.volume_traded || '—' }}</p>
+                <p class="text-sm text-gray-5">Volume</p>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-9">{{ collection.unique_holders || '—' }}</p>
+                <p class="text-sm text-gray-5">Owners</p>
+              </div>
+            </div>
+
+            @if(collection.is_minting)
+              <div class="mt-6">
+                <a href="/collections/{{ collection.slug }}/mint">
+                  <button class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150">
+                    Mint Now
+                  </button>
+                </a>
+              </div>
+            @endif
+          </div>
+        </div>
+      </div>
+
+      <!-- NFTs Grid -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 class="text-2xl font-bold text-gray-9 mb-6">Items ({{ nfts.length }})</h2>
+
+        @if(nfts.length > 0)
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            @foreach(nfts as nft)
+              <a href="/nfts/{{ nft.id }}" class="group">
+                <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
+                  <div class="aspect-square">
+                    <img
+                      src="{{ nft.image_url || '/assets/images/placeholder.png' }}"
+                      alt="{{ nft.name }}"
+                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                  </div>
+                  <div class="p-3">
+                    <p class="font-semibold text-gray-9 truncate">{{ nft.name }}</p>
+                    @if(nft.rarity_rank)
+                      <p class="text-xs text-gray-5">Rank #{{ nft.rarity_rank }}</p>
+                    @endif
+                    @if(nft.price)
+                      <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
+                    @endif
+                  </div>
+                </div>
+              </a>
+            @endforeach
+          </div>
+        @else
+          <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <p class="mt-4 text-gray-5">No NFTs in this collection yet</p>
+          </div>
+        @endif
+      </div>
+    @endif
+  </MainLayout>
+</body>
+</html>
