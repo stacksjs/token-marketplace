@@ -6,15 +6,16 @@ export default {
   table: 'collections',
   primaryKey: 'id',
   autoIncrement: true,
-  hasMany: ['Nft'],
+  hasMany: ['Nft', 'Presale'],
+  hasOne: ['CandyMachine'],
   traits: {
     useUuid: true,
     useTimestamps: true,
     useSearch: {
-      displayable: ['id', 'name', 'slug', 'description', 'isLive', 'isFeatured', 'isMinting'],
-      searchable: ['name', 'slug', 'description'],
-      sortable: ['name', 'createdAt'],
-      filterable: ['isLive', 'isFeatured', 'isMinting'],
+      displayable: ['id', 'name', 'slug', 'description', 'isLive', 'isFeatured', 'isMinting', 'isPresaleHappening', 'totalAmountOfNfts'],
+      searchable: ['name', 'slug', 'description', 'mintAddress'],
+      sortable: ['name', 'createdAt', 'totalAmountOfNfts'],
+      filterable: ['isLive', 'isFeatured', 'isMinting', 'isPresaleHappening'],
     },
 
     useSeeder: {
@@ -113,6 +114,56 @@ export default {
         rule: schema.string().optional(),
       },
       factory: faker => faker.internet.url(),
+    },
+
+    candyMachineId: {
+      order: 10,
+      fillable: true,
+      validation: {
+        rule: schema.number().optional(),
+      },
+    },
+
+    traits: {
+      order: 11,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    totalAmountOfNfts: {
+      order: 12,
+      fillable: true,
+      validation: {
+        rule: schema.number().optional().min(0),
+      },
+      factory: faker => faker.number.int({ min: 100, max: 10000 }),
+    },
+
+    isPresaleHappening: {
+      order: 13,
+      fillable: true,
+      validation: {
+        rule: schema.boolean().optional(),
+      },
+      factory: faker => faker.datatype.boolean(),
+    },
+
+    mintAddress: {
+      order: 14,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    metadataUrl: {
+      order: 15,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
     },
   },
 

@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS "candy_machines" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "collection_id" REAL,
+  "candy_machine_address" TEXT,
+  "version" TEXT,
+  "status" TEXT,
+  "message" TEXT,
+  "status_changed_at" TEXT,
+  "items_available" REAL,
+  "items_redeemed" REAL,
+  "mint_price" REAL,
+  "seller_fee_basis_points" REAL,
+  "symbol" TEXT,
+  "is_mutable" INTEGER,
+  "config_line_settings" TEXT,
+  "guards_config" TEXT,
+  "creator_address" TEXT,
+  "treasury_address" TEXT,
+  "created_at" TEXT not null default CURRENT_TIMESTAMP,
+  "updated_at" TEXT
+);

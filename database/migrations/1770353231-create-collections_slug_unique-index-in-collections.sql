@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "collections_collections_slug_unique" ON "collections" ("slug");

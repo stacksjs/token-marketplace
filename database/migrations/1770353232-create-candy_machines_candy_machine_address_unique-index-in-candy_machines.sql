@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "candy_machines_candy_machines_candy_machine_address_unique" ON "candy_machines" ("candy_machine_address");

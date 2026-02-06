@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS "collections" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "name" TEXT,
+  "slug" TEXT,
+  "description" TEXT,
+  "image_url" TEXT,
+  "hero_image_url" TEXT,
+  "is_live" INTEGER,
+  "is_featured" INTEGER,
+  "is_minting" INTEGER,
+  "website" TEXT,
+  "candy_machine_id" REAL,
+  "traits" TEXT,
+  "total_amount_of_nfts" REAL,
+  "is_presale_happening" INTEGER,
+  "mint_address" TEXT,
+  "metadata_url" TEXT,
+  "created_at" TEXT not null default CURRENT_TIMESTAMP,
+  "updated_at" TEXT
+);

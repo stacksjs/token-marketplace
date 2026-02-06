@@ -81,6 +81,9 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/collections', 'Actions/Marketplace/CollectionIndexAction')
   route.get('/collections/{slug}', 'Actions/Marketplace/CollectionShowAction')
 
+  // Collection minting page
+  route.get('/collections/mint/{slug}', 'Actions/Marketplace/ShowMintingCollectionAction')
+
   // NFTs
   route.get('/nfts', 'Actions/Marketplace/NftIndexAction')
   route.get('/nfts/{id}', 'Actions/Marketplace/NftShowAction')
@@ -89,3 +92,32 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/rarity', 'Actions/Marketplace/RarityIndexAction')
   route.get('/rarity/{slug}', 'Actions/Marketplace/RarityShowAction')
 })
+
+// Candy Machine routes (admin - requires authentication)
+route.group({ prefix: '/candy-machine', middleware: 'auth' }, () => {
+  route.post('/', 'Actions/CandyMachine/CreateCandyMachineAction')
+  route.post('/{id}/config-lines', 'Actions/CandyMachine/AddConfigLinesAction')
+  route.get('/{id}', 'Actions/CandyMachine/GetCandyMachineAction')
+  route.patch('/{id}/status', 'Actions/CandyMachine/UpdateCandyMachineStatusAction')
+  route.post('/{id}/sync', 'Actions/CandyMachine/SyncCandyMachineAction')
+})
+
+// Minting routes (public)
+route.group({ prefix: '/mint' }, () => {
+  route.post('/', 'Actions/Mint/MintNftAction')
+  route.post('/verify', 'Actions/Mint/VerifyMintAction')
+  route.get('/status/{transactionId}', 'Actions/Mint/GetMintStatusAction')
+})
+
+// Presale routes
+route.get('/presale/{uuid}', 'Actions/Presale/ShowPresaleAction')
+route.post('/presale/check-eligibility', 'Actions/Presale/CheckPresaleEligibilityAction')
+
+route.group({ prefix: '/presale', middleware: 'auth' }, () => {
+  route.post('/', 'Actions/Presale/CreatePresaleAction')
+  route.patch('/{id}', 'Actions/Presale/UpdatePresaleAction')
+})
+
+// NFT secondary market routes
+route.post('/nfts/buy', 'Actions/Nft/BuyNftAction')
+route.post('/nfts/list', 'Actions/Nft/ListNftAction')

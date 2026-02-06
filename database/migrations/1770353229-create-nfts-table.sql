@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS "nfts" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "collection_id" REAL,
+  "name" TEXT,
+  "token_id" TEXT,
+  "description" TEXT,
+  "image_url" TEXT,
+  "price" REAL,
+  "is_for_sale" INTEGER,
+  "is_minting" INTEGER,
+  "mint_url" TEXT,
+  "rarity" TEXT,
+  "attributes" TEXT,
+  "mint_address" TEXT,
+  "metadata_url" TEXT,
+  "owner_wallet_address" TEXT,
+  "metadata" TEXT,
+  "rarity_score" REAL,
+  "rarity_rank" REAL,
+  "created_at" TEXT not null default CURRENT_TIMESTAMP,
+  "updated_at" TEXT
+);

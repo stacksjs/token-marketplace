@@ -19,5 +19,8 @@
     "build:components": "bun --filter='./core/components/*' run build",
     "publish:framework": "./scripts/publish",
     "publish:dummy-libs": "./scripts/publish-dummy-libs"
+  },
+  "dependencies": {
+    "bun-query-builder": "0.1.10"
   }
 }

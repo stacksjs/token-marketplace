@@ -11,10 +11,10 @@ export default {
     useUuid: true,
     useTimestamps: true,
     useSearch: {
-      displayable: ['id', 'name', 'tokenId', 'description', 'price', 'isForSale', 'isMinting', 'rarity'],
-      searchable: ['name', 'tokenId', 'description', 'rarity'],
-      sortable: ['name', 'price', 'createdAt'],
-      filterable: ['isForSale', 'isMinting', 'rarity', 'collectionId'],
+      displayable: ['id', 'name', 'tokenId', 'description', 'price', 'isForSale', 'isMinting', 'rarity', 'rarityScore', 'rarityRank', 'mintAddress'],
+      searchable: ['name', 'tokenId', 'description', 'rarity', 'mintAddress', 'ownerWalletAddress'],
+      sortable: ['name', 'price', 'createdAt', 'rarityScore', 'rarityRank'],
+      filterable: ['isForSale', 'isMinting', 'rarity', 'collectionId', 'ownerWalletAddress'],
     },
 
     useSeeder: {
@@ -130,6 +130,54 @@ export default {
         rule: schema.string().optional(),
       },
       factory: faker => JSON.stringify({ trait: faker.word.adjective(), value: faker.word.noun() }),
+    },
+
+    mintAddress: {
+      order: 12,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    metadataUrl: {
+      order: 13,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    ownerWalletAddress: {
+      order: 14,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    metadata: {
+      order: 15,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    rarityScore: {
+      order: 16,
+      fillable: true,
+      validation: {
+        rule: schema.number().optional().min(0),
+      },
+    },
+
+    rarityRank: {
+      order: 17,
+      fillable: true,
+      validation: {
+        rule: schema.number().optional().min(0),
+      },
     },
   },
 

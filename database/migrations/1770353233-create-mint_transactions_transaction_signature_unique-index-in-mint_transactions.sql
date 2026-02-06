@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "mint_transactions_mint_transactions_transaction_signature_unique" ON "mint_transactions" ("transaction_signature");
