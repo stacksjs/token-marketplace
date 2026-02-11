@@ -17,35 +17,16 @@ try {
   console.error('Failed to fetch marketplace data:', err)
 }
 </script>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Discover & collect NFTs in the world's first cross-chain marketplace">
-  <title>Home | Naked NFTs - Cross-Chain NFT Marketplace</title>
-  <link rel="stylesheet" href="/assets/css/styles.css">
-  <style>
-    /* Custom Gradients */
-    .bg-hero-gradient {
-      background: linear-gradient(45deg, #010123 0%, #010124 53.95%, #010125 100%);
+
+<script client>
+    connectWallet = function() {
+      console.log('Connect Wallet clicked')
     }
-    .bg-cta-gradient {
-      background: linear-gradient(95.34deg, #010120 1.04%, #07073b 93.77%);
-    }
-    /* Minting Live Animation */
-    .blink {
-      animation: blink 1.5s ease-in-out infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-  </style>
-</head>
-<body class="antialiased font-sans bg-white text-gray-9">
-  <MainLayout>
-    <!-- Hero Section - Desktop -->
+</script>
+
+@layout('default')
+@section('content')
+  <!-- Hero Section - Desktop -->
     <section id="hero" class="hidden lg:block">
       <div class="min-w-screen relative h-bg-height bg-nft-hero bg-cover bg-center bg-no-repeat text-white">
         <div class="relative top-28 ml-10 max-w-3xl xl:ml-32">
@@ -312,6 +293,4 @@ try {
         </div>
       </div>
     </section>
-  </MainLayout>
-</body>
-</html>
+@endsection

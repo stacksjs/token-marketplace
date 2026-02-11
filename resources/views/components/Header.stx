@@ -1,4 +1,4 @@
-<script>
+<script server>
   // Navigation Links
   const navLinks = [
     { name: "Home", href: "/", active: true },
@@ -7,6 +7,14 @@
     { name: "Staking", href: "#", active: false, tooltip: "Coming soon" },
     { name: "Grassroots", href: "#", active: false, tooltip: "Our DAO & DAO framework. Coming soon." }
   ]
+</script>
+
+<script client>
+  function connectWallet() {
+    console.log('Connect Wallet clicked')
+  }
+
+  document.querySelector('[data-wallet-connect]')?.addEventListener('click', connectWallet)
 </script>
 
 <header>
@@ -46,12 +54,29 @@
 
         <div class="hidden items-center md:flex">
           <div class="shrink-0">
+            <!-- Connect Button (shown when not connected) -->
             <button
+              data-wallet-connect
               type="button"
               class="inline-flex items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2"
             >
               Connect Wallet
             </button>
+
+            <!-- Connected State (hidden by default) -->
+            <div data-wallet-connected class="hidden flex items-center space-x-3">
+              <div class="flex items-center space-x-2 bg-gray-8 rounded-md px-3 py-2">
+                <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
+                <span data-wallet-addr class="text-sm font-medium text-gray-100"></span>
+              </div>
+              <button
+                data-wallet-disconnect
+                type="button"
+                class="text-sm text-gray-5 hover:text-white transition duration-150"
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
         </div>
       </div>

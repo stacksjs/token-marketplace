@@ -5,38 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Discover & collect NFTs in the world's first cross-chain marketplace">
   <title>@yield('title', 'Naked NFTs')</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/styles.css">
   <style>
     /* Custom Gilroy Font */
     @font-face {
       font-family: 'Gilroy';
       font-weight: 400;
-      src: url(/fonts/Gilroy-Regular.woff2) format('woff2'),
-           url(/fonts/Gilroy-Regular.woff) format('woff');
+      src: url(/assets/fonts/Gilroy-Regular.woff) format('woff');
     }
     @font-face {
       font-family: 'Gilroy';
       font-weight: 500;
-      src: url(/fonts/Gilroy-Medium.woff2) format('woff2'),
-           url(/fonts/Gilroy-Medium.woff) format('woff');
+      src: url(/assets/fonts/Gilroy-Medium.woff) format('woff');
     }
     @font-face {
       font-family: 'Gilroy';
       font-weight: 600;
-      src: url(/fonts/Gilroy-SemiBold.woff2) format('woff2'),
-           url(/fonts/Gilroy-SemiBold.woff) format('woff');
+      src: url(/assets/fonts/Gilroy-SemiBold.woff) format('woff');
     }
     @font-face {
       font-family: 'Gilroy';
       font-weight: 700;
-      src: url(/fonts/Gilroy-Bold.woff2) format('woff2'),
-           url(/fonts/Gilroy-Bold.woff) format('woff');
+      src: url(/assets/fonts/Gilroy-Bold.woff) format('woff');
     }
     @font-face {
       font-family: 'Gilroy';
       font-weight: 800;
-      src: url(/fonts/Gilroy-ExtraBold.woff2) format('woff2'),
-           url(/fonts/Gilroy-ExtraBold.woff) format('woff');
+      src: url(/assets/fonts/Gilroy-ExtraBold.woff) format('woff');
     }
 
     /* Custom Gradients */
@@ -61,9 +56,12 @@
       background-color: #E50570;
       color: white;
     }
+    
   </style>
 </head>
 <body class="antialiased font-sans bg-white text-gray-dark">
+  <Header />
   @yield('content')
+  <Footer />
 </body>
 </html>
