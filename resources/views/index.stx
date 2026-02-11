@@ -18,12 +18,6 @@ try {
 }
 </script>
 
-<script client>
-    connectWallet = function() {
-      console.log('Connect Wallet clicked')
-    }
-</script>
-
 @layout('default')
 @section('content')
   <!-- Hero Section - Desktop -->
