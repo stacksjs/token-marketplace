@@ -10,6 +10,16 @@ function generateSlug(name: string): string {
     .replace(/(^-|-$)/g, '')
 }
 
+// Helper to transform snake_case to camelCase
+function toCamelCase(obj: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+    result[camelKey] = value
+  }
+  return result
+}
+
 export default new Action({
   name: 'Collection Index',
   description: 'Fetch all collections',
@@ -21,11 +31,14 @@ export default new Action({
       .selectAll()
       .execute()
 
-    // Ensure each collection has a slug
-    const collectionsWithSlugs = collections.map(collection => ({
-      ...collection,
-      slug: collection.slug || generateSlug(collection.name),
-    }))
+    // Transform to camelCase and ensure slugs
+    const collectionsWithSlugs = collections.map((collection) => {
+      const camelCased = toCamelCase(collection)
+      return {
+        ...camelCased,
+        slug: camelCased.slug || generateSlug(camelCased.name),
+      }
+    })
 
     return response.json({ collections: collectionsWithSlugs })
   },
