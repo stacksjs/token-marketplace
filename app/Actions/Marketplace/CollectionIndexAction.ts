@@ -40,6 +40,8 @@ export default new Action({
       }
     })
 
+    console.log('[CollectionIndex] returning', collectionsWithSlugs.length, 'collections:', JSON.stringify(collectionsWithSlugs.slice(0, 2)))
+
     return response.json({ collections: collectionsWithSlugs })
   },
 })

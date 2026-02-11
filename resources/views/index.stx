@@ -1,5 +1,4 @@
 <script server>
-// Fetch data from API
 const API_URL = 'http://localhost:3008'
 let featuredCollections = []
 let popularCollections = []

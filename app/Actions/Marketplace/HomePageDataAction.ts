@@ -35,26 +35,39 @@ export default new Action({
       .limit(3)
       .execute()
 
-    // Fetch available NFTs (for sale or minting) with collection name
+    // Fetch available NFTs (for sale or minting)
     const availableNftsRaw = await db
       .selectFrom('nfts')
-      .leftJoin('collections', 'collections.id', 'nfts.collection_id')
-      .select([
-        'nfts.id', 'nfts.collection_id', 'nfts.name', 'nfts.token_id',
-        'nfts.description', 'nfts.image_url', 'nfts.price',
-        'nfts.is_for_sale', 'nfts.is_minting', 'nfts.mint_url',
-        'nfts.rarity', 'nfts.rarity_rank',
-        'collections.name as collection_name',
-      ])
-      .where('nfts.is_for_sale', '=', 1)
-      .orWhere('nfts.is_minting', '=', 1)
+      .selectAll()
+      .where('is_for_sale', '=', 1)
+      .orWhere('is_minting', '=', 1)
       .limit(6)
       .execute()
+
+    // Look up collection names separately (query builder JOIN + select is broken for SQLite)
+    const collectionIds = [...new Set(availableNftsRaw.map((n: any) => n.collection_id).filter(Boolean))]
+    const collectionMap: Record<number, string> = {}
+    if (collectionIds.length > 0) {
+      const cols = await db
+        .selectFrom('collections')
+        .selectAll()
+        .where('id', 'in', collectionIds)
+        .execute()
+      for (const c of cols) {
+        collectionMap[(c as any).id] = (c as any).name
+      }
+    }
+
+    // Merge collection_name into each NFT
+    const availableNftsWithCollection = availableNftsRaw.map((nft: any) => ({
+      ...nft,
+      collection_name: collectionMap[nft.collection_id] || null,
+    }))
 
     // Transform to camelCase for frontend
     const featuredCollections = featuredCollectionsRaw.map(toCamelCase)
     const popularCollections = popularCollectionsRaw.map(toCamelCase)
-    const availableNfts = availableNftsRaw.map(toCamelCase)
+    const availableNfts = availableNftsWithCollection.map(toCamelCase)
 
     // Calculate stats using count() method
     const totalCollections = await db
@@ -70,6 +83,8 @@ export default new Action({
       totalNfts: Number(totalNfts || 0),
       totalVolume: '0 ETH',
     }
+
+    console.log('[HomePageData] featuredCollections:', featuredCollections.length, 'popularCollections:', popularCollections.length, 'availableNfts:', availableNfts.length, 'stats:', stats)
 
     return response.json({
       featuredCollections,

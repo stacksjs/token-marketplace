@@ -23,8 +23,11 @@ export default new Action({
       .selectAll()
       .execute()
 
+    const result = collections.map(toCamelCase)
+    console.log('[RarityIndex] returning', result.length, 'collections:', JSON.stringify(result.slice(0, 2)))
+
     return response.json({
-      collections: collections.map(toCamelCase),
+      collections: result,
     })
   },
 })
