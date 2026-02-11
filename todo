@@ -1,0 +1,70 @@
+# ts-tokens Integration Checklist
+
+## Phase 1: Link ts-tokens & Upgrade TokenService
+- [x] Add ts-tokens as dependency via `bun link`
+- [x] Add ts-tokens to package.json dependencies
+- [x] Import marketplace functions (listNFT, delistNFT, buyListedNFT, makeOffer, acceptOffer, etc.)
+- [x] Import candy machine query functions (getCandyMachineInfo, getLoadedItems, getMintedItems)
+- [x] Import guard functions (addGuards, updateGuards, removeGuards, mintWithGuard)
+- [x] Import NFT creation functions (createCollection, createNFT)
+- [x] Replace XOR-based sha256 with Bun.CryptoHasher('sha256')
+- [x] Add listNFTForSale() method with mock mode
+- [x] Add delistNFT() method with mock mode
+- [x] Add buyListedNFT() method with mock mode
+- [x] Add makeOffer() / acceptOffer() / cancelOffer() methods with mock mode
+- [x] Add createAuction() / placeBid() / settleAuction() methods with mock mode
+- [x] Add getCandyMachineOnChainInfo() method with mock mode
+- [x] Add createOnChainCollection() method with mock mode
+- [x] Add getRoyaltyInfo() method with mock mode
+- [x] Add guard management methods (addGuards, updateGuards, removeGuards)
+- [x] Update config/tokens.ts with marketplace config
+- [x] Update config/tokens.ts with guard defaults
+
+## Phase 2: Upgrade Candy Machine to Full On-Chain
+- [x] Upgrade SyncCandyMachineAction to use getCandyMachineOnChainInfo
+- [x] Upgrade GetCandyMachineAction to optionally fetch on-chain state
+- [x] Create ManageGuardsAction (add/update/remove guards)
+- [x] Create UploadConfigLinesAction (JSON upload with batch processing)
+
+## Phase 3: Upgrade Secondary Market to On-Chain
+- [x] Upgrade ListNftAction to use tokenService.listNFTForSale (delegate pattern)
+- [x] Upgrade BuyNftAction to use tokenService.buyListedNFT (atomic swap + royalties)
+- [x] Create DelistNftAction (revoke delegate)
+- [x] Create MakeOfferAction
+- [x] Create AcceptOfferAction
+- [x] Create CancelOfferAction
+- [x] Create CreateAuctionAction
+- [x] Create PlaceBidAction
+- [x] Create SettleAuctionAction
+- [x] Add all new routes to routes/api.ts
+
+## Phase 4: Database Migrations
+- [x] Create offers table migration
+- [x] Create auctions table migration
+- [x] Create bids table migration
+- [x] Add listing fields to nfts table (listing_id, delegate_address, listed_at, listing_price)
+
+## Phase 5: Tests
+- [x] TokenService unit tests (mock mode)
+- [x] TokenService integration tests (lifecycle flows)
+- [x] Candy machine API route tests
+- [x] NFT secondary market API route tests
+- [x] Mint/presale API route tests
+- [x] Mint page view tests
+- [x] Collection detail view tests
+- [x] Marketplace migration tests (offers, auctions, bids)
+- [x] UI DOM tests (marketplace components)
+
+## Phase 6: View Updates
+- [x] Add "Make Offer" button to collection detail NFT cards
+- [x] Add candy machine guard info to mint page
+- [x] Update todo file with phased checklist
+
+## Verification Steps
+- [ ] `bun link ts-tokens` succeeds, imports resolve
+- [ ] All TokenService methods work with TOKENS_MOCK_MODE=true
+- [ ] `bun test` passes all existing + new tests
+- [ ] `buddy dev` starts without import errors
+- [ ] `buddy migrate` runs new migrations
+- [ ] Hit each new endpoint with curl and verify responses
+- [ ] With mock mode off, test candy machine create + mint on devnet
