@@ -164,31 +164,29 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Items ({{ nfts.length }})</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(nfts as nft)
-            <a href="/nfts/{{ nft.id }}" class="group">
-              <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
-                <div class="aspect-square">
-                  <img
-                    src="{{ nft.image_url || '/assets/images/placeholder.png' }}"
-                    alt="{{ nft.name }}"
-                    class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  />
-                </div>
-                <div class="p-3">
-                  <p class="font-semibold text-gray-9 truncate">{{ nft.name }}</p>
-                  @if(nft.rarity_rank)
-                    <p class="text-xs text-gray-5">Rank #{{ nft.rarity_rank }}</p>
+            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
+              <div class="aspect-square">
+                <img
+                  src="{{ nft.image_url || '/assets/images/placeholder.png' }}"
+                  alt="{{ nft.name }}"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <div class="p-3">
+                <p class="font-semibold text-gray-9 truncate">{{ nft.name }}</p>
+                @if(nft.rarity_rank)
+                  <p class="text-xs text-gray-5">Rank #{{ nft.rarity_rank }}</p>
+                @endif
+                @if(nft.price)
+                  <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
+                @endif
+                <div class="mt-2 flex space-x-2">
+                  @if(nft.is_for_sale)
+                    <button class="make-offer-btn flex-1 text-xs bg-purple-100 text-purple-700 py-1 px-2 rounded hover:bg-purple-200 transition">Make Offer</button>
                   @endif
-                  @if(nft.price)
-                    <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
-                  @endif
-                  <div class="mt-2 flex space-x-2">
-                    @if(nft.is_for_sale)
-                      <button class="make-offer-btn flex-1 text-xs bg-purple-100 text-purple-700 py-1 px-2 rounded hover:bg-purple-200 transition">Make Offer</button>
-                    @endif
-                  </div>
                 </div>
               </div>
-            </a>
+            </div>
           @endforeach
         </div>
 
