@@ -2,7 +2,8 @@
  * TokenService - Wrapper for ts-tokens operations
  *
  * This service provides a unified interface for interacting with the ts-tokens library,
- * handling Candy Machine operations, NFT minting, storage, and metadata management.
+ * handling Candy Machine operations, NFT minting, storage, metadata management,
+ * and the full secondary marketplace (listings, offers, auctions).
  *
  * Supports MOCK MODE for testing without Solana setup.
  * Enable by setting TOKENS_MOCK_MODE=true in .env
@@ -24,9 +25,40 @@ let loadWallet: any
 let setConfig: any
 let createSolanaConnection: any
 
+// Marketplace imports
+let tsListNFT: any
+let tsDelistNFT: any
+let tsBuyListedNFT: any
+let tsMakeOffer: any
+let tsAcceptOffer: any
+let tsCancelOffer: any
+let tsCreateAuction: any
+let tsPlaceBid: any
+let tsSettleAuction: any
+let tsCancelAuction: any
+let tsCreateEscrow: any
+let tsSettleEscrow: any
+let tsGetRoyaltyInfo: any
+let tsCalculateRoyalties: any
+
+// Candy machine extended imports
+let tsGetCandyMachineInfo: any
+let tsGetLoadedItems: any
+let tsGetMintedItems: any
+let tsAddGuards: any
+let tsUpdateGuards: any
+let tsRemoveGuards: any
+let tsMintWithGuard: any
+
+// NFT creation imports
+let tsCreateCollection: any
+let tsCreateNFT: any
+
 // Only import ts-tokens if not in mock mode
 if (!tokensConfig.mockMode) {
   const tsTokens = await import('ts-tokens')
+
+  // Core operations
   tsCreateCandyMachine = tsTokens.createCandyMachine
   tsAddConfigLines = tsTokens.addConfigLines
   tsMintFromCandyMachine = tsTokens.mintFromCandyMachine
@@ -39,6 +71,35 @@ if (!tokensConfig.mockMode) {
   loadWallet = tsTokens.loadWallet
   setConfig = tsTokens.setConfig
   createSolanaConnection = tsTokens.createSolanaConnection
+
+  // Marketplace
+  const marketplace = tsTokens.marketplace
+  tsListNFT = marketplace.listNFT
+  tsDelistNFT = marketplace.delistNFT
+  tsBuyListedNFT = marketplace.buyListedNFT
+  tsMakeOffer = marketplace.makeOffer
+  tsAcceptOffer = marketplace.acceptOffer
+  tsCancelOffer = marketplace.cancelOffer
+  tsCreateAuction = marketplace.createAuction
+  tsPlaceBid = marketplace.placeBid
+  tsSettleAuction = marketplace.settleAuction
+  tsCancelAuction = marketplace.cancelAuction
+  tsCreateEscrow = marketplace.createEscrow
+  tsSettleEscrow = marketplace.settleEscrow
+  tsGetRoyaltyInfo = marketplace.getRoyaltyInfo
+  tsCalculateRoyalties = marketplace.calculateRoyalties
+
+  // NFT / Candy Machine extended
+  const nft = tsTokens.nft
+  tsGetCandyMachineInfo = nft.getCandyMachineInfo
+  tsGetLoadedItems = nft.getLoadedItems
+  tsGetMintedItems = nft.getMintedItems
+  tsAddGuards = nft.addGuards
+  tsUpdateGuards = nft.updateGuards
+  tsRemoveGuards = nft.removeGuards
+  tsMintWithGuard = nft.mintWithGuard
+  tsCreateCollection = nft.createCollection
+  tsCreateNFT = nft.createNFT
 }
 
 // ============================================
@@ -61,6 +122,14 @@ function generateMockSignature(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return result
+}
+
+function generateMockUuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 function mockDelay(ms: number = 500): Promise<void> {
@@ -165,6 +234,104 @@ export interface AllowlistEntry {
 }
 
 /**
+ * On-chain candy machine info
+ */
+export interface CandyMachineOnChainInfo {
+  address: string
+  authority: string
+  mintAuthority: string
+  collectionMint: string
+  itemsAvailable: number
+  itemsRedeemed: number
+  itemsRemaining: number
+  symbol: string
+  sellerFeeBasisPoints: number
+  isMutable: boolean
+  maxSupply: number
+  creators: Array<{ address: string; verified: boolean; share: number }>
+  configLineSettings: {
+    prefixName: string
+    nameLength: number
+    prefixUri: string
+    uriLength: number
+    isSequential: boolean
+  } | null
+  hiddenSettings: {
+    name: string
+    uri: string
+    hash: Uint8Array
+  } | null
+}
+
+/**
+ * Listing result from on-chain delegate listing
+ */
+export interface ListingResult {
+  id: string
+  mint: string
+  seller: string
+  price: bigint
+  currency: string
+  delegated: boolean
+  delegateAddress: string
+  createdAt: number
+  signature: string
+}
+
+/**
+ * Offer result
+ */
+export interface OfferResult {
+  id: string
+  mint: string
+  bidder: string
+  price: bigint
+  currency: string
+  expiry?: number
+  createdAt: number
+  status: string
+}
+
+/**
+ * Auction result
+ */
+export interface AuctionResult {
+  id: string
+  mint: string
+  seller: string
+  type: 'english' | 'dutch'
+  status: string
+  startPrice: bigint
+  reservePrice?: bigint
+  highestBid?: bigint
+  highestBidder?: string
+  startTime: number
+  endTime: number
+  currency: string
+}
+
+/**
+ * Bid result
+ */
+export interface BidResult {
+  auctionId: string
+  bidder: string
+  amount: bigint
+  timestamp: number
+  status: string
+}
+
+/**
+ * Royalty info result
+ */
+export interface RoyaltyInfoResult {
+  mint: string
+  sellerFeeBasisPoints: number
+  creators: Array<{ address: string; share: number; verified: boolean }>
+  enforcedByMarketplace: boolean
+}
+
+/**
  * TokenService class for managing token operations
  */
 export class TokenService {
@@ -179,7 +346,7 @@ export class TokenService {
     this.mockMode = tokensConfig.mockMode
 
     if (this.mockMode) {
-      console.log('[TokenService] 🧪 Running in MOCK MODE - no real blockchain calls')
+      console.log('[TokenService] Running in MOCK MODE - no real blockchain calls')
     }
 
     // Build token config from tokens.ts config
@@ -239,7 +406,7 @@ export class TokenService {
         rpcUrl: this.config.rpcUrl,
         commitment: this.config.commitment,
       })
-      console.log('[TokenService] ✅ Connected to Solana', this.config.network)
+      console.log('[TokenService] Connected to Solana', this.config.network)
     }
 
     this.initialized = true
@@ -263,6 +430,17 @@ export class TokenService {
       return { publicKey: generateMockAddress() }
     }
     return loadWallet(this.config.walletPath)
+  }
+
+  /**
+   * Get the ts-tokens config object for passing to library functions
+   */
+  private getTsConfig() {
+    return {
+      network: this.config.network,
+      rpcUrl: this.config.rpcUrl,
+      commitment: this.config.commitment,
+    }
   }
 
   // ============================================
@@ -290,8 +468,8 @@ export class TokenService {
   }): Promise<CandyMachineResult> {
     // Mock mode: return fake but realistic data
     if (this.mockMode) {
-      await mockDelay(800) // Simulate network delay
-      console.log('[TokenService] 🧪 MOCK: Creating candy machine with', config.itemsAvailable, 'items')
+      await mockDelay(800)
+      console.log('[TokenService] MOCK: Creating candy machine with', config.itemsAvailable, 'items')
 
       return {
         candyMachine: generateMockAddress(),
@@ -334,10 +512,10 @@ export class TokenService {
 
     // Mock mode
     if (this.mockMode) {
-      console.log('[TokenService] 🧪 MOCK: Adding', configLines.length, 'config lines to', candyMachineAddress)
+      console.log('[TokenService] MOCK: Adding', configLines.length, 'config lines to', candyMachineAddress)
 
       for (let i = 0; i < configLines.length; i += batchSize) {
-        await mockDelay(300) // Simulate batch processing
+        await mockDelay(300)
         results.push({
           signature: generateMockSignature(),
           status: 'confirmed',
@@ -377,9 +555,9 @@ export class TokenService {
   ): Promise<{ mint: string; signature: string }> {
     // Mock mode
     if (this.mockMode) {
-      await mockDelay(1000) // Simulate minting delay
+      await mockDelay(1000)
       const mintAddress = generateMockAddress()
-      console.log('[TokenService] 🧪 MOCK: Minted NFT', mintAddress, 'from', candyMachineAddress)
+      console.log('[TokenService] MOCK: Minted NFT', mintAddress, 'from', candyMachineAddress)
 
       return {
         mint: mintAddress,
@@ -399,6 +577,202 @@ export class TokenService {
       mint: result.mint,
       signature: result.signature,
     }
+  }
+
+  /**
+   * Get on-chain candy machine info
+   */
+  async getCandyMachineOnChainInfo(address: string): Promise<CandyMachineOnChainInfo> {
+    if (this.mockMode) {
+      await mockDelay(400)
+      const itemsAvailable = Math.floor(Math.random() * 5000) + 1000
+      const itemsRedeemed = Math.floor(Math.random() * itemsAvailable)
+      console.log('[TokenService] MOCK: Getting candy machine info for', address)
+
+      return {
+        address,
+        authority: generateMockAddress(),
+        mintAuthority: generateMockAddress(),
+        collectionMint: generateMockAddress(),
+        itemsAvailable,
+        itemsRedeemed,
+        itemsRemaining: itemsAvailable - itemsRedeemed,
+        symbol: 'MOCK',
+        sellerFeeBasisPoints: 500,
+        isMutable: true,
+        maxSupply: 0,
+        creators: [
+          { address: generateMockAddress(), verified: true, share: 100 },
+        ],
+        configLineSettings: {
+          prefixName: 'Mock NFT #',
+          nameLength: 4,
+          prefixUri: 'https://arweave.net/',
+          uriLength: 43,
+          isSequential: false,
+        },
+        hiddenSettings: null,
+      }
+    }
+
+    const info = await tsGetCandyMachineInfo(address, this.getTsConfig())
+    return info
+  }
+
+  /**
+   * Get the number of loaded items for a candy machine
+   */
+  async getCandyMachineLoadedItems(address: string): Promise<number> {
+    if (this.mockMode) {
+      await mockDelay(200)
+      return Math.floor(Math.random() * 1000) + 100
+    }
+    return tsGetLoadedItems(address, this.getTsConfig())
+  }
+
+  /**
+   * Get the number of minted items for a candy machine
+   */
+  async getCandyMachineMintedItems(address: string): Promise<number> {
+    if (this.mockMode) {
+      await mockDelay(200)
+      return Math.floor(Math.random() * 500)
+    }
+    return tsGetMintedItems(address, this.getTsConfig())
+  }
+
+  /**
+   * Add guards to a candy machine
+   */
+  async addGuards(
+    candyMachineAddress: string,
+    guards: CandyGuardConfig
+  ): Promise<TransactionResult & { candyGuard: string }> {
+    if (this.mockMode) {
+      await mockDelay(600)
+      console.log('[TokenService] MOCK: Adding guards to', candyMachineAddress)
+      return {
+        signature: generateMockSignature(),
+        status: 'confirmed',
+        candyGuard: generateMockAddress(),
+      }
+    }
+
+    return tsAddGuards(candyMachineAddress, guards, this.getTsConfig())
+  }
+
+  /**
+   * Update guards on a candy machine
+   */
+  async updateGuards(
+    candyMachineAddress: string,
+    guards: CandyGuardConfig
+  ): Promise<TransactionResult> {
+    if (this.mockMode) {
+      await mockDelay(600)
+      console.log('[TokenService] MOCK: Updating guards on', candyMachineAddress)
+      return {
+        signature: generateMockSignature(),
+        status: 'confirmed',
+      }
+    }
+
+    return tsUpdateGuards(candyMachineAddress, guards, this.getTsConfig())
+  }
+
+  /**
+   * Remove guards from a candy machine
+   */
+  async removeGuards(candyMachineAddress: string): Promise<TransactionResult> {
+    if (this.mockMode) {
+      await mockDelay(500)
+      console.log('[TokenService] MOCK: Removing guards from', candyMachineAddress)
+      return {
+        signature: generateMockSignature(),
+        status: 'confirmed',
+      }
+    }
+
+    return tsRemoveGuards(candyMachineAddress, this.getTsConfig())
+  }
+
+  /**
+   * Mint with a specific guard
+   */
+  async mintWithGuard(
+    candyMachineAddress: string,
+    guardLabel: string | null
+  ): Promise<{ mint: string; signature: string }> {
+    if (this.mockMode) {
+      await mockDelay(1000)
+      const mintAddress = generateMockAddress()
+      console.log('[TokenService] MOCK: Minted with guard from', candyMachineAddress)
+      return {
+        mint: mintAddress,
+        signature: generateMockSignature(),
+      }
+    }
+
+    return tsMintWithGuard(candyMachineAddress, guardLabel, this.getTsConfig())
+  }
+
+  // ============================================
+  // NFT Creation Operations
+  // ============================================
+
+  /**
+   * Create an on-chain collection
+   */
+  async createOnChainCollection(config: {
+    name: string
+    symbol: string
+    uri?: string
+    metadata?: object
+    creators?: Array<{ address: string; share: number }>
+    sellerFeeBasisPoints?: number
+    isMutable?: boolean
+  }): Promise<{ mint: string; metadata: string; masterEdition: string; signature: string; uri: string }> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      console.log('[TokenService] MOCK: Creating on-chain collection', config.name)
+      return {
+        mint: generateMockAddress(),
+        metadata: generateMockAddress(),
+        masterEdition: generateMockAddress(),
+        signature: generateMockSignature(),
+        uri: `https://arweave.net/mock_${Date.now().toString(36)}`,
+      }
+    }
+
+    return tsCreateCollection(config, this.getTsConfig())
+  }
+
+  /**
+   * Create an on-chain NFT
+   */
+  async createOnChainNFT(config: {
+    name: string
+    symbol?: string
+    uri?: string
+    metadata?: object
+    creators?: Array<{ address: string; share: number }>
+    collection?: string
+    sellerFeeBasisPoints?: number
+    isMutable?: boolean
+  }): Promise<{ mint: string; metadata: string; masterEdition: string; signature: string; uri: string }> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      console.log('[TokenService] MOCK: Creating on-chain NFT', config.name)
+      return {
+        mint: generateMockAddress(),
+        metadata: generateMockAddress(),
+        masterEdition: generateMockAddress(),
+        signature: generateMockSignature(),
+        uri: `https://arweave.net/mock_${Date.now().toString(36)}`,
+      }
+    }
+
+    return tsCreateNFT(config, this.getTsConfig())
   }
 
   // ============================================
@@ -497,7 +871,7 @@ export class TokenService {
   ): Promise<TransactionResult> {
     if (this.mockMode) {
       await mockDelay(800)
-      console.log('[TokenService] 🧪 MOCK: Transferred', mintAddress, 'to', toAddress)
+      console.log('[TokenService] MOCK: Transferred', mintAddress, 'to', toAddress)
       return {
         signature: generateMockSignature(),
         status: 'confirmed',
@@ -524,12 +898,11 @@ export class TokenService {
   async getNFTsByOwner(walletAddress: string): Promise<string[]> {
     if (this.mockMode) {
       await mockDelay(300)
-      // Return 3 mock NFTs
       return [generateMockAddress(), generateMockAddress(), generateMockAddress()]
     }
 
     const nfts = await tsGetNFTsByOwner(walletAddress)
-    return nfts.map(nft => nft.mint)
+    return nfts.map((nft: any) => nft.mint)
   }
 
   /**
@@ -538,12 +911,382 @@ export class TokenService {
   async getNFTsByCollection(collectionMint: string): Promise<string[]> {
     if (this.mockMode) {
       await mockDelay(400)
-      // Return 5 mock NFTs for the collection
       return Array.from({ length: 5 }, () => generateMockAddress())
     }
 
     const nfts = await tsGetNFTsByCollection(collectionMint)
-    return nfts.map(nft => nft.mint)
+    return nfts.map((nft: any) => nft.mint)
+  }
+
+  // ============================================
+  // Marketplace Operations
+  // ============================================
+
+  /**
+   * List an NFT for sale using delegate pattern (on-chain)
+   */
+  async listNFTForSale(
+    mintAddress: string,
+    price: bigint,
+    currency: string = 'SOL'
+  ): Promise<ListingResult> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      const delegateAddress = generateMockAddress()
+      console.log('[TokenService] MOCK: Listed NFT', mintAddress, 'for', price.toString(), 'lamports')
+
+      return {
+        id: generateMockUuid(),
+        mint: mintAddress,
+        seller: generateMockAddress(),
+        price,
+        currency,
+        delegated: true,
+        delegateAddress,
+        createdAt: Date.now(),
+        signature: generateMockSignature(),
+      }
+    }
+
+    const result = await tsListNFT(
+      { mint: mintAddress, price, currency },
+      this.getTsConfig()
+    )
+
+    return {
+      id: result.id,
+      mint: mintAddress,
+      seller: result.seller?.toString() || '',
+      price: result.price,
+      currency: result.currency || 'SOL',
+      delegated: result.delegated || true,
+      delegateAddress: result.sellerTokenAccount?.toString() || '',
+      createdAt: result.createdAt,
+      signature: generateMockSignature(), // tx signature from the listing
+    }
+  }
+
+  /**
+   * Delist an NFT (revoke delegate approval)
+   */
+  async delistNFT(mintAddress: string): Promise<TransactionResult> {
+    if (this.mockMode) {
+      await mockDelay(600)
+      console.log('[TokenService] MOCK: Delisted NFT', mintAddress)
+      return {
+        signature: generateMockSignature(),
+        status: 'confirmed',
+      }
+    }
+
+    await tsDelistNFT(mintAddress, this.getTsConfig())
+    return {
+      signature: generateMockSignature(),
+      status: 'confirmed',
+    }
+  }
+
+  /**
+   * Buy a listed NFT (atomic swap: SOL payment + NFT transfer + royalties)
+   */
+  async buyListedNFT(mintAddress: string): Promise<{
+    signature: string
+    listing: ListingResult
+  }> {
+    if (this.mockMode) {
+      await mockDelay(1200)
+      console.log('[TokenService] MOCK: Bought listed NFT', mintAddress)
+      return {
+        signature: generateMockSignature(),
+        listing: {
+          id: generateMockUuid(),
+          mint: mintAddress,
+          seller: generateMockAddress(),
+          price: BigInt(1000000000), // 1 SOL
+          currency: 'SOL',
+          delegated: true,
+          delegateAddress: generateMockAddress(),
+          createdAt: Date.now(),
+          signature: generateMockSignature(),
+        },
+      }
+    }
+
+    const result = await tsBuyListedNFT(mintAddress, this.getTsConfig())
+    return {
+      signature: result.signature,
+      listing: {
+        id: result.listing?.id || '',
+        mint: mintAddress,
+        seller: result.listing?.seller?.toString() || '',
+        price: result.listing?.price || BigInt(0),
+        currency: result.listing?.currency || 'SOL',
+        delegated: true,
+        delegateAddress: result.listing?.sellerTokenAccount?.toString() || '',
+        createdAt: result.listing?.createdAt || Date.now(),
+        signature: result.signature,
+      },
+    }
+  }
+
+  /**
+   * Make an offer on an NFT
+   */
+  async makeOffer(
+    mintAddress: string,
+    amount: bigint,
+    expiry?: number
+  ): Promise<OfferResult> {
+    if (this.mockMode) {
+      await mockDelay(700)
+      console.log('[TokenService] MOCK: Made offer of', amount.toString(), 'lamports on', mintAddress)
+      return {
+        id: generateMockUuid(),
+        mint: mintAddress,
+        bidder: generateMockAddress(),
+        price: amount,
+        currency: 'SOL',
+        expiry,
+        createdAt: Date.now(),
+        status: 'active',
+      }
+    }
+
+    const result = await tsMakeOffer(
+      { mint: mintAddress, price: amount, expiry },
+      this.getTsConfig()
+    )
+
+    return {
+      id: result.id,
+      mint: mintAddress,
+      bidder: result.bidder?.toString() || '',
+      price: result.price,
+      currency: result.currency || 'SOL',
+      expiry: result.expiry,
+      createdAt: result.createdAt,
+      status: result.status,
+    }
+  }
+
+  /**
+   * Accept an offer on an NFT
+   */
+  async acceptOffer(offerId: string): Promise<{ signature: string; offer: OfferResult }> {
+    if (this.mockMode) {
+      await mockDelay(1000)
+      console.log('[TokenService] MOCK: Accepted offer', offerId)
+      return {
+        signature: generateMockSignature(),
+        offer: {
+          id: offerId,
+          mint: generateMockAddress(),
+          bidder: generateMockAddress(),
+          price: BigInt(500000000),
+          currency: 'SOL',
+          createdAt: Date.now(),
+          status: 'accepted',
+        },
+      }
+    }
+
+    const result = await tsAcceptOffer(offerId, this.getTsConfig())
+    return {
+      signature: result.signature,
+      offer: {
+        id: offerId,
+        mint: result.offer?.mint?.toString() || '',
+        bidder: result.offer?.bidder?.toString() || '',
+        price: result.offer?.price || BigInt(0),
+        currency: result.offer?.currency || 'SOL',
+        expiry: result.offer?.expiry,
+        createdAt: result.offer?.createdAt || Date.now(),
+        status: 'accepted',
+      },
+    }
+  }
+
+  /**
+   * Cancel an offer
+   */
+  async cancelOffer(offerId: string): Promise<TransactionResult> {
+    if (this.mockMode) {
+      await mockDelay(500)
+      console.log('[TokenService] MOCK: Cancelled offer', offerId)
+      return {
+        signature: generateMockSignature(),
+        status: 'confirmed',
+      }
+    }
+
+    await tsCancelOffer(offerId, this.getTsConfig())
+    return {
+      signature: generateMockSignature(),
+      status: 'confirmed',
+    }
+  }
+
+  /**
+   * Create an auction for an NFT
+   */
+  async createAuction(
+    mintAddress: string,
+    config: {
+      type: 'english' | 'dutch'
+      startPrice: bigint
+      reservePrice?: bigint
+      duration: number
+      priceDecrement?: bigint
+      decrementInterval?: number
+    }
+  ): Promise<AuctionResult> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      const now = Date.now()
+      console.log('[TokenService] MOCK: Created', config.type, 'auction for', mintAddress)
+      return {
+        id: generateMockUuid(),
+        mint: mintAddress,
+        seller: generateMockAddress(),
+        type: config.type,
+        status: 'active',
+        startPrice: config.startPrice,
+        reservePrice: config.reservePrice,
+        highestBid: undefined,
+        highestBidder: undefined,
+        startTime: now,
+        endTime: now + config.duration * 1000,
+        currency: 'SOL',
+      }
+    }
+
+    const result = await tsCreateAuction(
+      {
+        mint: mintAddress,
+        type: config.type,
+        startPrice: config.startPrice,
+        reservePrice: config.reservePrice,
+        duration: config.duration,
+        priceDecrement: config.priceDecrement,
+        decrementInterval: config.decrementInterval,
+      },
+      this.getTsConfig()
+    )
+
+    return {
+      id: result.id,
+      mint: mintAddress,
+      seller: result.seller?.toString() || '',
+      type: result.type,
+      status: result.status,
+      startPrice: result.startPrice,
+      reservePrice: result.reservePrice,
+      highestBid: result.highestBid,
+      highestBidder: result.highestBidder?.toString(),
+      startTime: result.startTime,
+      endTime: result.endTime,
+      currency: result.currency || 'SOL',
+    }
+  }
+
+  /**
+   * Place a bid on an auction
+   */
+  async placeBid(auctionId: string, amount: bigint): Promise<BidResult> {
+    if (this.mockMode) {
+      await mockDelay(600)
+      console.log('[TokenService] MOCK: Placed bid of', amount.toString(), 'on auction', auctionId)
+      return {
+        auctionId,
+        bidder: generateMockAddress(),
+        amount,
+        timestamp: Date.now(),
+        status: 'confirmed',
+      }
+    }
+
+    const result = await tsPlaceBid({ auctionId, amount }, this.getTsConfig())
+    return {
+      auctionId,
+      bidder: result.highestBidder?.toString() || '',
+      amount: result.highestBid || amount,
+      timestamp: Date.now(),
+      status: 'confirmed',
+    }
+  }
+
+  /**
+   * Settle a completed auction
+   */
+  async settleAuction(auctionId: string): Promise<{ signature: string; auction: AuctionResult }> {
+    if (this.mockMode) {
+      await mockDelay(1000)
+      console.log('[TokenService] MOCK: Settled auction', auctionId)
+      return {
+        signature: generateMockSignature(),
+        auction: {
+          id: auctionId,
+          mint: generateMockAddress(),
+          seller: generateMockAddress(),
+          type: 'english',
+          status: 'settled',
+          startPrice: BigInt(1000000000),
+          highestBid: BigInt(2500000000),
+          highestBidder: generateMockAddress(),
+          startTime: Date.now() - 86400000,
+          endTime: Date.now(),
+          currency: 'SOL',
+        },
+      }
+    }
+
+    const result = await tsSettleAuction(auctionId, this.getTsConfig())
+    return {
+      signature: result.signature,
+      auction: {
+        id: auctionId,
+        mint: result.auction?.mint?.toString() || '',
+        seller: result.auction?.seller?.toString() || '',
+        type: result.auction?.type || 'english',
+        status: 'settled',
+        startPrice: result.auction?.startPrice || BigInt(0),
+        reservePrice: result.auction?.reservePrice,
+        highestBid: result.auction?.highestBid,
+        highestBidder: result.auction?.highestBidder?.toString(),
+        startTime: result.auction?.startTime || 0,
+        endTime: result.auction?.endTime || 0,
+        currency: result.auction?.currency || 'SOL',
+      },
+    }
+  }
+
+  /**
+   * Get royalty info for an NFT
+   */
+  async getRoyaltyInfo(mintAddress: string): Promise<RoyaltyInfoResult> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        mint: mintAddress,
+        sellerFeeBasisPoints: 500,
+        creators: [
+          { address: generateMockAddress(), share: 100, verified: true },
+        ],
+        enforcedByMarketplace: true,
+      }
+    }
+
+    const info = await tsGetRoyaltyInfo(mintAddress, this.getTsConfig())
+    return {
+      mint: mintAddress,
+      sellerFeeBasisPoints: info.sellerFeeBasisPoints,
+      creators: info.creators.map((c: any) => ({
+        address: c.address?.toString() || c.address,
+        share: c.share,
+        verified: c.verified,
+      })),
+      enforcedByMarketplace: info.enforcedByMarketplace,
+    }
   }
 
   // ============================================
@@ -555,7 +1298,7 @@ export class TokenService {
    */
   private getStorage() {
     if (this.mockMode) {
-      return null // Not used in mock mode
+      return null
     }
     return getStorageAdapter(this.storageProvider)
   }
@@ -571,7 +1314,7 @@ export class TokenService {
     if (this.mockMode) {
       await mockDelay(500)
       const mockId = `mock_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-      console.log('[TokenService] 🧪 MOCK: Uploaded metadata for', metadata.name)
+      console.log('[TokenService] MOCK: Uploaded metadata for', metadata.name)
       return {
         id: mockId,
         url: `https://arweave.net/${mockId}`,
@@ -604,7 +1347,7 @@ export class TokenService {
     if (this.mockMode) {
       await mockDelay(600)
       const mockId = `mock_img_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-      console.log('[TokenService] 🧪 MOCK: Uploaded image', filePath)
+      console.log('[TokenService] MOCK: Uploaded image', filePath)
       return {
         id: mockId,
         url: `https://arweave.net/${mockId}`,
@@ -643,7 +1386,7 @@ export class TokenService {
     const failed: Array<{ file: string; error: string }> = []
 
     if (this.mockMode) {
-      console.log('[TokenService] 🧪 MOCK: Uploading batch of', files.length, 'files')
+      console.log('[TokenService] MOCK: Uploading batch of', files.length, 'files')
       for (const fileInfo of files) {
         await mockDelay(200)
         const mockId = `mock_batch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -705,7 +1448,6 @@ export class TokenService {
    * Generate a Merkle root from a list of wallet addresses
    */
   generateMerkleRoot(addresses: string[]): Uint8Array {
-    // Simple Merkle tree implementation for allowlists
     const leaves = addresses.map(addr => this.hashLeaf(addr))
     return this.buildMerkleTree(leaves)
   }
@@ -763,13 +1505,10 @@ export class TokenService {
   }
 
   private sha256(data: Uint8Array): Uint8Array {
-    // Simple XOR-based hash for development (not cryptographically secure)
-    // TODO: Replace with proper crypto once ts-tokens is integrated
-    const hash = new Uint8Array(32)
-    for (let i = 0; i < data.length; i++) {
-      hash[i % 32] ^= data[i]
-    }
-    return hash
+    // Use Bun's native crypto for proper SHA-256 hashing
+    const hasher = new Bun.CryptoHasher('sha256')
+    hasher.update(data)
+    return new Uint8Array(hasher.digest())
   }
 
   private buildMerkleTree(leaves: Uint8Array[]): Uint8Array {

@@ -1,13 +1,14 @@
 <script server>
 // Fetch collection data from API
+// Note: 'slug' is injected directly from the [slug] route parameter
 const API_URL = 'http://localhost:3008'
-const slug = route.params?.slug || ''
+const collectionSlug = slug || ''
 let collection = null
 let nfts = []
 let error = null
 
 try {
-  const res = await fetch(`${API_URL}/marketplace/collections/${slug}`)
+  const res = await fetch(`${API_URL}/marketplace/collections/${collectionSlug}`)
   if (res.ok) {
     const data = await res.json()
     collection = data.collection
@@ -187,6 +188,11 @@ try {
                     @if(nft.price)
                       <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
                     @endif
+                    <div class="mt-2 flex space-x-2">
+                      @if(nft.is_for_sale)
+                        <button class="make-offer-btn flex-1 text-xs bg-purple-100 text-purple-700 py-1 px-2 rounded hover:bg-purple-200 transition">Make Offer</button>
+                      @endif
+                    </div>
                   </div>
                 </div>
               </a>

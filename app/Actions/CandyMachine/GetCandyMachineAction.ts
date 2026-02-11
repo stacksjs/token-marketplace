@@ -2,6 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
+import { getTokenService } from '../../Services/TokenService'
 
 // Helper to transform snake_case to camelCase
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
@@ -29,6 +30,7 @@ export default new Action({
 
   async handle(request: RequestInstance) {
     const candyMachineId = request.getParam('id')
+    const includeOnChain = request.query?.onchain === 'true'
 
     // Get candy machine from database
     const candyMachine = await db
@@ -70,6 +72,19 @@ export default new Action({
       .limit(10)
       .execute()
 
+    // Optionally fetch on-chain state
+    let onChainData = null
+    if (includeOnChain && candyMachine.candy_machine_address) {
+      try {
+        const tokenService = getTokenService()
+        onChainData = await tokenService.getCandyMachineOnChainInfo(
+          candyMachine.candy_machine_address
+        )
+      } catch (error) {
+        onChainData = { error: 'Failed to fetch on-chain data' }
+      }
+    }
+
     return response.json({
       candyMachine: toCamelCase(candyMachine),
       collection: collection ? toCamelCase(collection) : null,
@@ -81,6 +96,7 @@ export default new Action({
           : 0,
       },
       recentMints: recentMints.map(toCamelCase),
+      onChain: onChainData,
     })
   },
 })

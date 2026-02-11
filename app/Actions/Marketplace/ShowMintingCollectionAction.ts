@@ -22,6 +22,14 @@ function toCamelCase(obj: Record<string, any>): Record<string, any> {
   return result
 }
 
+// Helper to generate slug from name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
 export default new Action({
   name: 'Show Minting Collection',
   description: 'Get collection data for minting page including candy machine and presale info',
@@ -36,12 +44,22 @@ export default new Action({
       }, 400)
     }
 
-    // Get collection
-    const collection = await db
+    // First try to find by slug column
+    let collection = await db
       .selectFrom('collections')
       .selectAll()
       .where('slug', '=', slug)
       .executeTakeFirst()
+
+    // If not found, try to find by generated slug from name
+    if (!collection) {
+      const allCollections = await db
+        .selectFrom('collections')
+        .selectAll()
+        .execute()
+
+      collection = allCollections.find(c => generateSlug(c.name) === slug)
+    }
 
     if (!collection) {
       return response.notFound({ error: 'Collection not found' })
@@ -120,8 +138,14 @@ export default new Action({
       }
     }
 
+    // Ensure collection has a slug
+    const collectionWithSlug = {
+      ...collection,
+      slug: collection.slug || generateSlug(collection.name),
+    }
+
     return response.json({
-      collection: toCamelCase(collection),
+      collection: toCamelCase(collectionWithSlug),
       candyMachine: candyMachine ? toCamelCase(candyMachine) : null,
       presales: presales.map(p => {
         const data = toCamelCase(p)

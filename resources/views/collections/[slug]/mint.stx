@@ -1,12 +1,13 @@
 <script server>
 // Fetch minting data from API
+// Note: 'slug' is injected directly from the [slug] route parameter
 const API_URL = 'http://localhost:3008'
-const slug = route.params?.slug || ''
+const collectionSlug = slug || ''
 let mintData = null
 let error = null
 
 try {
-  const res = await fetch(`${API_URL}/marketplace/collections/mint/${slug}`)
+  const res = await fetch(`${API_URL}/marketplace/collections/mint/${collectionSlug}`)
   if (res.ok) {
     mintData = await res.json()
   } else {
@@ -243,6 +244,37 @@ try {
                       <a href="https://explorer.solana.com/address/{{ mintData.candyMachine.candyMachineAddress }}?cluster=devnet" target="_blank" class="text-pink-8 hover:text-pink-9 font-mono text-xs truncate max-w-[200px]">
                         {{ mintData.candyMachine.candyMachineAddress }}
                       </a>
+                    </div>
+                  @endif
+
+                  <!-- Guard Info -->
+                  @if(mintData.candyMachine?.guardsConfig)
+                    <div class="candy-machine-guards mt-4 pt-4 border-t border-gray-7">
+                      <p class="text-xs text-gray-5 uppercase font-semibold mb-2">Mint Guards</p>
+                      @if(mintData.candyMachine.guardsConfig.startDate)
+                        <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                          <span>Start Date</span>
+                          <span class="text-white text-xs">{{ new Date(mintData.candyMachine.guardsConfig.startDate.date * 1000).toLocaleString() }}</span>
+                        </div>
+                      @endif
+                      @if(mintData.candyMachine.guardsConfig.endDate)
+                        <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                          <span>End Date</span>
+                          <span class="text-white text-xs">{{ new Date(mintData.candyMachine.guardsConfig.endDate.date * 1000).toLocaleString() }}</span>
+                        </div>
+                      @endif
+                      @if(mintData.candyMachine.guardsConfig.mintLimit)
+                        <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                          <span>Mint Limit</span>
+                          <span class="text-white text-xs">{{ mintData.candyMachine.guardsConfig.mintLimit.limit }} per wallet</span>
+                        </div>
+                      @endif
+                      @if(mintData.candyMachine.guardsConfig.botTax)
+                        <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                          <span>Bot Tax</span>
+                          <span class="text-white text-xs">{{ mintData.candyMachine.guardsConfig.botTax.lamports / 1e9 }} SOL</span>
+                        </div>
+                      @endif
                     </div>
                   @endif
                 </div>

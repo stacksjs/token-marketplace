@@ -6,7 +6,7 @@ import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'Buy NFT',
-  description: 'Purchase an NFT on the secondary market',
+  description: 'Purchase an NFT on the secondary market with atomic on-chain swap',
   method: 'POST',
 
   async handle(request: RequestInstance) {
@@ -56,19 +56,23 @@ export default new Action({
     }
 
     try {
-      // Execute transfer on-chain
+      // Execute atomic on-chain buy (SOL payment + NFT transfer + royalties)
       const tokenService = getTokenService()
-      const result = await tokenService.transferNFT(
-        nft.mint_address,
-        buyerWalletAddress
-      )
+      const result = await tokenService.buyListedNFT(nft.mint_address)
 
-      // Update NFT ownership
+      // Get royalty info for reference
+      const royaltyInfo = await tokenService.getRoyaltyInfo(nft.mint_address)
+
+      // Update NFT ownership in database
       await db
         .updateTable('nfts')
         .set({
           owner_wallet_address: buyerWalletAddress,
           is_for_sale: 0,
+          listing_id: null,
+          delegate_address: null,
+          listed_at: null,
+          listing_price: null,
           updated_at: new Date().toISOString(),
         })
         .where('id', '=', Number(nftId))
@@ -85,7 +89,7 @@ export default new Action({
         success: true,
         transaction: {
           signature: result.signature,
-          status: result.status,
+          status: 'confirmed',
         },
         nft: {
           id: updatedNft?.id,
@@ -94,6 +98,11 @@ export default new Action({
           previousOwner: nft.owner_wallet_address,
           newOwner: buyerWalletAddress,
           price: nft.price,
+        },
+        royalties: {
+          sellerFeeBasisPoints: royaltyInfo.sellerFeeBasisPoints,
+          creators: royaltyInfo.creators,
+          enforced: royaltyInfo.enforcedByMarketplace,
         },
       })
     } catch (error) {

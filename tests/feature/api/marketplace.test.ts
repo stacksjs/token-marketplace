@@ -324,4 +324,67 @@ describe('Marketplace Migrations', () => {
     expect(content).toContain('collection_id')
     expect(content).toContain('FOREIGN KEY')
   })
+
+  test('offers table migration exists', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const offersMigration = files.find((f: string) => f.includes('create-offers-table'))
+    expect(offersMigration).toBeDefined()
+  })
+
+  test('auctions table migration exists', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const auctionsMigration = files.find((f: string) => f.includes('create-auctions-table'))
+    expect(auctionsMigration).toBeDefined()
+  })
+
+  test('bids table migration exists', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const bidsMigration = files.find((f: string) => f.includes('create-bids-table'))
+    expect(bidsMigration).toBeDefined()
+  })
+
+  test('offers migration has correct schema', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const migration = files.find((f: string) => f.includes('create-offers-table'))
+    const content = readFileSync(join(migrationsPath, migration), 'utf-8')
+    expect(content).toContain('CREATE TABLE')
+    expect(content).toContain('offers')
+    expect(content).toContain('nft_id')
+    expect(content).toContain('buyer_wallet_address')
+    expect(content).toContain('amount')
+    expect(content).toContain('status')
+  })
+
+  test('auctions migration has correct schema', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const migration = files.find((f: string) => f.includes('create-auctions-table'))
+    const content = readFileSync(join(migrationsPath, migration), 'utf-8')
+    expect(content).toContain('CREATE TABLE')
+    expect(content).toContain('auctions')
+    expect(content).toContain('nft_id')
+    expect(content).toContain('auction_type')
+    expect(content).toContain('starting_price')
+    expect(content).toContain('status')
+  })
+
+  test('bids migration has correct schema', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const migration = files.find((f: string) => f.includes('create-bids-table'))
+    const content = readFileSync(join(migrationsPath, migration), 'utf-8')
+    expect(content).toContain('CREATE TABLE')
+    expect(content).toContain('bids')
+    expect(content).toContain('auction_id')
+    expect(content).toContain('bidder_wallet_address')
+    expect(content).toContain('amount')
+  })
+
+  test('nfts migration has listing fields', () => {
+    const files = require('fs').readdirSync(migrationsPath)
+    const migration = files.find((f: string) => f.includes('add-listing-fields-to-nfts'))
+    expect(migration).toBeDefined()
+    const content = readFileSync(join(migrationsPath, migration), 'utf-8')
+    expect(content).toContain('listing_id')
+    expect(content).toContain('delegate_address')
+    expect(content).toContain('listing_price')
+  })
 })

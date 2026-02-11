@@ -614,6 +614,29 @@ function enhanceWithLaravelMethods(req: EnhancedRequest): EnhancedRequest {
     return !(await (req as any).tokenCan(ability))
   }
 
+  // Route parameter methods
+  ;(req as any).getParam = <T = string>(key: string): T => {
+    const params = (req as any).params || {}
+    return params[key] as T
+  }
+
+  ;(req as any).getParams = (): Record<string, string | number> | null => {
+    return (req as any).params || null
+  }
+
+  ;(req as any).getParamAsInt = (key: string): number | null => {
+    const params = (req as any).params || {}
+    const value = params[key]
+    if (value === undefined || value === null) return null
+    const parsed = Number.parseInt(String(value), 10)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+
+  ;(req as any).route = (key: string): number | string | null => {
+    const params = (req as any).params || {}
+    return params[key] ?? null
+  }
+
   return req
 }
 

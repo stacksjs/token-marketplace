@@ -2,6 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
+import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'Sync Candy Machine',
@@ -29,21 +30,16 @@ export default new Action({
     }
 
     try {
-      // In a real implementation, we would fetch on-chain state here
-      // For now, we'll sync based on our database records
+      const tokenService = getTokenService()
 
-      // Count confirmed mint transactions
-      const mintStats = await db
-        .selectFrom('mint_transactions')
-        .select([
-          db.fn.count('id').as('confirmedMints'),
-        ])
-        .where('candy_machine_id', '=', Number(candyMachineId))
-        .where('status', '=', 'confirmed')
-        .executeTakeFirst()
+      // Fetch on-chain state from ts-tokens
+      const onChainInfo = await tokenService.getCandyMachineOnChainInfo(
+        candyMachine.candy_machine_address
+      )
 
-      const itemsRedeemed = Number(mintStats?.confirmedMints || 0)
-      const itemsRemaining = (candyMachine.items_available || 0) - itemsRedeemed
+      const itemsRedeemed = onChainInfo.itemsRedeemed
+      const itemsAvailable = onChainInfo.itemsAvailable
+      const itemsRemaining = onChainInfo.itemsRemaining
 
       // Determine if sold out
       let newStatus = candyMachine.status
@@ -51,10 +47,11 @@ export default new Action({
         newStatus = 'sold_out'
       }
 
-      // Update candy machine
+      // Update candy machine with authoritative on-chain data
       await db
         .updateTable('candy_machines')
         .set({
+          items_available: itemsAvailable,
           items_redeemed: itemsRedeemed,
           status: newStatus,
           message: newStatus === 'sold_out' ? 'All items have been minted' : candyMachine.message,
@@ -92,12 +89,20 @@ export default new Action({
           uuid: updated?.uuid,
           candyMachineAddress: updated?.candy_machine_address,
           status: updated?.status,
-          itemsAvailable: updated?.items_available,
-          itemsRedeemed: updated?.items_redeemed,
+          itemsAvailable,
+          itemsRedeemed,
           itemsRemaining,
+        },
+        onChain: {
+          authority: onChainInfo.authority,
+          collectionMint: onChainInfo.collectionMint,
+          symbol: onChainInfo.symbol,
+          sellerFeeBasisPoints: onChainInfo.sellerFeeBasisPoints,
+          configLineSettings: onChainInfo.configLineSettings,
         },
         changes: {
           itemsRedeemedChanged: itemsRedeemed !== candyMachine.items_redeemed,
+          itemsAvailableChanged: itemsAvailable !== candyMachine.items_available,
           statusChanged: newStatus !== candyMachine.status,
         },
       })

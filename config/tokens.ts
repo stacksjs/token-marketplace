@@ -111,4 +111,36 @@ export default {
     // Maximum config lines upload per minute
     configLinesPerMinute: Number(envVars.CONFIG_LINES_PER_MINUTE) || 100,
   },
+
+  /**
+   * Marketplace configuration
+   */
+  marketplace: {
+    // Default currency for listings
+    defaultCurrency: envVars.MARKETPLACE_DEFAULT_CURRENCY || 'SOL',
+    // Enforce royalties on secondary sales
+    enforceRoyalties: envVars.MARKETPLACE_ENFORCE_ROYALTIES !== 'false',
+    // Default royalty basis points (500 = 5%)
+    defaultRoyaltyBasisPoints: Number(envVars.MARKETPLACE_DEFAULT_ROYALTY_BPS) || 500,
+    // Listing expiry in seconds (0 = no expiry)
+    defaultListingExpiry: Number(envVars.MARKETPLACE_LISTING_EXPIRY) || 0,
+    // Offer expiry in seconds (default 7 days)
+    defaultOfferExpiry: Number(envVars.MARKETPLACE_OFFER_EXPIRY) || 604800,
+    // Minimum auction duration in seconds (default 1 hour)
+    minAuctionDuration: Number(envVars.MARKETPLACE_MIN_AUCTION_DURATION) || 3600,
+    // Maximum auction duration in seconds (default 30 days)
+    maxAuctionDuration: Number(envVars.MARKETPLACE_MAX_AUCTION_DURATION) || 2592000,
+  },
+
+  /**
+   * Guard defaults for candy machines
+   */
+  guards: {
+    // Default bot tax in lamports (0.01 SOL)
+    defaultBotTax: BigInt(envVars.GUARD_DEFAULT_BOT_TAX || '10000000'),
+    // Whether to enforce start date by default
+    enforceStartDate: envVars.GUARD_ENFORCE_START_DATE === 'true',
+    // Default mint limit per wallet (0 = no limit)
+    defaultMintLimit: Number(envVars.GUARD_DEFAULT_MINT_LIMIT) || 0,
+  },
 }

@@ -100,6 +100,8 @@ route.group({ prefix: '/candy-machine', middleware: 'auth' }, () => {
   route.get('/{id}', 'Actions/CandyMachine/GetCandyMachineAction')
   route.patch('/{id}/status', 'Actions/CandyMachine/UpdateCandyMachineStatusAction')
   route.post('/{id}/sync', 'Actions/CandyMachine/SyncCandyMachineAction')
+  route.post('/{id}/guards', 'Actions/CandyMachine/ManageGuardsAction')
+  route.post('/{id}/upload', 'Actions/CandyMachine/UploadConfigLinesAction')
 })
 
 // Minting routes (public)
@@ -121,3 +123,10 @@ route.group({ prefix: '/presale', middleware: 'auth' }, () => {
 // NFT secondary market routes
 route.post('/nfts/buy', 'Actions/Nft/BuyNftAction')
 route.post('/nfts/list', 'Actions/Nft/ListNftAction')
+route.post('/nfts/delist', 'Actions/Nft/DelistNftAction')
+route.post('/nfts/offer', 'Actions/Nft/MakeOfferAction')
+route.post('/nfts/offer/accept', 'Actions/Nft/AcceptOfferAction')
+route.post('/nfts/offer/cancel', 'Actions/Nft/CancelOfferAction')
+route.post('/nfts/auction', 'Actions/Nft/CreateAuctionAction')
+route.post('/nfts/auction/bid', 'Actions/Nft/PlaceBidAction')
+route.post('/nfts/auction/settle', 'Actions/Nft/SettleAuctionAction')

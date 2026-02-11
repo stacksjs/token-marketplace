@@ -62,7 +62,8 @@
     "@stacksjs/stx": "link:@stacksjs/stx",
     "bun-plugin-stx": "link:bun-plugin-stx",
     "bun-query-builder": "^0.1.10",
-    "stacks": "workspace:*"
+    "stacks": "workspace:*",
+    "ts-tokens": "link:ts-tokens"
   },
   "workspaces": [
     "storage/framework/**",
