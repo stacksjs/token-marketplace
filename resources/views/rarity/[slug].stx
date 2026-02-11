@@ -3,16 +3,49 @@ const API_URL = 'http://localhost:3008'
 const collectionSlug = slug || ''
 let collection = null
 let topRanked = []
-let rarityDistribution = {}
+let rarityBars = []
 let error = null
+
+const colorMap = {
+  legendary: { bg: 'bg-yellow-100', text: 'text-yellow-800', bar: 'bg-yellow-500' },
+  epic: { bg: 'bg-purple-100', text: 'text-purple-800', bar: 'bg-purple-500' },
+  rare: { bg: 'bg-blue-100', text: 'text-blue-800', bar: 'bg-blue-500' },
+  uncommon: { bg: 'bg-green-100', text: 'text-green-800', bar: 'bg-green-500' },
+  common: { bg: 'bg-gray-100', text: 'text-gray-800', bar: 'bg-gray-400' },
+}
 
 try {
   const res = await fetch(`${API_URL}/marketplace/rarity/${collectionSlug}`)
   if (res.ok) {
     const data = await res.json()
     collection = data.collection
-    topRanked = data.collection?.topRanked || []
-    rarityDistribution = data.collection?.rarityDistribution || {}
+    const ranked = data.collection?.topRanked || []
+    const dist = data.collection?.rarityDistribution || {}
+
+    // Pre-process top ranked with flattened color classes
+    topRanked = ranked.map(nft => {
+      const key = (nft.rarity || 'common').toLowerCase()
+      const colors = colorMap[key] || colorMap.common
+      return {
+        ...nft,
+        badgeBg: colors.bg,
+        badgeText: colors.text,
+      }
+    })
+
+    // Pre-process rarity distribution into a simple array
+    const order = ['legendary', 'epic', 'rare', 'uncommon', 'common']
+    rarityBars = order
+      .filter(key => dist[key])
+      .map(key => {
+        const colors = colorMap[key] || colorMap.common
+        return {
+          label: key.charAt(0).toUpperCase() + key.slice(1),
+          count: dist[key].count,
+          percentage: dist[key].percentage,
+          barColor: colors.bar,
+        }
+      })
   } else {
     error = 'Collection not found'
   }
@@ -22,14 +55,6 @@ try {
 }
 
 const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
-
-const rarityColors = {
-  legendary: { bg: 'bg-yellow-100', text: 'text-yellow-800', bar: 'bg-yellow-500' },
-  epic: { bg: 'bg-purple-100', text: 'text-purple-800', bar: 'bg-purple-500' },
-  rare: { bg: 'bg-blue-100', text: 'text-blue-800', bar: 'bg-blue-500' },
-  uncommon: { bg: 'bg-green-100', text: 'text-green-800', bar: 'bg-green-500' },
-  common: { bg: 'bg-gray-100', text: 'text-gray-800', bar: 'bg-gray-400' },
-}
 </script>
 
 <style>
@@ -39,6 +64,7 @@ const rarityColors = {
 </style>
 
 @layout('default')
+@section('title', pageTitle)
 @section('content')
   @if(error)
     <div class="min-h-screen flex items-center justify-center">
@@ -128,16 +154,16 @@ const rarityColors = {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Rarity Distribution</h2>
       <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        @foreach(Object.entries(rarityDistribution) as [rarity, data])
+        @foreach(rarityBars as bar)
           <div>
             <div class="flex items-center justify-between mb-1">
-              <span class="text-sm font-semibold capitalize text-gray-7">{{ rarity }}</span>
-              <span class="text-sm text-gray-5">{{ data.count }} ({{ data.percentage }}%)</span>
+              <span class="text-sm font-semibold text-gray-7">{{ bar.label }}</span>
+              <span class="text-sm text-gray-5">{{ bar.count }} ({{ bar.percentage }}%)</span>
             </div>
             <div class="w-full bg-gray-100 rounded-full h-3">
               <div
-                class="progress-bar h-3 rounded-full {{ rarityColors[rarity]?.bar || 'bg-gray-400' }}"
-                style="width: {{ data.percentage }}%"
+                class="progress-bar h-3 rounded-full {{ bar.barColor }}"
+                style="width: {{ bar.percentage }}%"
               ></div>
             </div>
           </div>
@@ -148,6 +174,7 @@ const rarityColors = {
     <!-- Top Ranked NFTs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Top Ranked</h2>
+      @if(topRanked.length > 0)
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(topRanked as nft)
             <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
@@ -163,7 +190,7 @@ const rarityColors = {
                 <div class="flex items-center justify-between mt-1">
                   <span class="text-xs text-gray-5">Rank #{{ nft.rank }}</span>
                   @if(nft.rarity)
-                    <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ rarityColors[nft.rarity?.toLowerCase()]?.bg || 'bg-gray-100' }} {{ rarityColors[nft.rarity?.toLowerCase()]?.text || 'text-gray-800' }}">
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ nft.badgeBg }} {{ nft.badgeText }}">
                       {{ nft.rarity }}
                     </span>
                   @endif
@@ -172,7 +199,7 @@ const rarityColors = {
             </div>
           @endforeach
         </div>
-      @if(topRanked.length == 0)
+      @else
         <div class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
