@@ -35,12 +35,19 @@ export default new Action({
       .limit(3)
       .execute()
 
-    // Fetch available NFTs (for sale or minting)
+    // Fetch available NFTs (for sale or minting) with collection name
     const availableNftsRaw = await db
       .selectFrom('nfts')
-      .selectAll()
-      .where('is_for_sale', '=', 1)
-      .orWhere('is_minting', '=', 1)
+      .leftJoin('collections', 'collections.id', 'nfts.collection_id')
+      .select([
+        'nfts.id', 'nfts.collection_id', 'nfts.name', 'nfts.token_id',
+        'nfts.description', 'nfts.image_url', 'nfts.price',
+        'nfts.is_for_sale', 'nfts.is_minting', 'nfts.mint_url',
+        'nfts.rarity', 'nfts.rarity_rank',
+        'collections.name as collection_name',
+      ])
+      .where('nfts.is_for_sale', '=', 1)
+      .orWhere('nfts.is_minting', '=', 1)
       .limit(6)
       .execute()
 
