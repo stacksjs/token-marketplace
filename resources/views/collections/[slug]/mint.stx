@@ -162,9 +162,10 @@ try {
                 <!-- Wallet Connection & Mint -->
                 <div id="mint-section">
                   <!-- Not Connected State -->
-                  <div id="connect-wallet-section">
+                  <div id="connect-wallet-section" ref="connect-wallet-section">
                     <button
                       id="connect-wallet-btn"
+                      ref="connect-wallet-btn"
                       type="button"
                       class="w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg"
                     >
@@ -174,7 +175,7 @@ try {
                   </div>
 
                   <!-- Connected State (hidden by default) -->
-                  <div id="mint-interface" class="hidden">
+                  <div id="mint-interface" ref="mint-interface" class="hidden">
                     <div class="flex items-center justify-between bg-gray-7/50 rounded-xl p-4 mb-6">
                       <div class="flex items-center">
                         <div class="h-10 w-10 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
@@ -183,29 +184,30 @@ try {
                           </svg>
                         </div>
                         <div class="ml-3">
-                          <p class="text-white font-semibold" id="wallet-address">Connected</p>
-                          <p class="text-sm text-gray-5" id="wallet-balance">Balance: — SOL</p>
+                          <p class="text-white font-semibold" id="wallet-address" ref="wallet-address">Connected</p>
+                          <p class="text-sm text-gray-5" id="wallet-balance" ref="wallet-balance">Balance: — SOL</p>
                         </div>
                       </div>
-                      <button id="disconnect-btn" class="text-gray-5 hover:text-white text-sm">Disconnect</button>
+                      <button id="disconnect-btn" ref="disconnect-btn" class="text-gray-5 hover:text-white text-sm">Disconnect</button>
                     </div>
 
                     <!-- Quantity Selector -->
                     <div class="flex items-center justify-center space-x-6 mb-6">
-                      <button id="qty-minus" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">−</button>
-                      <span id="mint-qty" class="text-3xl font-bold text-white w-12 text-center">1</span>
-                      <button id="qty-plus" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">+</button>
+                      <button id="qty-minus" ref="qty-minus" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">−</button>
+                      <span id="mint-qty" ref="mint-qty" class="text-3xl font-bold text-white w-12 text-center">1</span>
+                      <button id="qty-plus" ref="qty-plus" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">+</button>
                     </div>
 
                     <!-- Total -->
                     <div class="flex items-center justify-between text-lg mb-6">
                       <span class="text-gray-4">Total</span>
-                      <span id="total-price" class="text-white font-bold">{{ mintData.stats.mintPriceSol }} SOL</span>
+                      <span id="total-price" ref="total-price" class="text-white font-bold">{{ mintData.stats.mintPriceSol }} SOL</span>
                     </div>
 
                     <!-- Mint Button -->
                     <button
                       id="mint-btn"
+                      ref="mint-btn"
                       type="button"
                       class="mint-button w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg disabled:from-gray-6 disabled:to-gray-6"
                       {{ mintData.canMint ? '' : 'disabled' }}
@@ -215,7 +217,7 @@ try {
                   </div>
 
                   <!-- Success State (hidden by default) -->
-                  <div id="mint-success" class="hidden text-center">
+                  <div id="mint-success" ref="mint-success" class="hidden text-center">
                     <div class="success-checkmark inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6">
                       <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
@@ -224,9 +226,9 @@ try {
                     <h3 class="text-2xl font-bold text-white mb-2">Mint Successful!</h3>
                     <p class="text-gray-4 mb-4">Your NFT has been minted successfully.</p>
                     <p class="text-sm text-gray-5 mb-6">
-                      Mint: <a id="mint-address-link" href="#" target="_blank" class="text-pink-8 hover:text-pink-9"></a>
+                      Mint: <a id="mint-address-link" ref="mint-address-link" href="#" target="_blank" class="text-pink-8 hover:text-pink-9"></a>
                     </p>
-                    <button id="mint-another-btn" class="text-pink-8 hover:text-pink-9 font-semibold">
+                    <button id="mint-another-btn" ref="mint-another-btn" class="text-pink-8 hover:text-pink-9 font-semibold">
                       Mint Another
                     </button>
                   </div>
@@ -293,21 +295,21 @@ try {
         let walletAddress = null
         let mintQty = 1
 
-        // DOM Elements
-        const connectWalletSection = document.getElementById('connect-wallet-section')
-        const mintInterface = document.getElementById('mint-interface')
-        const mintSuccess = document.getElementById('mint-success')
-        const connectWalletBtn = document.getElementById('connect-wallet-btn')
-        const disconnectBtn = document.getElementById('disconnect-btn')
-        const mintBtn = document.getElementById('mint-btn')
-        const qtyMinus = document.getElementById('qty-minus')
-        const qtyPlus = document.getElementById('qty-plus')
-        const mintQtyEl = document.getElementById('mint-qty')
-        const totalPriceEl = document.getElementById('total-price')
-        const walletAddressEl = document.getElementById('wallet-address')
-        const walletBalanceEl = document.getElementById('wallet-balance')
-        const mintAnotherBtn = document.getElementById('mint-another-btn')
-        const mintAddressLink = document.getElementById('mint-address-link')
+        // DOM Elements (using STX refs)
+        const connectWalletSection = STX.useRef('connect-wallet-section')
+        const mintInterface = STX.useRef('mint-interface')
+        const mintSuccess = STX.useRef('mint-success')
+        const connectWalletBtn = STX.useRef('connect-wallet-btn')
+        const disconnectBtn = STX.useRef('disconnect-btn')
+        const mintBtn = STX.useRef('mint-btn')
+        const qtyMinus = STX.useRef('qty-minus')
+        const qtyPlus = STX.useRef('qty-plus')
+        const mintQtyEl = STX.useRef('mint-qty')
+        const totalPriceEl = STX.useRef('total-price')
+        const walletAddressEl = STX.useRef('wallet-address')
+        const walletBalanceEl = STX.useRef('wallet-balance')
+        const mintAnotherBtn = STX.useRef('mint-another-btn')
+        const mintAddressLink = STX.useRef('mint-address-link')
 
         // Check if Phantom wallet is available
         const getProvider = () => {

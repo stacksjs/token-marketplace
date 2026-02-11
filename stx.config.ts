@@ -4,7 +4,7 @@
  */
 export default {
   // Components directory - for user-defined components
-  componentsDir: 'resources/components',
+  componentsDir: 'resources/views/components',
 
   // Layouts directory - for layout templates
   layoutsDir: 'resources/layouts',
