@@ -78,7 +78,46 @@
   <Header />
   @yield('content')
   <Footer />
+  <Toast />
+  <Drawer />
+  <AuthModal />
 
+  <script client>
+    {
+      var LAYOUT_API = 'http://localhost:3008'
 
+      window.NFTModal = {
+        open: async function(nftId) {
+          if (!window.DrawerManager) return
+          DrawerManager.setContent('<div class="flex justify-center py-12"><div class="spinner h-8 w-8 border-4 border-pink-8 border-t-transparent rounded-full"></div></div>')
+          DrawerManager.open()
+          try {
+            var res = await fetch(LAYOUT_API + '/marketplace/nfts/' + nftId)
+            var data = await res.json()
+            var nft = data.nft || data
+            var html = '<div class="p-6">'
+              + '<div class="aspect-square rounded-xl overflow-hidden mb-6"><img src="' + (nft.image_url || '/assets/images/placeholder.png') + '" alt="' + (nft.name || '') + '" class="w-full h-full object-cover" /></div>'
+              + '<h2 class="text-2xl font-bold text-gray-9">' + (nft.name || 'NFT #' + nftId) + '</h2>'
+              + (nft.description ? '<p class="text-gray-5 mt-2">' + nft.description + '</p>' : '')
+              + '<div class="mt-4 space-y-2">'
+              + (nft.rarity_rank ? '<div class="flex justify-between text-sm"><span class="text-gray-5">Rarity Rank</span><span class="font-semibold text-gray-8">#' + nft.rarity_rank + '</span></div>' : '')
+              + (nft.price ? '<div class="flex justify-between text-sm"><span class="text-gray-5">Price</span><span class="font-semibold text-pink-8">' + nft.price + ' SOL</span></div>' : '')
+              + (nft.owner_address ? '<div class="flex justify-between text-sm"><span class="text-gray-5">Owner</span><span class="font-mono text-gray-8">' + nft.owner_address.slice(0,4) + '...' + nft.owner_address.slice(-4) + '</span></div>' : '')
+              + '</div>'
+            if (nft.is_for_sale && nft.price) {
+              html += '<button onclick="NFTModal.buy(' + nftId + ')" class="w-full mt-6 bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 rounded-lg transition">Buy Now</button>'
+            }
+            html += '</div>'
+            DrawerManager.setContent(html)
+          } catch (err) {
+            DrawerManager.setContent('<div class="p-6 text-center text-gray-5">Failed to load NFT details</div>')
+          }
+        },
+        buy: async function(nftId) {
+          if (window.Toast) Toast.warning('Purchase flow coming soon')
+        }
+      }
+    }
+  </script>
 </body>
 </html>
