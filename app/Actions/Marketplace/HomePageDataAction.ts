@@ -20,10 +20,11 @@ function toCamelCase(obj: Record<string, any>): Record<string, any> {
   return result
 }
 
-// Transform collection with slug fallback
-function toCollectionData(collection: Record<string, any>): Record<string, any> {
+// Transform collection with slug fallback and real NFT count
+function toCollectionData(collection: Record<string, any>, nftCountMap: Record<string, number>): Record<string, any> {
   const data = toCamelCase(collection)
   data.slug = data.slug || generateSlug(data.name)
+  data.totalAmountOfNfts = nftCountMap[String(collection.id)] || 0
   return data
 }
 
@@ -33,73 +34,82 @@ export default new Action({
   method: 'GET',
 
   async handle() {
-    // Fetch featured collections (minting or featured)
-    const featuredCollectionsRaw = await db
+    // Fetch all collections and NFTs once
+    const allCollections = await db
       .selectFrom('collections')
       .selectAll()
-      .where('is_minting', '=', 1)
-      .orWhere('is_featured', '=', 1)
-      .limit(3)
       .execute()
 
-    // Fetch popular/live collections
-    const popularCollectionsRaw = await db
-      .selectFrom('collections')
-      .selectAll()
-      .where('is_live', '=', 1)
-      .limit(3)
-      .execute()
-
-    // Fetch available NFTs (for sale or minting)
-    const availableNftsRaw = await db
+    const allNfts = await db
       .selectFrom('nfts')
       .selectAll()
-      .where('is_for_sale', '=', 1)
-      .orWhere('is_minting', '=', 1)
-      .limit(6)
       .execute()
 
-    // Look up collection names separately (query builder JOIN + select is broken for SQLite)
-    const collectionIds = [...new Set(availableNftsRaw.map((n: any) => n.collection_id).filter(Boolean))]
-    const collectionMap: Record<number, string> = {}
-    if (collectionIds.length > 0) {
-      const cols = await db
-        .selectFrom('collections')
-        .selectAll()
-        .where('id', 'in', collectionIds)
-        .execute()
-      for (const c of cols) {
-        collectionMap[(c as any).id] = (c as any).name
+    // Build NFT count per collection
+    const nftCountMap: Record<string, number> = {}
+    for (const nft of allNfts) {
+      if (nft.collection_id != null) {
+        const key = String(Math.round(Number(nft.collection_id)))
+        nftCountMap[key] = (nftCountMap[key] || 0) + 1
       }
     }
 
-    // Merge collection_name into each NFT
-    const availableNftsWithCollection = availableNftsRaw.map((nft: any) => ({
-      ...nft,
-      collection_name: collectionMap[nft.collection_id] || null,
-    }))
-
-    // Transform to camelCase for frontend (with slug fallback)
-    const featuredCollections = featuredCollectionsRaw.map(toCollectionData)
-    const popularCollections = popularCollectionsRaw.map(toCollectionData)
-    const availableNfts = availableNftsWithCollection.map(toCamelCase)
-
-    // Calculate stats using count() method
-    const totalCollections = await db
-      .selectFrom('collections')
-      .count()
-
-    const totalNfts = await db
-      .selectFrom('nfts')
-      .count()
-
-    const stats = {
-      totalCollections: Number(totalCollections || 0),
-      totalNfts: Number(totalNfts || 0),
-      totalVolume: '0 ETH',
+    // Build collection lookup
+    const collectionMap: Record<string, any> = {}
+    for (const c of allCollections) {
+      collectionMap[String(c.id)] = c
     }
 
-    console.log('[HomePageData] featuredCollections:', featuredCollections.length, 'popularCollections:', popularCollections.length, 'availableNfts:', availableNfts.length, 'stats:', stats)
+    // Featured: collections that are actively minting or marked as featured
+    const featuredCollections = allCollections
+      .filter((c: any) => c.is_minting === 1 || c.is_featured === 1)
+      .slice(0, 3)
+      .map((c: any) => toCollectionData(c, nftCountMap))
+
+    // Popular: live collections sorted by NFT count
+    const popularCollections = allCollections
+      .filter((c: any) => c.is_live === 1)
+      .sort((a: any, b: any) => {
+        const countA = nftCountMap[String(a.id)] || 0
+        const countB = nftCountMap[String(b.id)] || 0
+        return countB - countA
+      })
+      .slice(0, 3)
+      .map((c: any) => toCollectionData(c, nftCountMap))
+
+    // Minting collection IDs (for NFT filtering)
+    const mintingCollectionIds = new Set(
+      allCollections
+        .filter((c: any) => c.is_minting === 1)
+        .map((c: any) => String(Math.round(Number(c.id)))),
+    )
+
+    // Available NFTs: prioritize for-sale, then from minting collections
+    const forSaleNfts = allNfts.filter((n: any) => n.is_for_sale === 1)
+    const mintingNfts = allNfts.filter((n: any) => {
+      if (n.is_for_sale === 1) return false // already in forSaleNfts
+      const colKey = String(Math.round(Number(n.collection_id)))
+      return mintingCollectionIds.has(colKey)
+    })
+
+    const availableNftsRaw = [...forSaleNfts, ...mintingNfts].slice(0, 6)
+
+    // Enrich NFTs with collection info
+    const availableNfts = availableNftsRaw.map((nft: any) => {
+      const colKey = String(Math.round(Number(nft.collection_id)))
+      const col = collectionMap[colKey]
+      const data = toCamelCase(nft)
+      data.collectionName = col?.name || null
+      data.collectionSlug = col?.slug || (col?.name ? generateSlug(col.name) : null)
+      return data
+    })
+
+    const stats = {
+      totalCollections: allCollections.length,
+      totalNfts: allNfts.length,
+      totalForSale: forSaleNfts.length,
+      totalMinting: mintingCollectionIds.size,
+    }
 
     return response.json({
       featuredCollections,

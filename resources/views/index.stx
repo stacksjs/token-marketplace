@@ -69,6 +69,7 @@ try {
     </section>
 
     <!-- Featured Collections -->
+    @if(featuredCollections.length > 0)
     <section id="featured-collections">
       <div class="mx-auto max-w-7xl overflow-hidden px-4 sm:px-6 lg:px-12">
         <div class="mx-auto max-w-2xl py-8 sm:py-12 md:max-w-none lg:py-14">
@@ -111,6 +112,10 @@ try {
 
                 <p class="mt-2 text-base text-gray-400">{{ collection.description }}</p>
 
+                <div class="mt-2 flex items-center justify-between">
+                  <span class="text-sm text-gray-5">{{ collection.totalAmountOfNfts }} items</span>
+                </div>
+
                 @if(collection.isMinting)
                   <div class="mt-2">
                     <a href="/collections/{{ collection.slug }}/mint">
@@ -146,8 +151,10 @@ try {
         </div>
       </div>
     </section>
+    @endif
 
     <!-- Popular Collections -->
+    @if(popularCollections.length > 0)
     <section id="popular-collections">
       <div class="mx-auto max-w-7xl overflow-hidden px-4 sm:px-6 lg:px-12">
         <div class="mx-auto max-w-2xl py-8 sm:py-12 md:max-w-none lg:py-14">
@@ -185,6 +192,10 @@ try {
                 </a>
 
                 <p class="mt-2 text-base text-gray-400">{{ collection.description }}</p>
+
+                <div class="mt-2 flex items-center justify-between">
+                  <span class="text-sm text-gray-5">{{ collection.totalAmountOfNfts }} items</span>
+                </div>
               </div>
             @endforeach
 
@@ -211,6 +222,7 @@ try {
         </div>
       </div>
     </section>
+    @endif
 
     <!-- CTA Section - Create NFT -->
     <section id="create-nft" class="pt-16">
@@ -243,6 +255,7 @@ try {
     </section>
 
     <!-- Available NFTs -->
+    @if(availableNfts.length > 0)
     <section id="available-items">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-2xl py-8 sm:py-12 md:max-w-none lg:py-16">
@@ -258,21 +271,27 @@ try {
             </a>
           </div>
 
-          <div class="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             @foreach(availableNfts as nft)
-              <div class="relative mb-6 sm:mb-0 cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
-                <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                  <img src="{{ nft.imageUrl || '/assets/images/anonymouse.png' }}" alt="{{ nft.name }}" class="h-full w-full object-cover object-center" onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'" />
-                </div>
-                <h3 class="mt-2 text-lg font-semibold text-gray-9">{{ nft.name }}</h3>
-                <p class="text-sm text-gray-5">{{ nft.collectionName }}</p>
-                @if(nft.price)
-                  <p class="mt-1 text-sm font-semibold text-pink-8">{{ nft.price }} SOL</p>
-                @endif
+              <div class="group relative mb-6 sm:mb-0 cursor-pointer">
+                <a href="/collections/{{ nft.collectionSlug }}">
+                  <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
+                    <img src="{{ nft.imageUrl || '/assets/images/anonymouse.png' }}" alt="{{ nft.name }}" class="h-full w-full object-cover object-center group-hover:scale-105 transition duration-300" onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'" />
+                    @if(nft.isForSale)
+                      <div class="absolute top-2 right-2 bg-pink-8 text-white text-xs font-semibold px-2 py-1 rounded-full">For Sale</div>
+                    @endif
+                  </div>
+                  <h3 class="mt-2 text-lg font-semibold text-gray-9 group-hover:text-pink-9 transition truncate">{{ nft.name }}</h3>
+                  <p class="text-sm text-gray-5 truncate">{{ nft.collectionName }}</p>
+                  @if(nft.price)
+                    <p class="mt-1 text-sm font-semibold text-pink-8">{{ nft.price }} SOL</p>
+                  @endif
+                </a>
               </div>
             @endforeach
           </div>
         </div>
       </div>
     </section>
+    @endif
 @endsection
