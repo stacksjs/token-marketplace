@@ -44,3 +44,5 @@ CLAUDE.md
 database/stacks.sqlite-shm
 
 database/stacks.sqlite-wal
+
+storage/framework/database.sqlite

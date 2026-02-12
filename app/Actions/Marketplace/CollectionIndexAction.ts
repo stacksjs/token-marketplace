@@ -53,14 +53,29 @@ export default new Action({
 
     const collections = await query.execute()
 
-    // Transform to camelCase and ensure slugs
-    const collectionsWithSlugs = collections.map((collection) => {
-      const camelCased = toCamelCase(collection)
-      return {
-        ...camelCased,
-        slug: camelCased.slug || generateSlug(camelCased.name),
-      }
-    })
+    // Transform to camelCase, get real NFT counts, and ensure slugs
+    const collectionsWithSlugs = await Promise.all(
+      collections.map(async (collection) => {
+        const camelCased = toCamelCase(collection)
+
+        // Count NFTs for this collection (same query pattern as CollectionShowAction)
+        let nftCount = 0
+        try {
+          const nfts = await db
+            .selectFrom('nfts')
+            .selectAll()
+            .where('collection_id', '=', collection.id)
+            .execute()
+          nftCount = nfts.length
+        } catch (_) {}
+
+        return {
+          ...camelCased,
+          totalAmountOfNfts: nftCount,
+          slug: camelCased.slug || generateSlug(camelCased.name),
+        }
+      }),
+    )
 
     return response.json({ collections: collectionsWithSlugs })
   },
