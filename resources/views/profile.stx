@@ -66,6 +66,7 @@ const pageTitle = 'My Profile | Naked NFTs'
         <div></div>
       </div>
     </div>
+
   </div>
 
   <script client>
@@ -127,7 +128,7 @@ const pageTitle = 'My Profile | Naked NFTs'
         return null
       }
 
-      function nftCard(nft) {
+      function nftCard(nft, extraHtml) {
         return '<div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer">'
           + '<div class="aspect-square"><img src="' + (nft.image_url || nft.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + nft.name + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></div>'
           + '<div class="p-3">'
@@ -135,6 +136,7 @@ const pageTitle = 'My Profile | Naked NFTs'
           + (nft.price ? '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>' : '')
           + (nft.rarity_rank ? '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>' : '')
           + (nft.is_for_sale ? '<span class="inline-block mt-1 text-xs bg-pink-100 text-pink-700 py-0.5 px-2 rounded">For Sale</span>' : '')
+          + (extraHtml || '')
           + '</div></div>'
       }
 
@@ -149,13 +151,17 @@ const pageTitle = 'My Profile | Naked NFTs'
 
         if (activeTab === 0) {
           if (profileData.ownedNfts && profileData.ownedNfts.length > 0) {
-            els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.ownedNfts.map(nftCard).join('') + '</div>'
+            els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.ownedNfts.map(function(nft) {
+              return nftCard(nft, '<button onclick="profileListNft(' + nft.id + ', this)" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">List for Sale</button>')
+            }).join('') + '</div>'
           } else {
             els.contentEl.innerHTML = emptyState('No NFTs in your wallet yet')
           }
         } else if (activeTab === 1) {
           if (profileData.listings && profileData.listings.length > 0) {
-            els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.listings.map(nftCard).join('') + '</div>'
+            els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.listings.map(function(nft) {
+              return nftCard(nft, '<button onclick="profileDelistNft(' + nft.id + ', this)" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Delist</button>')
+            }).join('') + '</div>'
           } else {
             els.contentEl.innerHTML = emptyState('No active listings')
           }
@@ -172,7 +178,7 @@ const pageTitle = 'My Profile | Naked NFTs'
             html += '<h3 class="text-lg font-semibold text-gray-8 mb-3">Received Offers</h3><div class="space-y-2">'
             profileData.receivedOffers.forEach(function(o) {
               var addr = o.bidder_address || ''
-              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL from ' + addr.slice(0,4) + '...' + addr.slice(-4) + '</p></div></div>'
+              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL from ' + addr.slice(0,4) + '...' + addr.slice(-4) + '</p></div><button onclick="profileAcceptOffer(\'' + o.uuid + '\', this)" class="bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 px-4 rounded transition">Accept</button></div>'
             })
             html += '</div>'
           }
@@ -183,7 +189,8 @@ const pageTitle = 'My Profile | Naked NFTs'
             profileData.auctions.forEach(function(a) {
               var bid = Number(a.current_bid || a.starting_price).toFixed(4)
               var info = a.status === 'active' ? 'Ends: ' + new Date(a.end_time).toLocaleString() : a.status
-              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + a.nft_id + '</p><p class="text-sm text-gray-5">' + a.auction_type + ' &middot; ' + a.status + '</p></div><div class="text-right"><p class="font-semibold text-gray-9">' + bid + ' SOL</p><p class="text-xs text-gray-5">' + info + '</p></div></div></div>'
+              var cancelBtn = a.status === 'active' ? '<button onclick="profileCancelAuction(\'' + a.uuid + '\', this)" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded transition">Cancel</button>' : ''
+              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + a.nft_id + '</p><p class="text-sm text-gray-5">' + a.auction_type + ' &middot; ' + a.status + '</p></div><div class="flex items-center space-x-3"><div class="text-right"><p class="font-semibold text-gray-9">' + bid + ' SOL</p><p class="text-xs text-gray-5">' + info + '</p></div>' + cancelBtn + '</div></div></div>'
             })
             html += '</div>'
             els.contentEl.innerHTML = html
@@ -299,6 +306,128 @@ const pageTitle = 'My Profile | Naked NFTs'
         profileShowConnected(true)
         loadProfileData(addr)
         fetchProfileBalance(addr)
+      }
+
+      window.profileListNft = async function(nftId, btn) {
+        var price = prompt('Enter listing price in SOL:')
+        if (!price || isNaN(Number(price)) || Number(price) <= 0) return
+        btn.disabled = true
+        btn.textContent = 'Listing...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nftId: nftId, price: Number(price), sellerWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) { if (window.Toast) Toast.error(data.error); btn.disabled = false; btn.textContent = 'List for Sale'; return }
+          if (window.Toast) Toast.info('Please approve in your wallet...')
+          var signature = await WalletManager.signAndSend(data.transaction.serializedTransaction)
+          var confirmRes = await fetch(PROFILE_API + '/nfts/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signature: signature, nftId: nftId, action: 'list', metadata: { price: Number(price) } })
+          })
+          var confirmData = await confirmRes.json()
+          if (confirmData.success) {
+            if (window.Toast) Toast.success('NFT listed for ' + price + ' SOL')
+            loadProfileData(profileWalletAddr)
+          } else {
+            if (window.Toast) Toast.error(confirmData.error || 'Listing failed')
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to list NFT')
+        }
+        btn.disabled = false
+        btn.textContent = 'List for Sale'
+      }
+
+      window.profileDelistNft = async function(nftId, btn) {
+        btn.disabled = true
+        btn.textContent = 'Delisting...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/delist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nftId: nftId, sellerWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) { if (window.Toast) Toast.error(data.error); btn.disabled = false; btn.textContent = 'Delist'; return }
+          if (window.Toast) Toast.info('Please approve in your wallet...')
+          var signature = await WalletManager.signAndSend(data.transaction.serializedTransaction)
+          var confirmRes = await fetch(PROFILE_API + '/nfts/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signature: signature, nftId: nftId, action: 'delist' })
+          })
+          var confirmData = await confirmRes.json()
+          if (confirmData.success) {
+            if (window.Toast) Toast.success('NFT delisted')
+            loadProfileData(profileWalletAddr)
+          } else {
+            if (window.Toast) Toast.error(confirmData.error || 'Delist failed')
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to delist NFT')
+        }
+        btn.disabled = false
+        btn.textContent = 'Delist'
+      }
+
+      window.profileAcceptOffer = async function(offerId, btn) {
+        btn.disabled = true
+        btn.textContent = 'Accepting...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/offer/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ offerId: offerId, sellerWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) { if (window.Toast) Toast.error(data.error); btn.disabled = false; btn.textContent = 'Accept'; return }
+          if (window.Toast) Toast.info('Please approve in your wallet...')
+          var signature = await WalletManager.signAndSend(data.transaction.serializedTransaction)
+          var confirmRes = await fetch(PROFILE_API + '/nfts/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signature: signature, nftId: null, action: 'accept_offer', metadata: { offerId: offerId } })
+          })
+          var confirmData = await confirmRes.json()
+          if (confirmData.success) {
+            if (window.Toast) Toast.success('Offer accepted!')
+            loadProfileData(profileWalletAddr)
+          } else {
+            if (window.Toast) Toast.error(confirmData.error || 'Accept failed')
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to accept offer')
+        }
+        btn.disabled = false
+        btn.textContent = 'Accept'
+      }
+
+      window.profileCancelAuction = async function(auctionId, btn) {
+        if (!confirm('Are you sure you want to cancel this auction?')) return
+        btn.disabled = true
+        btn.textContent = 'Cancelling...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/auction/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auctionId: auctionId, sellerWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.success) {
+            if (window.Toast) Toast.success('Auction cancelled')
+            loadProfileData(profileWalletAddr)
+          } else {
+            if (window.Toast) Toast.error(data.error || 'Cancel failed')
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to cancel auction')
+        }
+        btn.disabled = false
+        btn.textContent = 'Cancel'
       }
 
       var initProvider = getProfileProvider()

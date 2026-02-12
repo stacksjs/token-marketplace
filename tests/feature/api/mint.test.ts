@@ -46,16 +46,14 @@ describe('Minting API Actions', () => {
       expect(content).toContain("status: 'pending'")
     })
 
-    test('executes mint via tokenService', () => {
+    test('builds unsigned mint transaction', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('tokenService.mintFromCandyMachine')
+      expect(content).toContain('tokenService.buildMintTransaction')
     })
 
-    test('returns 201 on successful mint', () => {
+    test('returns unsigned transaction for client signing', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('201')
-      expect(content).toContain('mintAddress')
-      expect(content).toContain('transactionSignature')
+      expect(content).toContain('serializedTransaction')
     })
 
     test('handles presale eligibility', () => {
@@ -76,16 +74,16 @@ describe('Minting API Actions', () => {
       expect(content).toContain('Maximum mints per wallet')
     })
 
-    test('detects sold out after minting', () => {
+    test('handles build transaction failure', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain("status: 'sold_out'")
-      expect(content).toContain('All items have been minted')
+      expect(content).toContain("status: 'failed'")
     })
 
-    test('handles mint failure', () => {
-      const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('Mint failed')
-      expect(content).toContain("status: 'failed'")
+    test('sold out detection moved to ConfirmTransactionAction', () => {
+      const confirmPath = join(process.cwd(), 'app/Actions/Nft/ConfirmTransactionAction.ts')
+      const content = readFileSync(confirmPath, 'utf-8')
+      expect(content).toContain("status: 'sold_out'")
+      expect(content).toContain('All items have been minted')
     })
   })
 

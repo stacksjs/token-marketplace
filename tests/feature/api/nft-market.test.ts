@@ -30,9 +30,9 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain('nftId, price, and sellerWalletAddress are required')
     })
 
-    test('calls tokenService.listNFTForSale', () => {
+    test('builds unsigned list transaction', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('tokenService.listNFTForSale')
+      expect(content).toContain('tokenService.buildListTransaction')
     })
 
     test('verifies NFT ownership before listing', () => {
@@ -75,16 +75,14 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain('nftId and buyerWalletAddress are required')
     })
 
-    test('calls tokenService.buyListedNFT', () => {
+    test('builds unsigned buy transaction', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('tokenService.buyListedNFT')
+      expect(content).toContain('tokenService.buildBuyTransaction')
     })
 
-    test('handles royalties via getRoyaltyInfo', () => {
+    test('returns serialized transaction for client signing', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('getRoyaltyInfo')
-      expect(content).toContain('sellerFeeBasisPoints')
-      expect(content).toContain('creators')
+      expect(content).toContain('serializedTransaction')
     })
 
     test('prevents buying own NFT', () => {
@@ -97,9 +95,9 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain('NFT is not for sale')
     })
 
-    test('transfers ownership in database', () => {
+    test('does not update DB directly (deferred to confirm)', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('owner_wallet_address: buyerWalletAddress')
+      expect(content).toContain('unsignedTx')
     })
   })
 
@@ -120,9 +118,9 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain("method: 'POST'")
     })
 
-    test('calls tokenService.delistNFT', () => {
+    test('builds unsigned delist transaction', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('tokenService.delistNFT')
+      expect(content).toContain('tokenService.buildDelistTransaction')
     })
 
     test('verifies ownership before delisting', () => {
@@ -135,11 +133,9 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain('NFT is not currently listed for sale')
     })
 
-    test('clears listing fields in database', () => {
+    test('returns unsigned transaction for client signing', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('is_for_sale: 0')
-      expect(content).toContain('listing_id: null')
-      expect(content).toContain('delegate_address: null')
+      expect(content).toContain('serializedTransaction')
     })
   })
 
@@ -223,14 +219,14 @@ describe('NFT Secondary Market API Actions', () => {
       expect(content).toContain('Cannot accept offer with status')
     })
 
-    test('calls tokenService.acceptOffer', () => {
+    test('builds unsigned accept offer transaction', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('tokenService.acceptOffer')
+      expect(content).toContain('tokenService.buildAcceptOfferTransaction')
     })
 
-    test('transfers NFT ownership on acceptance', () => {
+    test('returns unsigned transaction for client signing', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('owner_wallet_address: offer.buyer_wallet_address')
+      expect(content).toContain('serializedTransaction')
     })
   })
 

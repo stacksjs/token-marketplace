@@ -98,6 +98,13 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/rarity', 'Actions/Marketplace/RarityIndexAction')
   route.get('/rarity/{slug}', 'Actions/Marketplace/RarityShowAction')
 
+  // Activity feed
+  route.get('/activity', 'Actions/Marketplace/ActivityFeedAction')
+  route.get('/activity/{collectionSlug}', 'Actions/Marketplace/ActivityFeedAction')
+
+  // Collection stats update (admin)
+  route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction')
+
   // User profile
   route.get('/profile/{walletAddress}', 'Actions/Marketplace/ProfileAction')
 })
@@ -133,9 +140,16 @@ route.group({ prefix: '/presale', middleware: 'auth' }, () => {
 route.post('/nfts/buy', 'Actions/Nft/BuyNftAction')
 route.post('/nfts/list', 'Actions/Nft/ListNftAction')
 route.post('/nfts/delist', 'Actions/Nft/DelistNftAction')
+route.post('/nfts/confirm', 'Actions/Nft/ConfirmTransactionAction')
 route.post('/nfts/offer', 'Actions/Nft/MakeOfferAction')
 route.post('/nfts/offer/accept', 'Actions/Nft/AcceptOfferAction')
 route.post('/nfts/offer/cancel', 'Actions/Nft/CancelOfferAction')
 route.post('/nfts/auction', 'Actions/Nft/CreateAuctionAction')
 route.post('/nfts/auction/bid', 'Actions/Nft/PlaceBidAction')
 route.post('/nfts/auction/settle', 'Actions/Nft/SettleAuctionAction')
+route.post('/nfts/auction/cancel', 'Actions/Nft/CancelAuctionAction')
+
+// Escrow routes
+route.post('/nfts/escrow', 'Actions/Nft/CreateEscrowAction')
+route.post('/nfts/escrow/settle', 'Actions/Nft/SettleEscrowAction')
+route.post('/nfts/escrow/cancel', 'Actions/Nft/CancelEscrowAction')
