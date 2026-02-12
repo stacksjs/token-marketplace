@@ -1,4 +1,5 @@
 <script server>
+  const pageTitle = 'Home | Naked NFTs'
   // Navigation Links
   const navLinks = [
     { name: "Home", href: "/", active: true },
@@ -7,6 +8,7 @@
     { name: "Staking", href: "#", active: false, tooltip: "Coming soon" },
     { name: "Grassroots", href: "#", active: false, tooltip: "Our DAO & DAO framework. Coming soon." }
   ]
+
 </script>
 
 <header>
