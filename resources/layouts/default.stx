@@ -1,8 +1,3 @@
-<script>
-  import Drawer from '../views/components/Drawer.stx'
-  import AuthModal from '../views/components/AuthModal.stx'
-</script>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -86,29 +81,16 @@
   <Footer />
   <Drawer />
   <AuthModal />
-
-  <!-- Toast Container -->
-  <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col space-y-2"></div>
+  <Toast />
 
   <script client>
     // ─── API URL ───
-    const API_URL = document.querySelector('meta[name="api-url"]')?.content || 'http://localhost:3008'
+    const API_URL = 'http://localhost:3008'
 
     // ─── Toast ───
     window.Toast = {
-      show(message, type = 'success') {
-        const container = document.getElementById('toast-container')
-        if (!container) return
-        const toast = document.createElement('div')
-        const bg = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-yellow-500' : 'bg-emerald-600'
-        toast.className = `${bg} text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium transform translate-x-full transition-transform duration-300`
-        toast.textContent = message
-        container.appendChild(toast)
-        requestAnimationFrame(() => { toast.style.transform = 'translateX(0)' })
-        setTimeout(() => {
-          toast.style.transform = 'translateX(120%)'
-          setTimeout(() => toast.remove(), 300)
-        }, 3500)
+      show(msg, type = 'success') {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { message: msg, type } }))
       },
       success(msg) { this.show(msg, 'success') },
       error(msg) { this.show(msg, 'error') },
@@ -137,7 +119,7 @@
           const resp = await provider.connect()
           this._address = resp.publicKey.toString()
           localStorage.setItem('wallet_address', this._address)
-          document.dispatchEvent(new CustomEvent('wallet:connected', { detail: { address: this._address } }))
+          window.dispatchEvent(new CustomEvent('wallet-connected', { detail: { address: this._address } }))
           return this._address
         } catch (err) {
           console.error('Wallet connect failed:', err)
@@ -150,7 +132,7 @@
         if (provider) { try { await provider.disconnect() } catch (_) {} }
         this._address = null
         localStorage.removeItem('wallet_address')
-        document.dispatchEvent(new CustomEvent('wallet:disconnected'))
+        window.dispatchEvent(new CustomEvent('wallet-disconnected'))
       },
 
       async getBalance() {
@@ -170,12 +152,12 @@
         const provider = this.getProvider()
         if (provider?.isConnected && provider?.publicKey) {
           this._address = provider.publicKey.toString()
-          document.dispatchEvent(new CustomEvent('wallet:connected', { detail: { address: this._address } }))
+          window.dispatchEvent(new CustomEvent('wallet-connected', { detail: { address: this._address } }))
         } else if (provider) {
           try {
             const resp = await provider.connect({ onlyIfTrusted: true })
             this._address = resp.publicKey.toString()
-            document.dispatchEvent(new CustomEvent('wallet:connected', { detail: { address: this._address } }))
+            window.dispatchEvent(new CustomEvent('wallet-connected', { detail: { address: this._address } }))
           } catch (_) {
             localStorage.removeItem('wallet_address')
           }
@@ -232,7 +214,7 @@
               const endTime = new Date(a.end_time).getTime()
               const now = Date.now()
               const ended = now >= endTime
-              return `<div class="bg-purple-50 rounded-xl p-4 mb-4"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-purple-800">Active Auction</span><span class="text-xs text-purple-600" data-auction-countdown data-end="${a.end_time}">${ended ? 'Ended' : ''}</span></div><div class="flex items-center justify-between"><span class="text-gray-5 text-sm">Current Bid</span><span class="text-lg font-bold text-gray-9">${Number(a.current_bid || a.starting_price).toFixed(4)} SOL</span></div>${!ended && isConnected && !isOwner ? `<div class="mt-3"><div class="flex space-x-2"><input type="number" step="0.01" placeholder="Your bid (SOL)" data-bid-input class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-8 focus:ring-pink-8"><button onclick="Marketplace.placeBid(${a.id}, document.querySelector('[data-bid-input]').value)" class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Bid</button></div></div>` : ''}${ended && isOwner ? `<button onclick="Marketplace.settleAuction(${a.id})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-sm">Settle Auction</button>` : ''}</div>`
+              return `<div class="bg-purple-50 rounded-xl p-4 mb-4"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-purple-800">Active Auction</span><span class="text-xs text-purple-600" data-auction-countdown data-end="${a.end_time}">${ended ? 'Ended' : ''}</span></div><div class="flex items-center justify-between"><span class="text-gray-5 text-sm">Current Bid</span><span class="text-lg font-bold text-gray-9">${Number(a.current_bid || a.starting_price).toFixed(4)} SOL</span></div>${!ended && isConnected && !isOwner ? `<div class="mt-3"><div class="flex space-x-2"><input type="number" step="0.01" placeholder="Your bid (SOL)" data-bid-input class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-8 focus:ring-pink-8"><button onclick="Marketplace._confirmBid(${a.id})" class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Bid</button></div></div>` : ''}${ended && isOwner ? `<button onclick="Marketplace.settleAuction(${a.id})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-sm">Settle Auction</button>` : ''}</div>`
             })()
           : ''
 
@@ -266,22 +248,23 @@
             ${attrsHtml}
             ${offersHtml}
             <div class="mt-6" data-nft-actions>${actionsHtml}</div>
-            <div id="nft-inline-form" class="mt-4"></div>
+            <div data-nft-inline-form class="mt-4"></div>
           </div>
         `
         DrawerManager.setContent(html)
 
         // Start auction countdown if present
-        const countdownEl = document.querySelector('[data-auction-countdown]')
-        if (countdownEl) {
-          const endTime = new Date(countdownEl.dataset.end).getTime()
+        if (nft.auction && !nft.auction._ended) {
+          const endTime = new Date(nft.auction.end_time).getTime()
           const tick = () => {
+            const el = DrawerManager._query('[data-auction-countdown]')
+            if (!el) return
             const diff = endTime - Date.now()
-            if (diff <= 0) { countdownEl.textContent = 'Ended'; return }
+            if (diff <= 0) { el.textContent = 'Ended'; return }
             const h = Math.floor(diff / 3600000)
             const m = Math.floor((diff % 3600000) / 60000)
             const s = Math.floor((diff % 60000) / 1000)
-            countdownEl.textContent = `${h}h ${m}m ${s}s`
+            el.textContent = `${h}h ${m}m ${s}s`
             requestAnimationFrame(tick)
           }
           tick()
@@ -290,11 +273,15 @@
     }
 
     // Re-render NFTModal actions when wallet state changes
-    document.addEventListener('wallet:connected', () => { if (NFTModal.currentNft) NFTModal.render() })
-    document.addEventListener('wallet:disconnected', () => { if (NFTModal.currentNft) NFTModal.render() })
+    window.addEventListener('wallet-connected', () => { if (NFTModal.currentNft) NFTModal.render() })
+    window.addEventListener('wallet-disconnected', () => { if (NFTModal.currentNft) NFTModal.render() })
 
     // ─── Marketplace ───
     window.Marketplace = {
+      _drawerQuery(selector) {
+        return DrawerManager._query(selector)
+      },
+
       async _apiCall(url, body, successMsg) {
         if (!WalletManager.isConnected()) { Toast.error('Please connect your wallet first'); return null }
         try {
@@ -366,39 +353,73 @@
         if (result && NFTModal.currentNft) NFTModal.open(NFTModal.currentNft.id)
       },
 
+      // Helper methods for inline form actions
+      _confirmList(nftId) {
+        const price = this._drawerQuery('[data-list-price]')?.value
+        if (price) this.listForSale(nftId, price)
+      },
+
+      _confirmOffer(nftId) {
+        const amount = this._drawerQuery('[data-offer-amount]')?.value
+        if (amount) this.makeOffer(nftId, amount)
+      },
+
+      _confirmBid(auctionId) {
+        const amount = this._drawerQuery('[data-bid-input]')?.value
+        if (amount) this.placeBid(auctionId, amount)
+      },
+
+      _confirmAuction(nftId) {
+        const type = this._drawerQuery('[data-auction-type]')?.value
+        const start = this._drawerQuery('[data-auction-start]')?.value
+        const reserve = this._drawerQuery('[data-auction-reserve]')?.value
+        const duration = this._drawerQuery('[data-auction-duration]')?.value
+        this.createAuction(nftId, {
+          auctionType: type,
+          startingPrice: Number(start),
+          reservePrice: Number(reserve) || null,
+          duration: Number(duration)
+        })
+      },
+
+      _clearForm() {
+        const form = this._drawerQuery('[data-nft-inline-form]')
+        if (form) form.innerHTML = ''
+      },
+
       // Inline forms shown inside the drawer
       _showListForm(nftId) {
-        const form = document.getElementById('nft-inline-form')
+        const form = this._drawerQuery('[data-nft-inline-form]')
         if (!form) return
         form.innerHTML = `
           <div class="bg-gray-50 rounded-xl p-4">
             <h4 class="font-semibold text-gray-8 mb-3">List for Sale</h4>
             <div class="flex space-x-2">
               <input type="number" step="0.01" min="0" placeholder="Price in SOL" data-list-price class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <button onclick="Marketplace.listForSale(${nftId}, document.querySelector('[data-list-price]').value)" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-lg text-sm">Confirm</button>
+              <button onclick="Marketplace._confirmList(${nftId})" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-lg text-sm">Confirm</button>
             </div>
-            <button onclick="document.getElementById('nft-inline-form').innerHTML=''" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
+            <button onclick="Marketplace._clearForm()" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
           </div>
         `
       },
 
       _showOfferForm(nftId) {
-        const form = document.getElementById('nft-inline-form')
+        const form = this._drawerQuery('[data-nft-inline-form]')
         if (!form) return
         form.innerHTML = `
           <div class="bg-gray-50 rounded-xl p-4">
             <h4 class="font-semibold text-gray-8 mb-3">Make an Offer</h4>
             <div class="flex space-x-2">
               <input type="number" step="0.01" min="0" placeholder="Amount in SOL" data-offer-amount class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <button onclick="Marketplace.makeOffer(${nftId}, document.querySelector('[data-offer-amount]').value)" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-lg text-sm">Submit</button>
+              <button onclick="Marketplace._confirmOffer(${nftId})" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-lg text-sm">Submit</button>
             </div>
-            <button onclick="document.getElementById('nft-inline-form').innerHTML=''" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
+            <button onclick="Marketplace._clearForm()" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
           </div>
         `
       },
 
       _showAuctionForm(nftId) {
-        const form = document.getElementById('nft-inline-form')
+        const form = this._drawerQuery('[data-nft-inline-form]')
         if (!form) return
         form.innerHTML = `
           <div class="bg-gray-50 rounded-xl p-4">
@@ -418,9 +439,9 @@
                 <option value="259200">3 days</option>
                 <option value="604800">7 days</option>
               </select>
-              <button onclick="Marketplace.createAuction(${nftId}, { auctionType: document.querySelector('[data-auction-type]').value, startingPrice: Number(document.querySelector('[data-auction-start]').value), reservePrice: Number(document.querySelector('[data-auction-reserve]').value) || null, duration: Number(document.querySelector('[data-auction-duration]').value) })" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-sm">Create Auction</button>
+              <button onclick="Marketplace._confirmAuction(${nftId})" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-sm">Create Auction</button>
             </div>
-            <button onclick="document.getElementById('nft-inline-form').innerHTML=''" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
+            <button onclick="Marketplace._clearForm()" class="text-xs text-gray-5 hover:text-gray-7 mt-2">Cancel</button>
           </div>
         `
       },

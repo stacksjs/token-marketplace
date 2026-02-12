@@ -108,13 +108,6 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           <div>
             <div
               class="bg-gray-8/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-7"
-              data-mint-config
-              data-api-url="{{ API_URL }}"
-              data-candy-machine-id="{{ mintData.candyMachine?.id || '' }}"
-              data-mint-price-sol="{{ mintData.stats.mintPriceSol }}"
-              data-presale-id="{{ mintData.activePresales?.[0]?.id || '' }}"
-              data-can-mint="{{ mintData.canMint ? 'true' : 'false' }}"
-              data-mint-status="{{ mintData.mintStatus }}"
             >
               <!-- Progress Bar -->
               <div class="mb-8">
@@ -158,11 +151,20 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
               @endif
 
               <!-- Wallet Connection & Mint -->
-              <div id="mint-section">
+              <div x-data="mintComponent()"
+                data-api-url="{{ API_URL }}"
+                data-candy-machine-id="{{ mintData.candyMachine?.id || '' }}"
+                data-mint-price-sol="{{ mintData.stats.mintPriceSol }}"
+                data-presale-id="{{ mintData.activePresales?.[0]?.id || '' }}"
+                data-can-mint="{{ mintData.canMint ? 'true' : 'false' }}"
+                data-mint-status="{{ mintData.mintStatus }}"
+                @wallet-connected.window="onWalletConnect($event.detail.address)"
+                @wallet-disconnected.window="onWalletDisconnect()"
+              >
                 <!-- Not Connected State -->
-                <div data-connect-wallet-section>
+                <div x-show="isConnectView">
                   <button
-                    data-connect-wallet-btn
+                    @click="WalletManager.connect()"
                     type="button"
                     class="w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg"
                   >
@@ -171,8 +173,8 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
                   <p class="text-center text-gray-5 text-sm mt-4">Phantom, Solflare, and other Solana wallets supported</p>
                 </div>
 
-                <!-- Connected State (hidden by default) -->
-                <div data-mint-interface class="hidden">
+                <!-- Connected State -->
+                <div x-show="isMintView" x-transition>
                   <div class="flex items-center justify-between bg-gray-7/50 rounded-xl p-4 mb-6">
                     <div class="flex items-center">
                       <div class="h-10 w-10 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
@@ -181,39 +183,39 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
                         </svg>
                       </div>
                       <div class="ml-3">
-                        <p class="text-white font-semibold" data-wallet-address>Connected</p>
-                        <p class="text-sm text-gray-5" data-wallet-balance>Balance: — SOL</p>
+                        <p class="text-white font-semibold" x-text="shortWalletAddr"></p>
+                        <p class="text-sm text-gray-5" x-text="walletBal"></p>
                       </div>
                     </div>
-                    <button data-disconnect-btn class="text-gray-5 hover:text-white text-sm">Disconnect</button>
+                    <button @click="WalletManager.disconnect()" class="text-gray-5 hover:text-white text-sm">Disconnect</button>
                   </div>
 
                   <!-- Quantity Selector -->
                   <div class="flex items-center justify-center space-x-6 mb-6">
-                    <button data-qty-minus class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">−</button>
-                    <span data-mint-qty class="text-3xl font-bold text-white w-12 text-center">1</span>
-                    <button data-qty-plus class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">+</button>
+                    <button @click="qty > 1 && qty--" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">−</button>
+                    <span x-text="qty" class="text-3xl font-bold text-white w-12 text-center"></span>
+                    <button @click="qty < 10 && qty++" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">+</button>
                   </div>
 
                   <!-- Total -->
                   <div class="flex items-center justify-between text-lg mb-6">
                     <span class="text-gray-4">Total</span>
-                    <span data-total-price class="text-white font-bold">{{ mintData.stats.mintPriceSol }} SOL</span>
+                    <span x-text="totalPrice" class="text-white font-bold"></span>
                   </div>
 
                   <!-- Mint Button -->
                   <button
-                    data-mint-btn
+                    @click="doMint()"
                     type="button"
                     class="mint-button w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg disabled:from-gray-6 disabled:to-gray-6"
-                    {{ mintData.canMint ? '' : 'disabled' }}
+                    :disabled="!canMint || minting"
+                    x-text="mintBtnText"
                   >
-                    {{ mintData.canMint ? 'Mint Now' : (mintData.mintStatus === 'sold_out' ? 'Sold Out' : 'Minting Not Available') }}
                   </button>
                 </div>
 
-                <!-- Success State (hidden by default) -->
-                <div data-mint-success class="hidden text-center">
+                <!-- Success State -->
+                <div x-show="isSuccessView" x-transition class="text-center">
                   <div class="success-checkmark inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6">
                     <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
@@ -222,9 +224,9 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
                   <h3 class="text-2xl font-bold text-white mb-2">Mint Successful!</h3>
                   <p class="text-gray-4 mb-4">Your NFT has been minted successfully.</p>
                   <p class="text-sm text-gray-5 mb-6">
-                    Mint: <a data-mint-address-link href="#" target="_blank" class="text-pink-8 hover:text-pink-9"></a>
+                    Mint: <a :href="explorerUrl" target="_blank" class="text-pink-8 hover:text-pink-9" x-text="shortMintAddr"></a>
                   </p>
-                  <button data-mint-another-btn class="text-pink-8 hover:text-pink-9 font-semibold">
+                  <button @click="mintAnother()" class="text-pink-8 hover:text-pink-9 font-semibold">
                     Mint Another
                   </button>
                 </div>
@@ -283,147 +285,96 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
     </div>
 
     <script client>
-      // Read config from data attributes
-      const configEl = document.querySelector('[data-mint-config]')
-      const MINT_API_URL = configEl?.dataset.apiUrl || 'http://localhost:3008'
-      const candyMachineId = configEl?.dataset.candyMachineId ? Number(configEl.dataset.candyMachineId) : null
-      const mintPriceSol = Number(configEl?.dataset.mintPriceSol) || 0
-      const presaleId = configEl?.dataset.presaleId ? Number(configEl.dataset.presaleId) : null
-      let mintQty = 1
-
-      // DOM Elements
-      const connectWalletSection = document.querySelector('[data-connect-wallet-section]')
-      const mintInterface = document.querySelector('[data-mint-interface]')
-      const mintSuccess = document.querySelector('[data-mint-success]')
-      const connectWalletBtn = document.querySelector('[data-connect-wallet-btn]')
-      const disconnectBtn = document.querySelector('[data-disconnect-btn]')
-      const mintBtn = document.querySelector('[data-mint-btn]')
-      const qtyMinus = document.querySelector('[data-qty-minus]')
-      const qtyPlus = document.querySelector('[data-qty-plus]')
-      const mintQtyEl = document.querySelector('[data-mint-qty]')
-      const totalPriceEl = document.querySelector('[data-total-price]')
-      const walletAddressEl = document.querySelector('[data-wallet-address]')
-      const walletBalanceEl = document.querySelector('[data-wallet-balance]')
-      const mintAnotherBtn = document.querySelector('[data-mint-another-btn]')
-      const mintAddressLink = document.querySelector('[data-mint-address-link]')
-
-      // Connect wallet via global WalletManager
-      connectWalletBtn?.addEventListener('click', async () => {
-        const address = await WalletManager.connect()
-        if (address) {
-          showMintInterface()
-          updateWalletInfo(address)
-        }
-      })
-
-      // Disconnect wallet
-      disconnectBtn?.addEventListener('click', async () => {
-        await WalletManager.disconnect()
-        showConnectWallet()
-      })
-
-      // Listen for global wallet events
-      document.addEventListener('wallet:connected', (e) => {
-        showMintInterface()
-        updateWalletInfo(e.detail.address)
-      })
-      document.addEventListener('wallet:disconnected', () => showConnectWallet())
-
-      // Quantity controls
-      qtyMinus?.addEventListener('click', () => {
-        if (mintQty > 1) {
-          mintQty--
-          updateQtyDisplay()
-        }
-      })
-
-      qtyPlus?.addEventListener('click', () => {
-        if (mintQty < 10) {
-          mintQty++
-          updateQtyDisplay()
-        }
-      })
-
-      // Mint button
-      mintBtn?.addEventListener('click', async () => {
-        const walletAddress = WalletManager.getAddress()
-        if (!walletAddress || !candyMachineId) return
-
-        mintBtn.disabled = true
-        mintBtn.innerHTML = '<svg class="spinner inline h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Minting...'
-
-        try {
-          const response = await fetch(`${MINT_API_URL}/mint`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              candyMachineId,
-              walletAddress,
-              presaleId
-            })
-          })
-
-          const result = await response.json()
-
-          if (result.success) {
-            showMintSuccess(result.mint)
-          } else {
-            Toast.error(result.error || 'Mint failed')
-            mintBtn.disabled = false
-            mintBtn.textContent = 'Mint Now'
+      function mintComponent() {
+        return {
+          view: 0,
+          qty: 1,
+          walletAddr: '',
+          walletBal: '',
+          minting: false,
+          mintResult: null,
+          canMint: false,
+          mintStatus: '',
+          _mintPriceSol: 0,
+          _candyMachineId: null,
+          _presaleId: null,
+          _apiUrl: 'http://localhost:3008',
+          get isConnectView() { return this.view === 0 },
+          get isMintView() { return this.view === 1 },
+          get isSuccessView() { return this.view === 2 },
+          get totalPrice() {
+            return (this._mintPriceSol * this.qty).toFixed(4) + ' SOL'
+          },
+          get mintBtnText() {
+            if (this.minting) return 'Minting...'
+            if (!this.canMint) return this.mintStatus === 'sold_out' ? 'Sold Out' : 'Minting Not Available'
+            return 'Mint Now'
+          },
+          get explorerUrl() {
+            if (!this.mintResult?.mintAddress) return '#'
+            return 'https://explorer.solana.com/address/' + this.mintResult.mintAddress + '?cluster=devnet'
+          },
+          get shortMintAddr() {
+            if (!this.mintResult?.mintAddress) return ''
+            return this.mintResult.mintAddress.slice(0, 8) + '...' + this.mintResult.mintAddress.slice(-8)
+          },
+          get shortWalletAddr() {
+            if (!this.walletAddr) return ''
+            return this.walletAddr.slice(0, 4) + '...' + this.walletAddr.slice(-4)
+          },
+          init() {
+            this.canMint = this.$el.dataset.canMint === 'true'
+            this.mintStatus = this.$el.dataset.mintStatus || ''
+            this._mintPriceSol = Number(this.$el.dataset.mintPriceSol) || 0
+            this._candyMachineId = this.$el.dataset.candyMachineId ? Number(this.$el.dataset.candyMachineId) : null
+            this._presaleId = this.$el.dataset.presaleId ? Number(this.$el.dataset.presaleId) : null
+            this._apiUrl = this.$el.dataset.apiUrl || 'http://localhost:3008'
+            if (WalletManager.isConnected()) {
+              this.onWalletConnect(WalletManager.getAddress())
+            }
+          },
+          async onWalletConnect(addr) {
+            this.view = 1
+            this.walletAddr = addr
+            await this.updateBalance()
+          },
+          onWalletDisconnect() {
+            this.view = 0
+          },
+          mintAnother() {
+            this.view = 1
+            this.qty = 1
+          },
+          async updateBalance() {
+            const bal = await WalletManager.getBalance()
+            this.walletBal = bal ? 'Balance: ' + bal + ' SOL' : 'Balance: — SOL'
+          },
+          async doMint() {
+            if (!this.canMint || this.minting) return
+            const walletAddress = WalletManager.getAddress()
+            if (!walletAddress || !this._candyMachineId) return
+            this.minting = true
+            try {
+              const response = await fetch(this._apiUrl + '/mint', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candyMachineId: this._candyMachineId, walletAddress: walletAddress, presaleId: this._presaleId })
+              })
+              const result = await response.json()
+              if (result.success) {
+                this.mintResult = result.mint
+                this.view = 2
+              } else {
+                Toast.error(result.error || 'Mint failed')
+              }
+            } catch (err) {
+              console.error('Mint error:', err)
+              Toast.error('Failed to mint. Please try again.')
+            } finally {
+              this.minting = false
+            }
           }
-        } catch (err) {
-          console.error('Mint error:', err)
-          Toast.error('Failed to mint. Please try again.')
-          mintBtn.disabled = false
-          mintBtn.textContent = 'Mint Now'
         }
-      })
-
-      // Mint another
-      mintAnotherBtn?.addEventListener('click', () => {
-        showMintInterface()
-        mintBtn.disabled = false
-        mintBtn.textContent = 'Mint Now'
-      })
-
-      // Helper functions
-      function showConnectWallet() {
-        connectWalletSection.classList.remove('hidden')
-        mintInterface.classList.add('hidden')
-        mintSuccess.classList.add('hidden')
-      }
-
-      function showMintInterface() {
-        connectWalletSection.classList.add('hidden')
-        mintInterface.classList.remove('hidden')
-        mintSuccess.classList.add('hidden')
-      }
-
-      function showMintSuccess(mint) {
-        connectWalletSection.classList.add('hidden')
-        mintInterface.classList.add('hidden')
-        mintSuccess.classList.remove('hidden')
-        mintAddressLink.textContent = mint.mintAddress.slice(0, 8) + '...' + mint.mintAddress.slice(-8)
-        mintAddressLink.href = `https://explorer.solana.com/address/${mint.mintAddress}?cluster=devnet`
-      }
-
-      function updateQtyDisplay() {
-        mintQtyEl.textContent = mintQty
-        totalPriceEl.textContent = (mintPriceSol * mintQty).toFixed(4) + ' SOL'
-      }
-
-      async function updateWalletInfo(address) {
-        if (!address) return
-        walletAddressEl.textContent = address.slice(0, 4) + '...' + address.slice(-4)
-        const bal = await WalletManager.getBalance()
-        walletBalanceEl.textContent = bal ? `Balance: ${bal} SOL` : 'Balance: — SOL'
-      }
-
-      // Check for existing connection on page load
-      if (WalletManager.isConnected()) {
-        showMintInterface()
-        updateWalletInfo(WalletManager.getAddress())
       }
     </script>
   @endif

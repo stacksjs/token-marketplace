@@ -1,12 +1,32 @@
-<div ref="appDrawer" class="fixed inset-0 z-50 hidden">
+<div x-data="drawerComponent()"
+  @drawer-open.window="open = true"
+  @drawer-close.window="open = false"
+  @keydown.escape.window="open = false"
+  x-cloak
+>
   <!-- Backdrop -->
-  <div class="absolute inset-0 bg-black/60 transition-opacity duration-300" ref="drawerBackdrop"></div>
+  <div
+    x-show="open"
+    x-transition.opacity.duration.300ms
+    @click="DrawerManager.close()"
+    class="fixed inset-0 z-50 bg-black/60"
+  ></div>
 
   <!-- Panel -->
-  <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto transform translate-x-full transition-transform duration-300" ref="drawerPanel">
+  <div
+    x-show="open"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="translate-x-full"
+    x-transition:enter-end="translate-x-0"
+    x-transition:leave="transition ease-in duration-300"
+    x-transition:leave-start="translate-x-0"
+    x-transition:leave-end="translate-x-full"
+    class="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto z-50"
+    data-drawer-panel
+  >
     <!-- Close Button -->
     <button
-      ref="drawerClose"
+      @click="DrawerManager.close()"
       type="button"
       class="absolute top-4 right-4 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition"
     >
@@ -16,52 +36,32 @@
     </button>
 
     <!-- Content -->
-    <div ref="drawerContent">
+    <div x-ref="drawerContent">
       <slot />
     </div>
   </div>
 </div>
 
 <script client>
-  window.DrawerManager = {
-    _el: null,
-    _panel: null,
-
-    _getEl() {
-      if (!this._el) this._el = STX.useRef('appDrawer')
-      if (!this._panel) this._panel = STX.useRef('drawerPanel')
-      return this._el
-    },
-
-    open() {
-      const el = this._getEl()
-      if (!el) return
-      el.classList.remove('hidden')
-      requestAnimationFrame(() => {
-        this._panel?.classList.remove('translate-x-full')
-      })
-      document.body.style.overflow = 'hidden'
-    },
-
-    close() {
-      const el = this._getEl()
-      if (!el) return
-      this._panel?.classList.add('translate-x-full')
-      setTimeout(() => {
-        el.classList.add('hidden')
-        document.body.style.overflow = ''
-      }, 300)
-      if (window.NFTModal) window.NFTModal.currentNft = null
-    },
-
-    setContent(html) {
-      const content = STX.useRef('drawerContent')
-      if (content) content.innerHTML = html
-    },
+  function drawerComponent() {
+    return {
+      open: false,
+      init() {
+        window.DrawerManager = {
+          open: () => window.dispatchEvent(new CustomEvent('drawer-open')),
+          close: () => {
+            window.dispatchEvent(new CustomEvent('drawer-close'))
+            if (window.NFTModal) window.NFTModal.currentNft = null
+          },
+          setContent: (html) => {
+            const el = this.$refs.drawerContent
+            if (el) el.innerHTML = html
+          },
+          _query: (selector) => {
+            return this.$refs.drawerContent?.querySelector(selector)
+          },
+        }
+      }
+    }
   }
-
-  // Close handlers
-  STX.useRef('drawerBackdrop')?.addEventListener('click', () => DrawerManager.close())
-  STX.useRef('drawerClose')?.addEventListener('click', () => DrawerManager.close())
-  STX.onKey('Escape', () => DrawerManager.close())
 </script>

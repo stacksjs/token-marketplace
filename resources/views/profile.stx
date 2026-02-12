@@ -5,21 +5,24 @@ const pageTitle = 'My Profile | Naked NFTs'
 @layout('default')
 @section('title', pageTitle)
 @section('content')
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50" x-data="profilePage()"
+    @wallet-connected.window="loadProfile($event.detail.address)"
+    @wallet-disconnected.window="onDisconnect()"
+  >
     <!-- Not connected state -->
-    <div id="profile-connect" class="flex flex-col items-center justify-center py-24">
+    <div x-show="!connected" class="flex flex-col items-center justify-center py-24">
       <svg class="h-16 w-16 text-gray-3 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
       <h2 class="text-2xl font-bold text-gray-8 mb-2">Connect Your Wallet</h2>
       <p class="text-gray-5 mb-6">Connect your wallet to view your portfolio</p>
-      <button onclick="WalletManager.connect()" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-8 py-3 rounded-xl transition">
+      <button @click="WalletManager.connect()" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-8 py-3 rounded-xl transition">
         Connect Wallet
       </button>
     </div>
 
-    <!-- Connected state (hidden by default) -->
-    <div id="profile-content" class="hidden">
+    <!-- Connected state -->
+    <div x-show="connected" x-cloak x-transition>
       <!-- Profile Header -->
       <div class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -30,8 +33,8 @@ const pageTitle = 'My Profile | Naked NFTs'
               </svg>
             </div>
             <div>
-              <h1 class="text-2xl font-bold text-gray-9" id="profile-address"></h1>
-              <p class="text-sm text-gray-5" id="profile-balance"></p>
+              <h1 class="text-2xl font-bold text-gray-9" x-text="shortAddr"></h1>
+              <p class="text-sm text-gray-5" x-text="walletBal"></p>
             </div>
           </div>
         </div>
@@ -40,12 +43,12 @@ const pageTitle = 'My Profile | Naked NFTs'
       <!-- Tabs -->
       <div class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav class="flex space-x-8 -mb-px" id="profile-tabs">
-            <button data-tab="nfts" class="profile-tab border-b-2 border-pink-8 text-pink-8 py-4 px-1 text-sm font-medium">My NFTs</button>
-            <button data-tab="listings" class="profile-tab border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">My Listings</button>
-            <button data-tab="offers" class="profile-tab border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">My Offers</button>
-            <button data-tab="auctions" class="profile-tab border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">Auctions</button>
-            <button data-tab="history" class="profile-tab border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">History</button>
+          <nav class="flex space-x-8 -mb-px">
+            <button @click="activeTab = 0" :class="tabCls(0)" class="border-b-2 py-4 px-1 text-sm font-medium">My NFTs</button>
+            <button @click="activeTab = 1" :class="tabCls(1)" class="border-b-2 py-4 px-1 text-sm font-medium">My Listings</button>
+            <button @click="activeTab = 2" :class="tabCls(2)" class="border-b-2 py-4 px-1 text-sm font-medium">My Offers</button>
+            <button @click="activeTab = 3" :class="tabCls(3)" class="border-b-2 py-4 px-1 text-sm font-medium">Auctions</button>
+            <button @click="activeTab = 4" :class="tabCls(4)" class="border-b-2 py-4 px-1 text-sm font-medium">History</button>
           </nav>
         </div>
       </div>
@@ -53,139 +56,158 @@ const pageTitle = 'My Profile | Naked NFTs'
       <!-- Tab Content -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Loading -->
-        <div id="profile-loading" class="flex justify-center py-12">
+        <div x-show="loading" class="flex justify-center py-12">
           <div class="spinner h-8 w-8 border-4 border-pink-8 border-t-transparent rounded-full"></div>
         </div>
 
         <!-- NFTs Tab -->
-        <div id="tab-nfts" class="profile-tab-content"></div>
+        <div x-show="activeTab === 0 && !loading" x-html="renderNfts()"></div>
 
         <!-- Listings Tab -->
-        <div id="tab-listings" class="profile-tab-content hidden"></div>
+        <div x-show="activeTab === 1 && !loading" x-html="renderListings()"></div>
 
         <!-- Offers Tab -->
-        <div id="tab-offers" class="profile-tab-content hidden"></div>
+        <div x-show="activeTab === 2 && !loading" x-html="renderOffers()"></div>
 
         <!-- Auctions Tab -->
-        <div id="tab-auctions" class="profile-tab-content hidden"></div>
+        <div x-show="activeTab === 3 && !loading" x-html="renderAuctions()"></div>
 
         <!-- History Tab -->
-        <div id="tab-history" class="profile-tab-content hidden"></div>
+        <div x-show="activeTab === 4 && !loading" x-html="renderHistory()"></div>
       </div>
     </div>
   </div>
 
   <script client>
-    {
-      let profileData = null
+    function profilePage() {
+      return {
+        connected: false,
+        activeTab: 0,
+        loading: false,
+        profileData: null,
+        walletAddr: '',
+        walletBal: '',
 
-      // Tab switching
-      document.getElementById('profile-tabs')?.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-tab]')
-        if (!btn) return
-        const tab = btn.dataset.tab
-        document.querySelectorAll('.profile-tab').forEach(t => {
-          t.classList.remove('border-pink-8', 'text-pink-8')
-          t.classList.add('border-transparent', 'text-gray-5')
-        })
-        btn.classList.add('border-pink-8', 'text-pink-8')
-        btn.classList.remove('border-transparent', 'text-gray-5')
-        document.querySelectorAll('.profile-tab-content').forEach(c => c.classList.add('hidden'))
-        document.getElementById(`tab-${tab}`)?.classList.remove('hidden')
-      })
+        get shortAddr() {
+          if (!this.walletAddr) return ''
+          return this.walletAddr.slice(0, 6) + '...' + this.walletAddr.slice(-4)
+        },
 
-      function nftCard(nft) {
-        return `<div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer" onclick="NFTModal.open(${nft.id})">
-          <div class="aspect-square"><img src="${nft.image_url || nft.imageUrl || '/assets/images/placeholder.png'}" alt="${nft.name}" class="w-full h-full object-cover" /></div>
-          <div class="p-3">
-            <p class="font-semibold text-gray-9 truncate">${nft.name}</p>
-            ${nft.price ? `<p class="text-sm font-semibold text-pink-8 mt-1">${nft.price} SOL</p>` : ''}
-            ${nft.rarity_rank ? `<p class="text-xs text-gray-5">Rank #${nft.rarity_rank}</p>` : ''}
-          </div>
-        </div>`
-      }
+        tabCls(tab) {
+          if (this.activeTab === tab) return 'border-pink-8 text-pink-8'
+          return 'border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300'
+        },
 
-      function emptyState(msg) {
-        return `<div class="text-center py-12"><svg class="mx-auto h-12 w-12 text-gray-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg><p class="mt-4 text-gray-5">${msg}</p></div>`
-      }
+        init() {
+          if (WalletManager.isConnected()) {
+            this.loadProfile(WalletManager.getAddress())
+          }
+        },
 
-      async function loadProfile(address) {
-        const connectEl = document.getElementById('profile-connect')
-        const contentEl = document.getElementById('profile-content')
-        const loadingEl = document.getElementById('profile-loading')
+        onDisconnect() {
+          this.connected = false
+          this.profileData = null
+        },
 
-        connectEl?.classList.add('hidden')
-        contentEl?.classList.remove('hidden')
-        loadingEl?.classList.remove('hidden')
+        nftCard(nft) {
+          return '<div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
+            + '<div class="aspect-square"><img src="' + (nft.image_url || nft.imageUrl || '/assets/images/placeholder.png') + '" alt="' + nft.name + '" class="w-full h-full object-cover" /></div>'
+            + '<div class="p-3">'
+            + '<p class="font-semibold text-gray-9 truncate">' + nft.name + '</p>'
+            + (nft.price ? '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>' : '')
+            + (nft.rarity_rank ? '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>' : '')
+            + '</div></div>'
+        },
 
-        document.getElementById('profile-address').textContent = address.slice(0, 6) + '...' + address.slice(-4)
-        const bal = await WalletManager.getBalance()
-        document.getElementById('profile-balance').textContent = bal ? `${bal} SOL` : ''
+        emptyState(msg) {
+          return '<div class="text-center py-12"><svg class="mx-auto h-12 w-12 text-gray-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg><p class="mt-4 text-gray-5">' + msg + '</p></div>'
+        },
 
-        try {
-          const res = await fetch(`${API_URL}/marketplace/profile/${address}`)
-          profileData = await res.json()
-        } catch (err) {
-          Toast.error('Failed to load profile data')
-          return
-        } finally {
-          loadingEl?.classList.add('hidden')
+        renderNfts() {
+          if (!this.profileData) return ''
+          if (this.profileData.ownedNfts && this.profileData.ownedNfts.length > 0) {
+            return '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + this.profileData.ownedNfts.map(n => this.nftCard(n)).join('') + '</div>'
+          }
+          return this.emptyState('No NFTs in your wallet yet')
+        },
+
+        renderListings() {
+          if (!this.profileData) return ''
+          if (this.profileData.listings && this.profileData.listings.length > 0) {
+            return '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + this.profileData.listings.map(n => this.nftCard(n)).join('') + '</div>'
+          }
+          return this.emptyState('No active listings')
+        },
+
+        renderOffers() {
+          if (!this.profileData) return ''
+          var html = ''
+          if (this.profileData.sentOffers && this.profileData.sentOffers.length > 0) {
+            html += '<h3 class="text-lg font-semibold text-gray-8 mb-3">Sent Offers</h3><div class="space-y-2 mb-8">'
+            this.profileData.sentOffers.forEach(function(o) {
+              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL &middot; ' + o.status + '</p></div>'
+              if (o.status === 'pending') html += '<button onclick="Marketplace.cancelOffer(' + o.id + ')" class="text-sm text-red-600 hover:text-red-700 font-medium">Cancel</button>'
+              html += '</div>'
+            })
+            html += '</div>'
+          }
+          if (this.profileData.receivedOffers && this.profileData.receivedOffers.length > 0) {
+            html += '<h3 class="text-lg font-semibold text-gray-8 mb-3">Received Offers</h3><div class="space-y-2">'
+            this.profileData.receivedOffers.forEach(function(o) {
+              var addr = o.bidder_address || ''
+              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL from ' + addr.slice(0,4) + '...' + addr.slice(-4) + '</p></div><button onclick="Marketplace.acceptOffer(' + o.id + ')" class="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded hover:bg-emerald-200 font-medium">Accept</button></div>'
+            })
+            html += '</div>'
+          }
+          return html || this.emptyState('No offers yet')
+        },
+
+        renderAuctions() {
+          if (!this.profileData) return ''
+          if (this.profileData.auctions && this.profileData.auctions.length > 0) {
+            var html = '<div class="space-y-3">'
+            this.profileData.auctions.forEach(function(a) {
+              var bid = Number(a.current_bid || a.starting_price).toFixed(4)
+              var info = a.status === 'active' ? 'Ends: ' + new Date(a.end_time).toLocaleString() : a.status
+              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + a.nft_id + '</p><p class="text-sm text-gray-5">' + a.auction_type + ' &middot; ' + a.status + '</p></div><div class="text-right"><p class="font-semibold text-gray-9">' + bid + ' SOL</p><p class="text-xs text-gray-5">' + info + '</p></div></div></div>'
+            })
+            html += '</div>'
+            return html
+          }
+          return this.emptyState('No auctions')
+        },
+
+        renderHistory() {
+          if (!this.profileData) return ''
+          if (this.profileData.transactions && this.profileData.transactions.length > 0) {
+            var html = '<div class="bg-white rounded-lg shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Date</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Type</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Status</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Mint</th></tr></thead><tbody class="divide-y divide-gray-100">'
+            this.profileData.transactions.forEach(function(t) {
+              var statusClass = t.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : t.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+              html += '<tr><td class="px-4 py-3 text-sm text-gray-7">' + new Date(t.created_at).toLocaleDateString() + '</td><td class="px-4 py-3 text-sm text-gray-7">Mint</td><td class="px-4 py-3"><span class="text-xs font-medium px-2 py-1 rounded-full ' + statusClass + '">' + t.status + '</span></td><td class="px-4 py-3 text-sm text-gray-5 font-mono">' + (t.mint_address || '').slice(0,8) + '...</td></tr>'
+            })
+            html += '</tbody></table></div>'
+            return html
+          }
+          return this.emptyState('No transaction history')
+        },
+
+        async loadProfile(address) {
+          this.connected = true
+          this.loading = true
+          this.walletAddr = address
+
+          var bal = await WalletManager.getBalance()
+          this.walletBal = bal ? bal + ' SOL' : ''
+
+          try {
+            var res = await fetch(API_URL + '/marketplace/profile/' + address)
+            this.profileData = await res.json()
+          } catch (err) {
+            Toast.error('Failed to load profile data')
+          } finally {
+            this.loading = false
+          }
         }
-
-        // NFTs tab
-        const nftsTab = document.getElementById('tab-nfts')
-        if (profileData.ownedNfts?.length > 0) {
-          nftsTab.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">${profileData.ownedNfts.map(nftCard).join('')}</div>`
-        } else {
-          nftsTab.innerHTML = emptyState('No NFTs in your wallet yet')
-        }
-
-        // Listings tab
-        const listingsTab = document.getElementById('tab-listings')
-        if (profileData.listings?.length > 0) {
-          listingsTab.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">${profileData.listings.map(nftCard).join('')}</div>`
-        } else {
-          listingsTab.innerHTML = emptyState('No active listings')
-        }
-
-        // Offers tab
-        const offersTab = document.getElementById('tab-offers')
-        let offersHtml = ''
-        if (profileData.sentOffers?.length > 0) {
-          offersHtml += `<h3 class="text-lg font-semibold text-gray-8 mb-3">Sent Offers</h3><div class="space-y-2 mb-8">${profileData.sentOffers.map(o => `<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #${o.nft_id}</p><p class="text-sm text-gray-5">${Number(o.amount).toFixed(4)} SOL &middot; ${o.status}</p></div>${o.status === 'pending' ? `<button onclick="Marketplace.cancelOffer(${o.id})" class="text-sm text-red-600 hover:text-red-700 font-medium">Cancel</button>` : ''}</div>`).join('')}</div>`
-        }
-        if (profileData.receivedOffers?.length > 0) {
-          offersHtml += `<h3 class="text-lg font-semibold text-gray-8 mb-3">Received Offers</h3><div class="space-y-2">${profileData.receivedOffers.map(o => `<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #${o.nft_id}</p><p class="text-sm text-gray-5">${Number(o.amount).toFixed(4)} SOL from ${(o.bidder_address || '').slice(0,4)}...${(o.bidder_address || '').slice(-4)}</p></div><button onclick="Marketplace.acceptOffer(${o.id})" class="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded hover:bg-emerald-200 font-medium">Accept</button></div>`).join('')}</div>`
-        }
-        offersTab.innerHTML = offersHtml || emptyState('No offers yet')
-
-        // Auctions tab
-        const auctionsTab = document.getElementById('tab-auctions')
-        if (profileData.auctions?.length > 0) {
-          auctionsTab.innerHTML = `<div class="space-y-3">${profileData.auctions.map(a => `<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #${a.nft_id}</p><p class="text-sm text-gray-5">${a.auction_type} &middot; ${a.status}</p></div><div class="text-right"><p class="font-semibold text-gray-9">${Number(a.current_bid || a.starting_price).toFixed(4)} SOL</p><p class="text-xs text-gray-5">${a.status === 'active' ? 'Ends: ' + new Date(a.end_time).toLocaleString() : a.status}</p></div></div></div>`).join('')}</div>`
-        } else {
-          auctionsTab.innerHTML = emptyState('No auctions')
-        }
-
-        // History tab
-        const historyTab = document.getElementById('tab-history')
-        if (profileData.transactions?.length > 0) {
-          historyTab.innerHTML = `<div class="bg-white rounded-lg shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Date</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Type</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Status</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-5 uppercase">Mint</th></tr></thead><tbody class="divide-y divide-gray-100">${profileData.transactions.map(t => `<tr><td class="px-4 py-3 text-sm text-gray-7">${new Date(t.created_at).toLocaleDateString()}</td><td class="px-4 py-3 text-sm text-gray-7">Mint</td><td class="px-4 py-3"><span class="text-xs font-medium px-2 py-1 rounded-full ${t.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : t.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${t.status}</span></td><td class="px-4 py-3 text-sm text-gray-5 font-mono">${(t.mint_address || '').slice(0,8)}...</td></tr>`).join('')}</tbody></table></div>`
-        } else {
-          historyTab.innerHTML = emptyState('No transaction history')
-        }
-      }
-
-      // Listen for wallet events
-      document.addEventListener('wallet:connected', (e) => loadProfile(e.detail.address))
-      document.addEventListener('wallet:disconnected', () => {
-        document.getElementById('profile-connect')?.classList.remove('hidden')
-        document.getElementById('profile-content')?.classList.add('hidden')
-      })
-
-      // Check if already connected
-      if (WalletManager.isConnected()) {
-        loadProfile(WalletManager.getAddress())
       }
     }
   </script>
