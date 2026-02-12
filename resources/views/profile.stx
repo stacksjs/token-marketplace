@@ -258,14 +258,23 @@ const pageTitle = 'My Profile | Naked NFTs'
       }
 
       // Check if wallet already connected on page load
-      var initProvider = getProfileProvider()
-      if (initProvider && initProvider.isConnected && initProvider.publicKey) {
-        profileWalletAddr = initProvider.publicKey.toString()
+      function initProfile(addr) {
+        profileWalletAddr = addr
         var els = getProfileEls()
-        if (els && els.addrEl) els.addrEl.textContent = profileWalletAddr.slice(0, 6) + '...' + profileWalletAddr.slice(-4)
+        if (els && els.addrEl) els.addrEl.textContent = addr.slice(0, 6) + '...' + addr.slice(-4)
         if (els && els.balEl) els.balEl.textContent = ''
         profileShowConnected(true)
-        loadProfileData(profileWalletAddr)
+        loadProfileData(addr)
+      }
+
+      var initProvider = getProfileProvider()
+      if (initProvider && initProvider.isConnected && initProvider.publicKey) {
+        initProfile(initProvider.publicKey.toString())
+      } else {
+        var _savedAddr = localStorage.getItem('wallet_addr')
+        if (_savedAddr) {
+          initProfile(_savedAddr)
+        }
       }
     }
   </script>
