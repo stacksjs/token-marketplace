@@ -57,222 +57,255 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
       </div>
     </div>
   @else
-    <div class="min-h-screen bg-gradient-to-br from-gray-9 via-gray-8 to-gray-9 py-12">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="text-center mb-12">
-          <a href="/collections/{{ mintData.collection.slug }}" class="inline-flex items-center text-gray-4 hover:text-white transition mb-4">
-            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to collection
-          </a>
-          <h1 class="text-4xl md:text-5xl font-bold text-white">{{ mintData.collection.name }}</h1>
-          @if(mintData.canMint)
-            <div class="mt-4 flex items-center justify-center text-emerald-400">
-              <div class="blink h-3 w-3 rounded-full bg-emerald-400"></div>
-              <span class="ml-2 text-lg font-semibold uppercase">
-                {{ mintData.mintStatus === 'presale_live' ? 'Presale Live' : 'Minting Live' }}
-              </span>
+    <!-- Hero Banner (matches collection detail) -->
+    <div class="relative">
+      <div class="h-64 md:h-80 bg-gradient-to-r from-gray-9 to-gray-7 relative overflow-hidden">
+        @if(mintData.collection.heroImageUrl || mintData.collection.imageUrl)
+          <img
+            src="{{ mintData.collection.heroImageUrl || mintData.collection.imageUrl }}"
+            alt="{{ mintData.collection.name }} Banner"
+            class="w-full h-full object-cover opacity-40"
+            onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+          />
+        @endif
+        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+      </div>
+
+      <!-- Collection Info Overlay -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="relative -mt-20 sm:-mt-24">
+          <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
+            <div class="shrink-0">
+              <img
+                src="{{ mintData.collection.imageUrl || '/assets/images/anonymouse.png' }}"
+                alt="{{ mintData.collection.name }}"
+                class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
+                onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+              />
+            </div>
+            <div class="mt-4 sm:mt-0 sm:pb-2">
+              <div class="flex items-center space-x-3">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-9">{{ mintData.collection.name }}</h1>
+              </div>
+              @if(mintData.canMint)
+                <div class="mt-2 flex items-center text-emerald-500">
+                  <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></div>
+                  <span class="ml-2 text-sm font-semibold uppercase">
+                    {{ mintData.mintStatus === 'presale_live' ? 'Presale Live' : 'Minting Live' }}
+                  </span>
+                </div>
+              @endif
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-4">
+        <a href="/collections/{{ mintData.collection.slug }}" class="inline-flex items-center text-gray-5 hover:text-pink-8 transition text-sm">
+          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to collection
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <!-- Left: Preview -->
+        <div>
+          <div class="aspect-square rounded-xl overflow-hidden bg-gray-0.25 shadow-lg">
+            <img
+              src="{{ mintData.collection.imageUrl || '/assets/images/anonymouse.png' }}"
+              alt="{{ mintData.collection.name }}"
+              class="w-full h-full object-cover"
+              onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+            />
+          </div>
+
+          @if(mintData.collection.description)
+            <p class="text-gray-6 mt-6 leading-relaxed">{{ mintData.collection.description }}</p>
+          @endif
+
+          <!-- Recently Minted -->
+          @if(mintData.mintedNfts && mintData.mintedNfts.length > 0)
+            <div class="mt-8">
+              <h3 class="text-gray-8 font-semibold mb-4">Recently Minted</h3>
+              <div class="grid grid-cols-4 gap-2">
+                @foreach(mintData.mintedNfts.slice(0, 8) as nft)
+                  <div class="aspect-square rounded-lg overflow-hidden bg-gray-0.25">
+                    <img
+                      src="{{ nft.imageUrl || nft.image_url || '/assets/images/anonymouse.png' }}"
+                      alt="{{ nft.name }}"
+                      class="w-full h-full object-cover"
+                      onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+                    />
+                  </div>
+                @endforeach
+              </div>
             </div>
           @endif
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <!-- Left: Preview -->
-          <div>
-            <div class="aspect-square rounded-2xl overflow-hidden bg-gray-7 shadow-2xl">
-              <img
-                src="{{ mintData.collection.imageUrl || mintData.collection.image_url || '/assets/images/anonymouse.png' }}"
-                alt="{{ mintData.collection.name }}"
-                class="w-full h-full object-cover"
-              />
+        <!-- Right: Minting Interface -->
+        <div>
+          <div class="bg-gray-0.25 rounded-xl p-8">
+            <!-- Progress Bar -->
+            <div class="mb-8">
+              <div class="flex justify-between text-sm text-gray-5 mb-2">
+                <span>{{ mintData.stats.itemsRedeemed }} / {{ mintData.stats.itemsAvailable }} minted</span>
+                <span>{{ mintData.stats.percentMinted }}%</span>
+              </div>
+              <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div class="progress-bar h-full bg-gradient-to-r from-pink-8 to-purple-600 rounded-full" style="width: {{ mintData.stats.percentMinted }}%"></div>
+              </div>
             </div>
 
-            <!-- Recently Minted -->
-            @if(mintData.mintedNfts && mintData.mintedNfts.length > 0)
-              <div class="mt-8">
-                <h3 class="text-white font-semibold mb-4">Recently Minted</h3>
-                <div class="grid grid-cols-4 gap-2">
-                  @foreach(mintData.mintedNfts.slice(0, 8) as nft)
-                    <div class="aspect-square rounded-lg overflow-hidden">
-                      <img src="{{ nft.imageUrl || nft.image_url || '/assets/images/anonymouse.png' }}" alt="{{ nft.name }}" class="w-full h-full object-cover" />
-                    </div>
-                  @endforeach
+            <!-- Price -->
+            <div class="bg-white rounded-xl p-6 mb-6 border border-gray-200">
+              <div class="flex items-center justify-between">
+                <span class="text-gray-5">Mint Price</span>
+                <div class="text-right">
+                  <p class="text-3xl font-bold text-gray-9">{{ mintData.stats.mintPriceSol }} SOL</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Presale Info -->
+            @if(mintData.activePresales && mintData.activePresales.length > 0)
+              <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                <div class="flex items-start">
+                  <svg class="h-5 w-5 text-emerald-600 mt-0.5 mr-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p class="text-emerald-700 font-semibold">Presale Active</p>
+                    <p class="text-sm text-emerald-600">
+                      {{ mintData.activePresales[0].discount / 100 }}% discount &middot; Max {{ mintData.activePresales[0].maxMintsPerWallet }} per wallet
+                    </p>
+                  </div>
                 </div>
               </div>
             @endif
-          </div>
 
-          <!-- Right: Minting Interface -->
-          <div>
-            <div class="bg-gray-8/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-7">
-              <!-- Progress Bar -->
-              <div class="mb-8">
-                <div class="flex justify-between text-sm text-gray-4 mb-2">
-                  <span>{{ mintData.stats.itemsRedeemed }} / {{ mintData.stats.itemsAvailable }} minted</span>
-                  <span>{{ mintData.stats.percentMinted }}%</span>
-                </div>
-                <div class="h-3 bg-gray-7 rounded-full overflow-hidden">
-                  <div class="progress-bar h-full bg-gradient-to-r from-pink-8 to-purple-600 rounded-full" style="width: {{ mintData.stats.percentMinted }}%"></div>
-                </div>
+            <!-- Wallet Connection & Mint States -->
+            <div
+              data-api-url="{{ API_URL }}"
+              data-candy-machine-id="{{ mintData.candyMachine?.id || '' }}"
+              data-mint-price-sol="{{ mintData.stats.mintPriceSol }}"
+              data-presale-id="{{ mintData.activePresales?.[0]?.id || '' }}"
+              data-can-mint="{{ mintData.canMint ? 'true' : 'false' }}"
+              data-mint-status="{{ mintData.mintStatus }}"
+            >
+              <!-- Not Connected State -->
+              <div>
+                <button
+                  onclick="mintPageConnect(this)"
+                  type="button"
+                  class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-4 px-8 rounded-lg transition duration-150 text-lg"
+                >
+                  Connect Wallet to Mint
+                </button>
+                <p class="text-center text-gray-5 text-sm mt-4">Phantom, Solflare, and other Solana wallets supported</p>
               </div>
 
-              <!-- Price -->
-              <div class="bg-gray-7/50 rounded-xl p-6 mb-6">
-                <div class="flex items-center justify-between">
-                  <span class="text-gray-4">Mint Price</span>
-                  <div class="text-right">
-                    <p class="text-3xl font-bold text-white">{{ mintData.stats.mintPriceSol }} SOL</p>
-                    @if(mintData.activePresales && mintData.activePresales.length > 0)
-                      <p class="text-sm text-emerald-400">Presale discount available!</p>
-                    @endif
-                  </div>
-                </div>
-              </div>
-
-              <!-- Presale Info -->
-              @if(mintData.activePresales && mintData.activePresales.length > 0)
-                <div class="bg-emerald-900/30 border border-emerald-700/50 rounded-xl p-4 mb-6">
-                  <div class="flex items-start">
-                    <svg class="h-5 w-5 text-emerald-400 mt-0.5 mr-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p class="text-emerald-400 font-semibold">Presale Active</p>
-                      <p class="text-sm text-emerald-300/70">
-                        {{ mintData.activePresales[0].discount / 100 }}% discount &middot; Max {{ mintData.activePresales[0].maxMintsPerWallet }} per wallet
-                      </p>
+              <!-- Connected / Mint State -->
+              <div style="display:none">
+                <div class="flex items-center justify-between bg-white rounded-xl p-4 mb-6 border border-gray-200">
+                  <div class="flex items-center">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
+                      <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <div class="ml-3">
+                      <p class="text-gray-9 font-semibold mint-wallet-addr"></p>
+                      <p class="text-sm text-gray-5 mint-wallet-bal"></p>
                     </div>
                   </div>
+                  <button onclick="mintPageDisconnect(this)" class="text-gray-5 hover:text-pink-8 text-sm transition">Disconnect</button>
+                </div>
+
+                <!-- Quantity Selector -->
+                <div class="flex items-center justify-center space-x-6 mb-6">
+                  <button onclick="mintDecQty(this)" class="h-12 w-12 rounded-lg bg-white border border-gray-200 hover:border-pink-8 text-gray-8 font-bold text-2xl transition">−</button>
+                  <span class="text-3xl font-bold text-gray-9 w-12 text-center mint-qty">1</span>
+                  <button onclick="mintIncQty(this)" class="h-12 w-12 rounded-lg bg-white border border-gray-200 hover:border-pink-8 text-gray-8 font-bold text-2xl transition">+</button>
+                </div>
+
+                <!-- Total -->
+                <div class="flex items-center justify-between text-lg mb-6 px-2">
+                  <span class="text-gray-5">Total</span>
+                  <span class="text-gray-9 font-bold mint-total"></span>
+                </div>
+
+                <!-- Mint Button -->
+                <button
+                  onclick="doMint(this)"
+                  type="button"
+                  class="mint-button w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-4 px-8 rounded-lg transition duration-150 text-lg disabled:bg-gray-300 disabled:text-gray-5"
+                >
+                  Mint Now
+                </button>
+              </div>
+
+              <!-- Success State -->
+              <div style="display:none" class="text-center py-4">
+                <div class="success-checkmark inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6">
+                  <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-9 mb-2">Mint Successful!</h3>
+                <p class="text-gray-5 mb-4">Your NFT has been minted successfully.</p>
+                <p class="text-sm text-gray-5 mb-6">
+                  Mint: <a target="_blank" class="text-pink-8 hover:text-pink-9 mint-explorer-link"></a>
+                </p>
+                <button onclick="mintAnother(this)" class="text-pink-8 hover:text-pink-9 font-semibold">
+                  Mint Another
+                </button>
+              </div>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <div class="flex items-center justify-between text-sm text-gray-5">
+                <span>Items remaining</span>
+                <span class="text-gray-8 font-semibold">{{ mintData.stats.itemsRemaining }}</span>
+              </div>
+              @if(mintData.candyMachine)
+                <div class="flex items-center justify-between text-sm text-gray-5 mt-2">
+                  <span>Candy Machine</span>
+                  <a href="https://explorer.solana.com/address/{{ mintData.candyMachine.candyMachineAddress }}?cluster=devnet" target="_blank" class="text-pink-8 hover:text-pink-9 font-mono text-xs truncate max-w-[200px]">
+                    {{ mintData.candyMachine.candyMachineAddress }}
+                  </a>
                 </div>
               @endif
 
-              <!-- Wallet Connection & Mint States -->
-              <div
-                data-api-url="{{ API_URL }}"
-                data-candy-machine-id="{{ mintData.candyMachine?.id || '' }}"
-                data-mint-price-sol="{{ mintData.stats.mintPriceSol }}"
-                data-presale-id="{{ mintData.activePresales?.[0]?.id || '' }}"
-                data-can-mint="{{ mintData.canMint ? 'true' : 'false' }}"
-                data-mint-status="{{ mintData.mintStatus }}"
-              >
-                <!-- Not Connected State -->
-                <div>
-                  <button
-                    onclick="mintPageConnect(this)"
-                    type="button"
-                    class="w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg"
-                  >
-                    Connect Wallet to Mint
-                  </button>
-                  <p class="text-center text-gray-5 text-sm mt-4">Phantom, Solflare, and other Solana wallets supported</p>
-                </div>
-
-                <!-- Connected / Mint State -->
-                <div style="display:none">
-                  <div class="flex items-center justify-between bg-gray-7/50 rounded-xl p-4 mb-6">
-                    <div class="flex items-center">
-                      <div class="h-10 w-10 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
-                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                      </div>
-                      <div class="ml-3">
-                        <p class="text-white font-semibold mint-wallet-addr"></p>
-                        <p class="text-sm text-gray-5 mint-wallet-bal"></p>
-                      </div>
+              @if(mintData.candyMachine?.guardsConfig)
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <p class="text-xs text-gray-5 uppercase font-semibold mb-2">Mint Guards</p>
+                  @if(mintData.candyMachine.guardsConfig.startDate)
+                    <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                      <span>Start Date</span>
+                      <span class="text-gray-8 text-xs">{{ new Date(mintData.candyMachine.guardsConfig.startDate.date * 1000).toLocaleString() }}</span>
                     </div>
-                    <button onclick="mintPageDisconnect(this)" class="text-gray-5 hover:text-white text-sm">Disconnect</button>
-                  </div>
-
-                  <!-- Quantity Selector -->
-                  <div class="flex items-center justify-center space-x-6 mb-6">
-                    <button onclick="mintDecQty(this)" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">−</button>
-                    <span class="text-3xl font-bold text-white w-12 text-center mint-qty">1</span>
-                    <button onclick="mintIncQty(this)" class="h-12 w-12 rounded-xl bg-gray-7 hover:bg-gray-6 text-white font-bold text-2xl transition">+</button>
-                  </div>
-
-                  <!-- Total -->
-                  <div class="flex items-center justify-between text-lg mb-6">
-                    <span class="text-gray-4">Total</span>
-                    <span class="text-white font-bold mint-total"></span>
-                  </div>
-
-                  <!-- Mint Button -->
-                  <button
-                    onclick="doMint(this)"
-                    type="button"
-                    class="mint-button w-full bg-gradient-to-r from-pink-8 to-purple-600 hover:from-pink-9 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition duration-150 text-lg disabled:from-gray-6 disabled:to-gray-6"
-                  >
-                    Mint Now
-                  </button>
+                  @endif
+                  @if(mintData.candyMachine.guardsConfig.endDate)
+                    <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                      <span>End Date</span>
+                      <span class="text-gray-8 text-xs">{{ new Date(mintData.candyMachine.guardsConfig.endDate.date * 1000).toLocaleString() }}</span>
+                    </div>
+                  @endif
+                  @if(mintData.candyMachine.guardsConfig.mintLimit)
+                    <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
+                      <span>Mint Limit</span>
+                      <span class="text-gray-8 text-xs">{{ mintData.candyMachine.guardsConfig.mintLimit.limit }} per wallet</span>
+                    </div>
+                  @endif
                 </div>
-
-                <!-- Success State -->
-                <div style="display:none" class="text-center">
-                  <div class="success-checkmark inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500 mb-6">
-                    <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 class="text-2xl font-bold text-white mb-2">Mint Successful!</h3>
-                  <p class="text-gray-4 mb-4">Your NFT has been minted successfully.</p>
-                  <p class="text-sm text-gray-5 mb-6">
-                    Mint: <a target="_blank" class="text-pink-8 hover:text-pink-9 mint-explorer-link"></a>
-                  </p>
-                  <button onclick="mintAnother(this)" class="text-pink-8 hover:text-pink-9 font-semibold">
-                    Mint Another
-                  </button>
-                </div>
-              </div>
-
-              <!-- Info -->
-              <div class="mt-8 pt-6 border-t border-gray-7">
-                <div class="flex items-center justify-between text-sm text-gray-5">
-                  <span>Items remaining</span>
-                  <span class="text-white font-semibold">{{ mintData.stats.itemsRemaining }}</span>
-                </div>
-                @if(mintData.candyMachine)
-                  <div class="flex items-center justify-between text-sm text-gray-5 mt-2">
-                    <span>Candy Machine</span>
-                    <a href="https://explorer.solana.com/address/{{ mintData.candyMachine.candyMachineAddress }}?cluster=devnet" target="_blank" class="text-pink-8 hover:text-pink-9 font-mono text-xs truncate max-w-[200px]">
-                      {{ mintData.candyMachine.candyMachineAddress }}
-                    </a>
-                  </div>
-                @endif
-
-                <!-- Guard Info -->
-                @if(mintData.candyMachine?.guardsConfig)
-                  <div class="candy-machine-guards mt-4 pt-4 border-t border-gray-7">
-                    <p class="text-xs text-gray-5 uppercase font-semibold mb-2">Mint Guards</p>
-                    @if(mintData.candyMachine.guardsConfig.startDate)
-                      <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
-                        <span>Start Date</span>
-                        <span class="text-white text-xs">{{ new Date(mintData.candyMachine.guardsConfig.startDate.date * 1000).toLocaleString() }}</span>
-                      </div>
-                    @endif
-                    @if(mintData.candyMachine.guardsConfig.endDate)
-                      <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
-                        <span>End Date</span>
-                        <span class="text-white text-xs">{{ new Date(mintData.candyMachine.guardsConfig.endDate.date * 1000).toLocaleString() }}</span>
-                      </div>
-                    @endif
-                    @if(mintData.candyMachine.guardsConfig.mintLimit)
-                      <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
-                        <span>Mint Limit</span>
-                        <span class="text-white text-xs">{{ mintData.candyMachine.guardsConfig.mintLimit.limit }} per wallet</span>
-                      </div>
-                    @endif
-                    @if(mintData.candyMachine.guardsConfig.botTax)
-                      <div class="flex items-center justify-between text-sm text-gray-5 mt-1">
-                        <span>Bot Tax</span>
-                        <span class="text-white text-xs">{{ mintData.candyMachine.guardsConfig.botTax.lamports / 1e9 }} SOL</span>
-                      </div>
-                    @endif
-                  </div>
-                @endif
-              </div>
+              @endif
             </div>
           </div>
         </div>
@@ -282,17 +315,18 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
     <script client>
       {
         var _mintRoot = document.currentScript.previousElementSibling
-        var _configEl = _mintRoot ? (function() {
-          var cards = _mintRoot.children[0].children[1]
-          if (!cards) return null
-          var inner = cards.children[0]
-          if (!inner) return null
-          var rows = inner.children
-          for (var i = 0; i < rows.length; i++) {
-            if (rows[i].dataset && rows[i].dataset.apiUrl) return rows[i]
+        var _configEl = null
+
+        // Find the config element with data-api-url
+        if (_mintRoot) {
+          var allEls = _mintRoot.getElementsByTagName('div')
+          for (var i = 0; i < allEls.length; i++) {
+            if (allEls[i].dataset && allEls[i].dataset.apiUrl) {
+              _configEl = allEls[i]
+              break
+            }
           }
-          return null
-        })() : null
+        }
 
         // Read config from data attributes
         var apiUrl = _configEl ? (_configEl.dataset.apiUrl || 'http://localhost:3008') : 'http://localhost:3008'
@@ -328,18 +362,18 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
         function getMintEls() {
           var s = getMintStates()
           if (!s || !s.mint) return {}
-          // mint state: walletRow > left > avatar + info(ml-3) > p.addr, p.bal
+          // mint state: walletRow(0) > left(0) > avatar(0)+info(1) > addr(0), bal(1)
           var walletRow = s.mint.children[0]
-          var infoDiv = walletRow ? walletRow.children[0].children[1] : null
-          // qty row: children[1] > btn, span, btn
+          var leftSide = walletRow ? walletRow.children[0] : null
+          var infoDiv = leftSide ? leftSide.children[1] : null
+          // qty row: children[1] > btn(0), span(1), btn(2)
           var qtyRow = s.mint.children[1]
-          // total row: children[2] > span, span
+          // total row: children[2] > span(0), span(1)
           var totalRow = s.mint.children[2]
           // mint button: children[3]
           var mintBtn = s.mint.children[3]
-          // success: explorer link is in s.success.children[3].children[1] (the <a>)
-          var explorerP = s.success ? s.success.children[3] : null
-          var explorerLink = explorerP ? explorerP.children[0] : null
+          // success: explorer link
+          var explorerLink = s.success ? s.success.getElementsByClassName('mint-explorer-link')[0] : null
 
           return {
             addrEl: infoDiv ? infoDiv.children[0] : null,
@@ -360,7 +394,7 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           var els = getMintEls()
           if (!els.mintBtn) return
           if (isMinting) {
-            els.mintBtn.textContent = 'Minting...'
+            els.mintBtn.innerHTML = '<span class="spinner inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2 align-middle"></span> Minting...'
             els.mintBtn.disabled = true
           } else if (!canMintFlag) {
             els.mintBtn.textContent = mintStatusVal === 'sold_out' ? 'Sold Out' : 'Minting Not Available'
@@ -380,6 +414,29 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           return null
         }
 
+        function activateMintState(addr) {
+          mintWalletAddress = addr
+          var els = getMintEls()
+          if (els.addrEl) els.addrEl.textContent = addr.slice(0, 4) + '...' + addr.slice(-4)
+          if (els.balEl) els.balEl.textContent = ''
+          showMintState(1)
+          updateTotal()
+          updateMintBtn()
+          // Try to fetch balance
+          fetchBalance(addr)
+        }
+
+        async function fetchBalance(addr) {
+          try {
+            var res = await fetch(apiUrl + '/wallet/balance/' + addr)
+            var data = await res.json()
+            if (data.balance !== undefined) {
+              var els = getMintEls()
+              if (els.balEl) els.balEl.textContent = 'Balance: ' + Number(data.balance).toFixed(4) + ' SOL'
+            }
+          } catch (_) {}
+        }
+
         window.mintPageConnect = async function(btn) {
           var provider = getMintProvider()
           if (!provider) {
@@ -396,11 +453,8 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
             })
             var data = await res.json()
             if (data.success) {
-              mintWalletAddress = data.address
-              var els = getMintEls()
-              if (els.addrEl) els.addrEl.textContent = addr.slice(0, 4) + '...' + addr.slice(-4)
-              if (els.balEl) els.balEl.textContent = 'Balance: — SOL'
-              showMintState(1)
+              localStorage.setItem('wallet_addr', addr)
+              activateMintState(data.address)
             }
           } catch (err) {
             console.error('Mint wallet connect failed:', err)
@@ -414,6 +468,7 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           var provider = getMintProvider()
           if (provider) { try { await provider.disconnect() } catch (_) {} }
           mintWalletAddress = ''
+          localStorage.removeItem('wallet_addr')
           showMintState(0)
         }
 
@@ -437,7 +492,10 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
 
         window.doMint = async function(btn) {
           if (!canMintFlag || isMinting) return
-          if (!mintWalletAddress || !candyMachineId) return
+          if (!mintWalletAddress || !candyMachineId) {
+            if (window.Toast) Toast.error('Missing wallet or candy machine')
+            return
+          }
           isMinting = true
           updateMintBtn()
           try {
@@ -455,10 +513,13 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
                 els.explorerLink.textContent = mintAddr.slice(0, 8) + '...' + mintAddr.slice(-8)
               }
               showMintState(2)
+              if (window.Toast) Toast.success('NFT minted successfully!')
             } else {
+              if (window.Toast) Toast.error(result.error || 'Mint failed')
               console.error('Mint failed:', result.error || 'Unknown error')
             }
           } catch (err) {
+            if (window.Toast) Toast.error('Mint failed: ' + err.message)
             console.error('Mint error:', err)
           } finally {
             isMinting = false
@@ -478,14 +539,15 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
         updateTotal()
         updateMintBtn()
 
-        // Check if wallet already connected (e.g. from Header)
-        var initProvider = getMintProvider()
-        if (initProvider && initProvider.isConnected && initProvider.publicKey) {
-          mintWalletAddress = initProvider.publicKey.toString()
-          var els = getMintEls()
-          if (els.addrEl) els.addrEl.textContent = mintWalletAddress.slice(0, 4) + '...' + mintWalletAddress.slice(-4)
-          if (els.balEl) els.balEl.textContent = 'Balance: — SOL'
-          showMintState(1)
+        // Auto-detect wallet: check provider first, then localStorage
+        var _initProvider = getMintProvider()
+        if (_initProvider && _initProvider.isConnected && _initProvider.publicKey) {
+          activateMintState(_initProvider.publicKey.toString())
+        } else {
+          var _savedAddr = localStorage.getItem('wallet_addr')
+          if (_savedAddr) {
+            activateMintState(_savedAddr)
+          }
         }
       }
     </script>
