@@ -73,6 +73,10 @@ route.group({ prefix: '/monitoring' }, () => {
   route.delete('/errors', 'Actions/Monitoring/ErrorDestroyAction')
 })
 
+// Wallet routes (public)
+route.post('/wallet/connect', 'Actions/Wallet/ConnectWalletAction')
+route.post('/wallet/disconnect', 'Actions/Wallet/DisconnectWalletAction')
+
 // NFT Marketplace routes (public)
 route.group({ prefix: '/marketplace' }, () => {
   // Home page data - all data needed for the landing page

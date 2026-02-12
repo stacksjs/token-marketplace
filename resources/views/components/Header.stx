@@ -84,24 +84,51 @@
 </header>
 
 <script client>
+  const API_URL = 'http://localhost:3008'
+
+  // Wallet detection matching ts-tokens wallets module
+  // Supports: Phantom, Solflare, Backpack, Coinbase, Trust, Exodus, Brave, Glow
+  function getWalletProvider() {
+    if (window.phantom?.solana) return window.phantom.solana
+    if (window.solflare) return window.solflare
+    if (window.backpack) return window.backpack
+    if (window.coinbaseSolana) return window.coinbaseSolana
+    if (window.trustwallet?.solana) return window.trustwallet.solana
+    if (window.exodus?.solana) return window.exodus.solana
+    if (window.braveSolana) return window.braveSolana
+    if (window.glowSolana) return window.glowSolana
+    return null
+  }
+
   window.connectWallet = async function() {
-    const provider = window.phantom?.solana || window.solflare || null
+    var provider = getWalletProvider()
     if (!provider) {
       window.open('https://phantom.app/', '_blank')
       return
     }
     try {
-      const resp = await provider.connect()
-      const addr = resp.publicKey.toString()
-      connected = true
-      shortAddr = addr.slice(0, 4) + '...' + addr.slice(-4)
+      var resp = await provider.connect()
+      var addr = resp.publicKey.toString()
+      var res = await fetch(API_URL + '/wallet/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: addr }),
+      })
+      var data = await res.json()
+      if (data.success) {
+        connected = true
+        shortAddr = data.address.slice(0, 4) + '...' + data.address.slice(-4)
+      }
     } catch (err) {
       console.error('Wallet connect failed:', err)
     }
   }
 
   window.disconnectWallet = async function() {
-    const provider = window.phantom?.solana || window.solflare || null
+    try {
+      await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
+    } catch (_) {}
+    var provider = getWalletProvider()
     if (provider) { try { await provider.disconnect() } catch (_) {} }
     connected = false
     shortAddr = ''
