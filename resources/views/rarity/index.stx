@@ -1,6 +1,6 @@
 <script server>
 const pageTitle = 'Rarity | Naked NFTs'
-const API_URL = 'http://localhost:3008'
+const API_URL = process.env.API_URL || 'http://localhost:3008'
 let rarityCollections = []
 
 try {
@@ -60,6 +60,14 @@ try {
 
       <div class="max-w-2xl px-4 py-16 mx-auto sm:py-12 sm:px-6 lg:max-w-full lg:px-2">
         <div class="grid grid-cols-1 mt-6 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
+          @if(rarityCollections.length === 0)
+            <div class="col-span-full text-center py-12">
+              <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+              <p class="mt-4 text-gray-5">No collections found</p>
+            </div>
+          @endif
           @foreach(rarityCollections as collection)
             <div>
               <a href="/rarity/{{ collection.slug }}" class="group">
@@ -68,17 +76,19 @@ try {
                     src="{{ collection.imageUrl || '/assets/images/anonymouse.png' }}"
                     alt="{{ collection.name }}"
                     class="object-cover object-center w-full h-full lg:h-full lg:w-full"
+                    onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
                   />
                 </div>
               </a>
 
               <div class="flex justify-between mt-4">
-                <div class="flex items-center w-11/12">
+                <div class="flex-1 min-w-0">
                   <p class="pt-2 text-lg font-semibold truncate text-gray-6">{{ collection.name }}</p>
+                  <p class="text-sm text-gray-4">{{ collection.totalItems || 0 }} items</p>
                 </div>
 
                 @if(collection.website)
-                  <a href="{{ collection.website }}" target="_blank" class="pt-2 text-gray-3 hover:text-pink-8">
+                  <a href="{{ collection.website }}" target="_blank" class="pt-2 text-gray-3 hover:text-pink-8 shrink-0 ml-2">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                       <path d="M3.6 9H20.4M3.6 15H20.4M11.5 3C9.81 5.69 9 8.77 9 12C9 15.23 9.81 18.31 11.5 21M12.5 3C14.19 5.69 15 8.77 15 12C15 15.23 14.19 18.31 12.5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -95,7 +105,7 @@ try {
 
   <script client>
     {
-      var RARITY_API = 'http://localhost:3008'
+      var RARITY_API = window.API_BASE || 'http://localhost:3008'
       var _raritySearchVal = ''
       var _raritySortVal = 'name'
       var _rarityGridEl = null
@@ -109,15 +119,19 @@ try {
           var collections = data.collections || []
 
           var html = ''
+          if (collections.length === 0) {
+            html = '<div class="col-span-full text-center py-12"><svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg><p class="mt-4 text-gray-5">No collections found</p></div>'
+          }
           for (var i = 0; i < collections.length; i++) {
             var c = collections[i]
             html += '<div>'
               + '<a href="/rarity/' + c.slug + '" class="group">'
               + '<div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">'
-              + '<img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />'
+              + '<img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
               + '</div></a>'
-              + '<div class="flex justify-between mt-4"><div class="flex items-center w-11/12">'
+              + '<div class="flex justify-between mt-4"><div class="flex-1 min-w-0">'
               + '<p class="pt-2 text-lg font-semibold truncate text-gray-6">' + c.name + '</p>'
+              + '<p class="text-sm text-gray-4">' + (c.totalItems || 0) + ' items</p>'
               + '</div></div></div>'
           }
           _rarityGridEl.innerHTML = html

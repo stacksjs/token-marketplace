@@ -30,7 +30,7 @@
 
   const siteInfo = {
     name: "NAKED /NFTs",
-    year: 2022
+    year: new Date().getFullYear()
   }
 </script>
 

@@ -84,7 +84,9 @@
 
   <script client>
     {
-      var LAYOUT_API = 'http://localhost:3008'
+      // Global API base URL — set window.API_BASE before this script to override for production
+      if (!window.API_BASE) window.API_BASE = 'http://localhost:3008'
+      var LAYOUT_API = window.API_BASE
 
       function nftAttrBadges(attrs) {
         if (!attrs) return ''

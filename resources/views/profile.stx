@@ -5,7 +5,7 @@ const pageTitle = 'My Profile | Naked NFTs'
 @layout('default')
 @section('title', pageTitle)
 @section('content')
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-white">
     <!-- Not connected state -->
     <div class="flex flex-col items-center justify-center py-24">
       <svg class="h-16 w-16 text-gray-3 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -23,16 +23,21 @@ const pageTitle = 'My Profile | Naked NFTs'
       <!-- Profile Header -->
       <div class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div class="flex items-center space-x-4">
-            <div class="h-16 w-16 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
-              <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <div class="h-16 w-16 rounded-full bg-gradient-to-br from-pink-8 to-purple-600 flex items-center justify-center">
+                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-gray-9 profile-addr"></h1>
+                <p class="text-sm text-gray-5 profile-bal"></p>
+              </div>
             </div>
-            <div>
-              <h1 class="text-2xl font-bold text-gray-9 profile-addr"></h1>
-              <p class="text-sm text-gray-5 profile-bal"></p>
-            </div>
+            <button onclick="profileDisconnect(this)" class="text-sm text-gray-5 hover:text-pink-8 transition font-medium">
+              Disconnect
+            </button>
           </div>
         </div>
       </div>
@@ -65,7 +70,7 @@ const pageTitle = 'My Profile | Naked NFTs'
 
   <script client>
     {
-      var PROFILE_API = 'http://localhost:3008'
+      var PROFILE_API = window.API_BASE || 'http://localhost:3008'
       var _profileRoot = document.currentScript.previousElementSibling
       var profileData = null
       var profileWalletAddr = ''
@@ -80,11 +85,12 @@ const pageTitle = 'My Profile | Naked NFTs'
         var disconnected = _profileRoot.children[0]
         var connected = _profileRoot.children[1]
         if (!connected) return null
-        // connected > header(0) > max-w > flex > avatar + info div
+        // connected > header(0) > max-w > flex.justify-between > flex(0) > avatar(0) + info(1)
         var headerWrap = connected.children[0]
         var headerInner = headerWrap ? headerWrap.children[0] : null
         var headerFlex = headerInner ? headerInner.children[0] : null
-        var infoDiv = headerFlex ? headerFlex.children[1] : null
+        var leftSide = headerFlex ? headerFlex.children[0] : null
+        var infoDiv = leftSide ? leftSide.children[1] : null
         // tabs nav: connected > children[1] > max-w > nav
         var tabsWrap = connected.children[1]
         var tabsInner = tabsWrap ? tabsWrap.children[0] : null
@@ -123,11 +129,12 @@ const pageTitle = 'My Profile | Naked NFTs'
 
       function nftCard(nft) {
         return '<div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition cursor-pointer">'
-          + '<div class="aspect-square"><img src="' + (nft.image_url || nft.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + nft.name + '" class="w-full h-full object-cover" /></div>'
+          + '<div class="aspect-square"><img src="' + (nft.image_url || nft.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + nft.name + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></div>'
           + '<div class="p-3">'
           + '<p class="font-semibold text-gray-9 truncate">' + nft.name + '</p>'
           + (nft.price ? '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>' : '')
           + (nft.rarity_rank ? '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>' : '')
+          + (nft.is_for_sale ? '<span class="inline-block mt-1 text-xs bg-pink-100 text-pink-700 py-0.5 px-2 rounded">For Sale</span>' : '')
           + '</div></div>'
       }
 
@@ -214,6 +221,32 @@ const pageTitle = 'My Profile | Naked NFTs'
         renderTabContent()
       }
 
+      window.profileDisconnect = async function(btn) {
+        try {
+          await fetch(PROFILE_API + '/wallet/disconnect', { method: 'POST' })
+        } catch (_) {}
+        var provider = getProfileProvider()
+        if (provider) { try { await provider.disconnect() } catch (_) {} }
+        profileWalletAddr = ''
+        profileData = null
+        localStorage.removeItem('wallet_addr')
+        profileShowConnected(false)
+      }
+
+      async function fetchProfileBalance(addr) {
+        var els = getProfileEls()
+        if (els && els.balEl) els.balEl.textContent = 'Loading balance...'
+        try {
+          var res = await fetch(PROFILE_API + '/wallet/balance/' + addr)
+          var data = await res.json()
+          if (data.balance !== undefined) {
+            if (els && els.balEl) els.balEl.textContent = Number(data.balance).toFixed(4) + ' SOL'
+          }
+        } catch (_) {
+          if (els && els.balEl) els.balEl.textContent = ''
+        }
+      }
+
       window.profileConnect = async function(btn) {
         var provider = getProfileProvider()
         if (!provider) {
@@ -265,6 +298,7 @@ const pageTitle = 'My Profile | Naked NFTs'
         if (els && els.balEl) els.balEl.textContent = ''
         profileShowConnected(true)
         loadProfileData(addr)
+        fetchProfileBalance(addr)
       }
 
       var initProvider = getProfileProvider()

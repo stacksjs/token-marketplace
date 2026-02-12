@@ -73,6 +73,39 @@
             </div>
           </div>
         </div>
+
+        <!-- Mobile menu button -->
+        <div class="flex items-center md:hidden">
+          <button onclick="toggleMobileMenu(this)" type="button" class="text-gray-100 hover:text-pink-8 transition">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div style="display:none" class="md:hidden border-t border-gray-7">
+      <div class="px-4 py-4 space-y-2">
+        @foreach(navLinks as link)
+          @if(link.active)
+            <a href="{{ link.href }}" class="block rounded-md px-3 py-2 font-bold text-gray-100 hover:text-pink-8 transition">
+              {{ link.name }}
+            </a>
+          @else
+            <span class="block px-3 py-2 font-bold text-gray-5">{{ link.name }}</span>
+          @endif
+        @endforeach
+        <div class="pt-4 border-t border-gray-7">
+          <button
+            onclick="connectWallet(findConnectBtn())"
+            type="button"
+            class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-md transition text-sm"
+          >
+            Connect Wallet
+          </button>
+        </div>
       </div>
     </div>
   </nav>
@@ -80,7 +113,7 @@
 
 <script client>
   {
-    var API_URL = 'http://localhost:3008'
+    var API_URL = window.API_BASE || 'http://localhost:3008'
 
     function getWalletProvider() {
       if (window.phantom?.solana) return window.phantom.solana
@@ -153,6 +186,14 @@
       if (provider) { try { await provider.disconnect() } catch (_) {} }
       var connectBtn = btn.parentNode.previousElementSibling
       showHeaderDisconnected(connectBtn)
+    }
+
+    window.toggleMobileMenu = function(btn) {
+      var nav = btn.parentNode.parentNode.parentNode.parentNode
+      var mobileMenu = nav ? nav.children[1] : null
+      if (mobileMenu) {
+        mobileMenu.style.display = mobileMenu.style.display === 'none' ? '' : 'none'
+      }
     }
 
     // On page load: restore wallet state from localStorage

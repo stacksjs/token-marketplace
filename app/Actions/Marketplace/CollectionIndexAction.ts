@@ -53,29 +53,24 @@ export default new Action({
 
     const collections = await query.execute()
 
-    // Transform to camelCase, get real NFT counts, and ensure slugs
-    const collectionsWithSlugs = await Promise.all(
-      collections.map(async (collection) => {
-        const camelCased = toCamelCase(collection)
+    // Fetch all NFTs once for counts (avoids N+1 queries)
+    const allNfts = await db.selectFrom('nfts').selectAll().execute()
+    const nftCountMap: Record<string, number> = {}
+    for (const nft of allNfts) {
+      if (nft.collection_id != null) {
+        const key = String(Math.round(Number(nft.collection_id)))
+        nftCountMap[key] = (nftCountMap[key] || 0) + 1
+      }
+    }
 
-        // Count NFTs for this collection (same query pattern as CollectionShowAction)
-        let nftCount = 0
-        try {
-          const nfts = await db
-            .selectFrom('nfts')
-            .selectAll()
-            .where('collection_id', '=', collection.id)
-            .execute()
-          nftCount = nfts.length
-        } catch (_) {}
-
-        return {
-          ...camelCased,
-          totalAmountOfNfts: nftCount,
-          slug: camelCased.slug || generateSlug(camelCased.name),
-        }
-      }),
-    )
+    const collectionsWithSlugs = collections.map((collection) => {
+      const camelCased = toCamelCase(collection)
+      return {
+        ...camelCased,
+        totalAmountOfNfts: nftCountMap[String(collection.id)] || 0,
+        slug: camelCased.slug || generateSlug(camelCased.name),
+      }
+    })
 
     return response.json({ collections: collectionsWithSlugs })
   },

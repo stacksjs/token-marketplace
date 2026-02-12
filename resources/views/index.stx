@@ -1,5 +1,5 @@
 <script server>
-const API_URL = 'http://localhost:3008'
+const API_URL = process.env.API_URL || 'http://localhost:3008'
 let featuredCollections = []
 let popularCollections = []
 let availableNfts = []

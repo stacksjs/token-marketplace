@@ -1,7 +1,7 @@
 <script server>
 // Fetch collection data from API
 // Note: 'slug' is injected directly from the [slug] route parameter
-const API_URL = 'http://localhost:3008'
+const API_URL = process.env.API_URL || 'http://localhost:3008'
 const collectionSlug = slug || ''
 let collection = null
 let nfts = []
@@ -61,6 +61,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
                 src="{{ collection.image_url || '/assets/images/anonymouse.png' }}"
                 alt="{{ collection.name }}"
                 class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
+                onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
               />
             </div>
 
@@ -93,8 +94,18 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
         <div class="lg:col-span-2">
           <p class="text-gray-6 text-lg leading-relaxed">{{ collection.description }}</p>
 
+          <!-- Links -->
+          <div class="mt-6 flex items-center space-x-4">
+            <a href="/rarity/{{ collection.slug || collectionSlug }}" class="inline-flex items-center text-sm font-medium text-pink-8 hover:text-pink-9 transition">
+              <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+              View Rarity
+            </a>
+          </div>
+
           <!-- Social Links -->
-          <div class="mt-6 flex space-x-4">
+          <div class="mt-4 flex space-x-4">
             @if(collection.website)
               <a href="{{ collection.website }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -170,6 +181,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
                   src="{{ nft.image_url || '/assets/images/anonymouse.png' }}"
                   alt="{{ nft.name }}"
                   class="w-full h-full object-cover"
+                  onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
                 />
               </div>
               <div class="p-3">

@@ -1,5 +1,5 @@
 <script server>
-const API_URL = 'http://localhost:3008'
+const API_URL = process.env.API_URL || 'http://localhost:3008'
 const collectionSlug = slug || ''
 let collection = null
 let topRanked = []
@@ -91,6 +91,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
                 src="{{ collection.image_url || '/assets/images/anonymouse.png' }}"
                 alt="{{ collection.name }}"
                 class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
+                onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
               />
             </div>
 
@@ -151,6 +152,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
     </div>
 
     <!-- Rarity Distribution -->
+    @if(rarityBars.length > 0)
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Rarity Distribution</h2>
       <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -170,6 +172,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
         @endforeach
       </div>
     </div>
+    @endif
 
     <!-- Top Ranked NFTs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
@@ -183,6 +186,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
                   src="{{ nft.imageUrl || '/assets/images/anonymouse.png' }}"
                   alt="{{ nft.name }}"
                   class="w-full h-full object-cover"
+                  onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
                 />
               </div>
               <div class="p-3">

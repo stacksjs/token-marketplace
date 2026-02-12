@@ -1,7 +1,7 @@
 <script server>
 // Fetch minting data from API
 // Note: 'slug' is injected directly from the [slug] route parameter
-const API_URL = 'http://localhost:3008'
+const API_URL = process.env.API_URL || 'http://localhost:3008'
 const collectionSlug = slug || ''
 let mintData = null
 let error = null

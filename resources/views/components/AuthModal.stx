@@ -70,7 +70,7 @@
 <script client>
   {
     var _authRoot = document.currentScript.previousElementSibling
-    var AUTH_API = 'http://localhost:3008'
+    var AUTH_API = window.API_BASE || 'http://localhost:3008'
 
     function getAuthViews() {
       if (!_authRoot) return null
