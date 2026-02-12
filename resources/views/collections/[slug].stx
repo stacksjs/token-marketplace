@@ -500,7 +500,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
             var res = await fetch(COLL_API + '/nfts/offer', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), bidderWalletAddress: walletAddr })
+              body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), buyerWalletAddress: walletAddr })
             })
             var data = await res.json()
             if (data.error) {
