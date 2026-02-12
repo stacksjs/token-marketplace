@@ -65,7 +65,7 @@ try {
               <a href="/rarity/{{ collection.slug }}" class="group">
                 <div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">
                   <img
-                    src="{{ collection.imageUrl || '/assets/images/placeholder.png' }}"
+                    src="{{ collection.imageUrl || '/assets/images/anonymouse.png' }}"
                     alt="{{ collection.name }}"
                     class="object-cover object-center w-full h-full lg:h-full lg:w-full"
                   />
@@ -114,7 +114,7 @@ try {
             html += '<div>'
               + '<a href="/rarity/' + c.slug + '" class="group">'
               + '<div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">'
-              + '<img src="' + (c.imageUrl || '/assets/images/placeholder.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />'
+              + '<img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />'
               + '</div></a>'
               + '<div class="flex justify-between mt-4"><div class="flex items-center w-11/12">'
               + '<p class="pt-2 text-lg font-semibold truncate text-gray-6">' + c.name + '</p>'

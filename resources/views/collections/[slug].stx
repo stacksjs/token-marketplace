@@ -58,7 +58,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
             <!-- Profile Image -->
             <div class="shrink-0">
               <img
-                src="{{ collection.image_url || '/assets/images/placeholder.png' }}"
+                src="{{ collection.image_url || '/assets/images/anonymouse.png' }}"
                 alt="{{ collection.name }}"
                 class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
               />
@@ -167,7 +167,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
             <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
               <div class="aspect-square">
                 <img
-                  src="{{ nft.image_url || '/assets/images/placeholder.png' }}"
+                  src="{{ nft.image_url || '/assets/images/anonymouse.png' }}"
                   alt="{{ nft.name }}"
                   class="w-full h-full object-cover"
                 />
