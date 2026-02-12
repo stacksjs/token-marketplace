@@ -2,6 +2,14 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 
+// Helper to generate slug from name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
 // Helper to transform snake_case to camelCase
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {}
@@ -10,6 +18,13 @@ function toCamelCase(obj: Record<string, any>): Record<string, any> {
     result[camelKey] = value
   }
   return result
+}
+
+// Transform collection with slug fallback
+function toCollectionData(collection: Record<string, any>): Record<string, any> {
+  const data = toCamelCase(collection)
+  data.slug = data.slug || generateSlug(data.name)
+  return data
 }
 
 export default new Action({
@@ -64,9 +79,9 @@ export default new Action({
       collection_name: collectionMap[nft.collection_id] || null,
     }))
 
-    // Transform to camelCase for frontend
-    const featuredCollections = featuredCollectionsRaw.map(toCamelCase)
-    const popularCollections = popularCollectionsRaw.map(toCamelCase)
+    // Transform to camelCase for frontend (with slug fallback)
+    const featuredCollections = featuredCollectionsRaw.map(toCollectionData)
+    const popularCollections = popularCollectionsRaw.map(toCollectionData)
     const availableNfts = availableNftsWithCollection.map(toCamelCase)
 
     // Calculate stats using count() method
