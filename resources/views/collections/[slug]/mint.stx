@@ -340,6 +340,7 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
         var mintQty = 1
         var mintWalletAddress = ''
         var isMinting = false
+        var walletBalance = null
 
         // The 3 state divs are children of _configEl
         function getMintStates() {
@@ -388,16 +389,21 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
         function updateTotal() {
           var els = getMintEls()
           if (els.totalEl) els.totalEl.textContent = (mintPriceSol * mintQty).toFixed(4) + ' SOL'
+          updateMintBtn()
         }
 
         function updateMintBtn() {
           var els = getMintEls()
           if (!els.mintBtn) return
+          var totalCost = mintPriceSol * mintQty
           if (isMinting) {
             els.mintBtn.innerHTML = '<span class="spinner inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2 align-middle"></span> Minting...'
             els.mintBtn.disabled = true
           } else if (!canMintFlag) {
             els.mintBtn.textContent = mintStatusVal === 'sold_out' ? 'Sold Out' : 'Minting Not Available'
+            els.mintBtn.disabled = true
+          } else if (walletBalance !== null && walletBalance < totalCost) {
+            els.mintBtn.textContent = 'Insufficient Balance'
             els.mintBtn.disabled = true
           } else {
             els.mintBtn.textContent = 'Mint Now'
@@ -418,11 +424,10 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           mintWalletAddress = addr
           var els = getMintEls()
           if (els.addrEl) els.addrEl.textContent = addr.slice(0, 4) + '...' + addr.slice(-4)
-          if (els.balEl) els.balEl.textContent = ''
+          if (els.balEl) els.balEl.textContent = 'Loading balance...'
           showMintState(1)
           updateTotal()
           updateMintBtn()
-          // Try to fetch balance
           fetchBalance(addr)
         }
 
@@ -431,10 +436,15 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
             var res = await fetch(apiUrl + '/wallet/balance/' + addr)
             var data = await res.json()
             if (data.balance !== undefined) {
+              walletBalance = Number(data.balance)
               var els = getMintEls()
-              if (els.balEl) els.balEl.textContent = 'Balance: ' + Number(data.balance).toFixed(4) + ' SOL'
+              if (els.balEl) els.balEl.textContent = walletBalance.toFixed(4) + ' SOL'
+              updateMintBtn()
             }
-          } catch (_) {}
+          } catch (_) {
+            var els = getMintEls()
+            if (els.balEl) els.balEl.textContent = ''
+          }
         }
 
         window.mintPageConnect = async function(btn) {

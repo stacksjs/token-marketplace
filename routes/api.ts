@@ -76,6 +76,7 @@ route.group({ prefix: '/monitoring' }, () => {
 // Wallet routes (public)
 route.post('/wallet/connect', 'Actions/Wallet/ConnectWalletAction')
 route.post('/wallet/disconnect', 'Actions/Wallet/DisconnectWalletAction')
+route.get('/wallet/balance/{walletAddress}', 'Actions/Wallet/GetBalanceAction')
 
 // NFT Marketplace routes (public)
 route.group({ prefix: '/marketplace' }, () => {
