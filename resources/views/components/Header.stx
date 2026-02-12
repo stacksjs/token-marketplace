@@ -7,10 +7,6 @@
     { name: "Staking", href: "#", active: false, tooltip: "Coming soon" },
     { name: "Grassroots", href: "#", active: false, tooltip: "Our DAO & DAO framework. Coming soon." }
   ]
-
-  // Wallet state
-  let connected = false
-  let shortAddr = ''
 </script>
 
 <header>
@@ -50,32 +46,29 @@
 
         <div class="hidden items-center md:flex">
           <div class="shrink-0">
-            @if(!connected)
-              <button
-                onclick="connectWallet()"
-                type="button"
-                class="inline-flex items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2"
-              >
-                Connect Wallet
-              </button>
-            @else
-              <div class="flex items-center space-x-3">
-                <a href="/profile" class="rounded-md px-3 py-2 font-bold text-gray-100 transition duration-150 ease-in-out hover:text-pink-8 focus:bg-pink-custom-2 focus:outline-none text-sm">
-                  My NFTs
-                </a>
-                <div class="flex items-center space-x-2 bg-gray-8 rounded-md px-3 py-2">
-                  <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-                  <span class="text-sm font-medium text-gray-100">{{ shortAddr }}</span>
-                </div>
-                <button
-                  onclick="disconnectWallet()"
-                  type="button"
-                  class="text-sm text-gray-5 hover:text-white transition duration-150"
-                >
-                  Disconnect
-                </button>
+            <button
+              onclick="connectWallet(this)"
+              type="button"
+              class="inline-flex items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2"
+            >
+              Connect Wallet
+            </button>
+            <div class="flex items-center space-x-3" style="display:none">
+              <a href="/profile" class="rounded-md px-3 py-2 font-bold text-gray-100 transition duration-150 ease-in-out hover:text-pink-8 focus:bg-pink-custom-2 focus:outline-none text-sm">
+                My NFTs
+              </a>
+              <div class="flex items-center space-x-2 bg-gray-8 rounded-md px-3 py-2">
+                <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
+                <span class="text-sm font-medium text-gray-100 wallet-addr"></span>
               </div>
-            @endif
+              <button
+                onclick="disconnectWallet(this)"
+                type="button"
+                class="text-sm text-gray-5 hover:text-white transition duration-150"
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -84,12 +77,12 @@
 </header>
 
 <script client>
-  const API_URL = 'http://localhost:3008'
+  var API_URL = 'http://localhost:3008'
 
   // Wallet detection matching ts-tokens wallets module
-  // Supports: Phantom, Solflare, Backpack, Coinbase, Trust, Exodus, Brave, Glow
   function getWalletProvider() {
     if (window.phantom?.solana) return window.phantom.solana
+    if (window.solana?.isPhantom) return window.solana
     if (window.solflare) return window.solflare
     if (window.backpack) return window.backpack
     if (window.coinbaseSolana) return window.coinbaseSolana
@@ -97,10 +90,11 @@
     if (window.exodus?.solana) return window.exodus.solana
     if (window.braveSolana) return window.braveSolana
     if (window.glowSolana) return window.glowSolana
+    if (window.solana) return window.solana
     return null
   }
 
-  window.connectWallet = async function() {
+  window.connectWallet = async function(btn) {
     var provider = getWalletProvider()
     if (!provider) {
       window.open('https://phantom.app/', '_blank')
@@ -116,21 +110,25 @@
       })
       var data = await res.json()
       if (data.success) {
-        connected = true
-        shortAddr = data.address.slice(0, 4) + '...' + data.address.slice(-4)
+        var short = data.address.slice(0, 4) + '...' + data.address.slice(-4)
+        btn.style.display = 'none'
+        var panel = btn.nextElementSibling
+        panel.style.display = 'flex'
+        panel.children[1].children[1].textContent = short
       }
     } catch (err) {
       console.error('Wallet connect failed:', err)
     }
   }
 
-  window.disconnectWallet = async function() {
+  window.disconnectWallet = async function(btn) {
     try {
       await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
     } catch (_) {}
     var provider = getWalletProvider()
     if (provider) { try { await provider.disconnect() } catch (_) {} }
-    connected = false
-    shortAddr = ''
+    var panel = btn.parentNode
+    panel.style.display = 'none'
+    panel.previousElementSibling.style.display = ''
   }
 </script>
