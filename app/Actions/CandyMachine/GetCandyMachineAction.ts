@@ -3,24 +3,11 @@ import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
 import { getTokenService } from '../../Services/TokenService'
+import { toCamelCase as _toCamelCase } from '../helpers'
 
-// Helper to transform snake_case to camelCase
+const JSON_FIELDS = ['config_line_settings', 'guards_config']
 function toCamelCase(obj: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-    // Parse JSON fields
-    if ((key === 'config_line_settings' || key === 'guards_config') && typeof value === 'string') {
-      try {
-        result[camelKey] = JSON.parse(value)
-      } catch {
-        result[camelKey] = value
-      }
-    } else {
-      result[camelKey] = value
-    }
-  }
-  return result
+  return _toCamelCase(obj, JSON_FIELDS)
 }
 
 export default new Action({

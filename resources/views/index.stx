@@ -273,20 +273,20 @@ try {
 
           <div class="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             @foreach(availableNfts as nft)
-              <div class="group relative mb-6 sm:mb-0 cursor-pointer">
-                <a href="/collections/{{ nft.collectionSlug }}">
-                  <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
-                    <img src="{{ nft.imageUrl || '/assets/images/anonymouse.png' }}" alt="{{ nft.name }}" class="h-full w-full object-cover object-center group-hover:scale-105 transition duration-300" onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'" />
-                    @if(nft.isForSale)
-                      <div class="absolute top-2 right-2 bg-pink-8 text-white text-xs font-semibold px-2 py-1 rounded-full">For Sale</div>
-                    @endif
-                  </div>
-                  <h3 class="mt-2 text-lg font-semibold text-gray-9 group-hover:text-pink-9 transition truncate">{{ nft.name }}</h3>
-                  <p class="text-sm text-gray-5 truncate">{{ nft.collectionName }}</p>
-                  @if(nft.price)
-                    <p class="mt-1 text-sm font-semibold text-pink-8">{{ nft.price }} SOL</p>
+              <div class="group relative mb-6 sm:mb-0 cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
+                <div class="relative mb-3 aspect-square w-full overflow-hidden rounded-lg bg-white">
+                  <img src="{{ nft.imageUrl || '/assets/images/anonymouse.png' }}" alt="{{ nft.name }}" class="h-full w-full object-cover object-center group-hover:scale-105 transition duration-300" onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'" />
+                  @if(nft.isForSale)
+                    <div class="absolute top-2 right-2 bg-pink-8 text-white text-xs font-semibold px-2 py-1 rounded-full">For Sale</div>
                   @endif
-                </a>
+                </div>
+                <h3 class="mt-2 text-lg font-semibold text-gray-9 group-hover:text-pink-9 transition truncate">{{ nft.name }}</h3>
+                <p class="text-sm text-gray-5 truncate">
+                  <a href="/collections/{{ nft.collectionSlug }}" onclick="event.stopPropagation()" class="hover:text-pink-8 transition">{{ nft.collectionName }}</a>
+                </p>
+                @if(nft.price)
+                  <p class="mt-1 text-sm font-semibold text-pink-8">{{ nft.price }} SOL</p>
+                @endif
               </div>
             @endforeach
           </div>
