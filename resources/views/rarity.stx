@@ -25,12 +25,12 @@ try {
       <div class="flex items-center justify-between w-full pt-6 lg:pt-0">
         <!-- Search Input -->
         <div class="lg:pl-12">
-          <label for="search" class="hidden text-sm font-medium text-gray-7">Quick search</label>
+          <label for="rarity-search" class="hidden text-sm font-medium text-gray-7">Quick search</label>
           <div class="relative flex items-center w-64 mx-auto">
             <input
               type="text"
               name="search"
-              id="search"
+              id="rarity-search"
               class="block w-full h-12 pl-4 pr-12 transition duration-150 ease-in-out border-none rounded-md bg-gray-0.25 cursor-pointer placeholder:text-gray-3 focus:ring-2 focus:ring-pink-8 sm:text-sm"
               placeholder="Search Collections..."
             />
@@ -44,22 +44,11 @@ try {
 
         <!-- Sort & Filter -->
         <div class="flex items-center justify-end space-x-4">
-          <!-- Sort Dropdown -->
-          <div class="relative">
-            <button type="button" class="inline-flex items-center justify-end text-sm font-medium text-gray-7 hover:text-gray-900">
-              Relevant
-              <svg class="flex-shrink-0 w-5 h-5 ml-1 -mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Currency Selector -->
-          <div class="relative">
-            <button type="button" class="inline-flex items-center justify-center text-sm font-medium text-gray-7 hover:text-gray-900">
-              ◎
-            </button>
-          </div>
+          <select id="rarity-sort" class="h-10 rounded-md border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8">
+            <option value="name">Name</option>
+            <option value="recent">Recent</option>
+            <option value="popular">Popular</option>
+          </select>
         </div>
       </div>
     </div>
@@ -102,4 +91,47 @@ try {
       </div>
     </section>
   </main>
+
+  <script client>
+    {
+      const searchInput = document.getElementById('rarity-search')
+      const sortSelect = document.getElementById('rarity-sort')
+      const gridContainer = document.querySelector('.grid.grid-cols-1.mt-6')
+      let debounceTimer = null
+
+      async function searchRarity() {
+        const search = searchInput?.value || ''
+        const sort = sortSelect?.value || 'name'
+        try {
+          const res = await fetch(`${API_URL}/marketplace/rarity?search=${encodeURIComponent(search)}&sort=${sort}`)
+          const data = await res.json()
+          const collections = data.collections || []
+          if (!gridContainer) return
+
+          gridContainer.innerHTML = collections.map(c => `
+            <div>
+              <a href="/rarity/${c.slug}" class="group">
+                <div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">
+                  <img src="${c.imageUrl || '/assets/images/placeholder.png'}" alt="${c.name}" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />
+                </div>
+              </a>
+              <div class="flex justify-between mt-4">
+                <div class="flex items-center w-11/12">
+                  <p class="pt-2 text-lg font-semibold truncate text-gray-6">${c.name}</p>
+                </div>
+              </div>
+            </div>
+          `).join('')
+        } catch (err) {
+          console.error('Search failed:', err)
+        }
+      }
+
+      searchInput?.addEventListener('input', () => {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(searchRarity, 300)
+      })
+      sortSelect?.addEventListener('change', searchRarity)
+    }
+  </script>
 @endsection

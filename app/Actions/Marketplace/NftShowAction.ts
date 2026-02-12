@@ -21,6 +21,55 @@ export default new Action({
       return response.notFound({ error: 'NFT not found' })
     }
 
-    return response.json({ nft })
+    // Fetch collection name
+    let collectionName = null
+    let collectionSlug = null
+    if (nft.collection_id) {
+      const collection = await db
+        .selectFrom('collections')
+        .select(['name', 'slug'])
+        .where('id', '=', nft.collection_id)
+        .executeTakeFirst()
+      if (collection) {
+        collectionName = collection.name
+        collectionSlug = collection.slug
+      }
+    }
+
+    // Fetch pending offers
+    let offers: any[] = []
+    try {
+      offers = await db
+        .selectFrom('offers')
+        .selectAll()
+        .where('nft_id', '=', Number(id))
+        .where('status', '=', 'pending')
+        .execute()
+    } catch (_) {
+      // offers table may not exist yet
+    }
+
+    // Fetch active auction
+    let auction = null
+    try {
+      auction = await db
+        .selectFrom('auctions')
+        .selectAll()
+        .where('nft_id', '=', Number(id))
+        .where('status', '=', 'active')
+        .executeTakeFirst() || null
+    } catch (_) {
+      // auctions table may not exist yet
+    }
+
+    return response.json({
+      nft: {
+        ...nft,
+        collection_name: collectionName,
+        collection_slug: collectionSlug,
+        offers,
+        auction,
+      },
+    })
   },
 })

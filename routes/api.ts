@@ -45,6 +45,7 @@ route.group({ prefix: '/password' }, () => {
 route.group({ middleware: 'auth' }, () => {
   route.get('/me', 'Actions/Auth/AuthUserAction')
   route.post('/logout', 'Actions/Auth/LogoutAction')
+  route.post('/auth/link-wallet', 'Actions/Auth/LinkWalletAction')
 })
 
 // Dashboard routes
@@ -91,6 +92,9 @@ route.group({ prefix: '/marketplace' }, () => {
   // Rarity data
   route.get('/rarity', 'Actions/Marketplace/RarityIndexAction')
   route.get('/rarity/{slug}', 'Actions/Marketplace/RarityShowAction')
+
+  // User profile
+  route.get('/profile/{walletAddress}', 'Actions/Marketplace/ProfileAction')
 })
 
 // Candy Machine routes (admin - requires authentication)

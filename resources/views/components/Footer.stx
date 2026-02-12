@@ -11,6 +11,7 @@
     ],
     tools: [
       { name: "Rarity", href: "/rarity", active: true },
+      { name: "My NFTs", href: "/profile", active: true },
       { name: "Staking", href: "#", active: false },
       { name: "Grassroots", href: "#", active: false },
       { name: "Activity", href: "#", active: false },

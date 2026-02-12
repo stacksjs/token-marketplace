@@ -1,0 +1,184 @@
+<div id="auth-modal" class="fixed inset-0 z-[55] hidden">
+  <div class="absolute inset-0 bg-black/60" data-auth-backdrop></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" data-auth-panel>
+      <!-- Close -->
+      <button data-auth-close class="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div class="p-8">
+        <!-- Login Form -->
+        <div id="auth-login-form">
+          <h2 class="text-2xl font-bold text-gray-9 mb-6">Sign In</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
+              <input type="email" data-auth-email class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
+              <input type="password" data-auth-password class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your password" />
+            </div>
+            <button data-auth-login-btn class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Sign In</button>
+          </div>
+          <p class="mt-4 text-sm text-gray-5 text-center">
+            Don't have an account? <button data-auth-show-register class="text-pink-8 hover:text-pink-9 font-medium">Sign Up</button>
+          </p>
+        </div>
+
+        <!-- Register Form -->
+        <div id="auth-register-form" class="hidden">
+          <h2 class="text-2xl font-bold text-gray-9 mb-6">Create Account</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
+              <input type="text" data-auth-name class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your name" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
+              <input type="email" data-auth-reg-email class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
+              <input type="password" data-auth-reg-password class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Choose a password" />
+            </div>
+            <button data-auth-register-btn class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Create Account</button>
+          </div>
+          <p class="mt-4 text-sm text-gray-5 text-center">
+            Already have an account? <button data-auth-show-login class="text-pink-8 hover:text-pink-9 font-medium">Sign In</button>
+          </p>
+        </div>
+
+        <!-- Link Wallet (shown when logged in + wallet connected) -->
+        <div id="auth-link-wallet" class="hidden text-center">
+          <h2 class="text-2xl font-bold text-gray-9 mb-4">Link Your Wallet</h2>
+          <p class="text-gray-5 mb-6">Connect your wallet address to your account for a personalized experience.</p>
+          <button data-auth-link-wallet-btn class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">Link Wallet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script client>
+  window.AuthManager = {
+    _token: localStorage.getItem('auth_token'),
+    _user: null,
+
+    isLoggedIn() { return !!this._token },
+    getToken() { return this._token },
+
+    open() {
+      document.getElementById('auth-modal')?.classList.remove('hidden')
+    },
+    close() {
+      document.getElementById('auth-modal')?.classList.add('hidden')
+    },
+
+    async login(email, password) {
+      try {
+        const res = await fetch(`${API_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        })
+        const data = await res.json()
+        if (data.token) {
+          this._token = data.token
+          this._user = data.user
+          localStorage.setItem('auth_token', data.token)
+          Toast.success('Signed in successfully')
+          this.close()
+          return true
+        }
+        Toast.error(data.error || 'Login failed')
+        return false
+      } catch (err) {
+        Toast.error('Login failed')
+        return false
+      }
+    },
+
+    async register(name, email, password) {
+      try {
+        const res = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        })
+        const data = await res.json()
+        if (data.token) {
+          this._token = data.token
+          this._user = data.user
+          localStorage.setItem('auth_token', data.token)
+          Toast.success('Account created successfully')
+          this.close()
+          return true
+        }
+        Toast.error(data.error || 'Registration failed')
+        return false
+      } catch (err) {
+        Toast.error('Registration failed')
+        return false
+      }
+    },
+
+    async linkWallet() {
+      if (!this._token || !WalletManager.isConnected()) return
+      try {
+        const res = await fetch(`${API_URL}/auth/link-wallet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this._token}` },
+          body: JSON.stringify({ walletAddress: WalletManager.getAddress() }),
+        })
+        const data = await res.json()
+        if (data.success || res.ok) {
+          Toast.success('Wallet linked to your account')
+          this.close()
+        } else {
+          Toast.error(data.error || 'Failed to link wallet')
+        }
+      } catch (err) {
+        Toast.error('Failed to link wallet')
+      }
+    },
+
+    logout() {
+      this._token = null
+      this._user = null
+      localStorage.removeItem('auth_token')
+      Toast.success('Signed out')
+    },
+  }
+
+  // Form handlers
+  document.querySelector('[data-auth-backdrop]')?.addEventListener('click', () => AuthManager.close())
+  document.querySelector('[data-auth-close]')?.addEventListener('click', () => AuthManager.close())
+
+  document.querySelector('[data-auth-show-register]')?.addEventListener('click', () => {
+    document.getElementById('auth-login-form')?.classList.add('hidden')
+    document.getElementById('auth-register-form')?.classList.remove('hidden')
+  })
+  document.querySelector('[data-auth-show-login]')?.addEventListener('click', () => {
+    document.getElementById('auth-register-form')?.classList.add('hidden')
+    document.getElementById('auth-login-form')?.classList.remove('hidden')
+  })
+
+  document.querySelector('[data-auth-login-btn]')?.addEventListener('click', () => {
+    const email = document.querySelector('[data-auth-email]')?.value
+    const password = document.querySelector('[data-auth-password]')?.value
+    if (email && password) AuthManager.login(email, password)
+  })
+
+  document.querySelector('[data-auth-register-btn]')?.addEventListener('click', () => {
+    const name = document.querySelector('[data-auth-name]')?.value
+    const email = document.querySelector('[data-auth-reg-email]')?.value
+    const password = document.querySelector('[data-auth-reg-password]')?.value
+    if (name && email && password) AuthManager.register(name, email, password)
+  })
+
+  document.querySelector('[data-auth-link-wallet-btn]')?.addEventListener('click', () => AuthManager.linkWallet())
+</script>

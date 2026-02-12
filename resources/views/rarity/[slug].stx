@@ -177,7 +177,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
       @if(topRanked.length > 0)
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(topRanked as nft)
-            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
+            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
               <div class="aspect-square">
                 <img
                   src="{{ nft.imageUrl || '/assets/images/placeholder.png' }}"

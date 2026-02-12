@@ -1,0 +1,67 @@
+<div ref="appDrawer" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/60 transition-opacity duration-300" ref="drawerBackdrop"></div>
+
+  <!-- Panel -->
+  <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto transform translate-x-full transition-transform duration-300" ref="drawerPanel">
+    <!-- Close Button -->
+    <button
+      ref="drawerClose"
+      type="button"
+      class="absolute top-4 right-4 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition"
+    >
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+
+    <!-- Content -->
+    <div ref="drawerContent">
+      <slot />
+    </div>
+  </div>
+</div>
+
+<script client>
+  window.DrawerManager = {
+    _el: null,
+    _panel: null,
+
+    _getEl() {
+      if (!this._el) this._el = STX.useRef('appDrawer')
+      if (!this._panel) this._panel = STX.useRef('drawerPanel')
+      return this._el
+    },
+
+    open() {
+      const el = this._getEl()
+      if (!el) return
+      el.classList.remove('hidden')
+      requestAnimationFrame(() => {
+        this._panel?.classList.remove('translate-x-full')
+      })
+      document.body.style.overflow = 'hidden'
+    },
+
+    close() {
+      const el = this._getEl()
+      if (!el) return
+      this._panel?.classList.add('translate-x-full')
+      setTimeout(() => {
+        el.classList.add('hidden')
+        document.body.style.overflow = ''
+      }, 300)
+      if (window.NFTModal) window.NFTModal.currentNft = null
+    },
+
+    setContent(html) {
+      const content = STX.useRef('drawerContent')
+      if (content) content.innerHTML = html
+    },
+  }
+
+  // Close handlers
+  STX.useRef('drawerBackdrop')?.addEventListener('click', () => DrawerManager.close())
+  STX.useRef('drawerClose')?.addEventListener('click', () => DrawerManager.close())
+  STX.onKey('Escape', () => DrawerManager.close())
+</script>

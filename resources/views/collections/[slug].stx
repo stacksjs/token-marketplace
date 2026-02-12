@@ -164,7 +164,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Items ({{ nfts.length }})</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(nfts as nft)
-            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg">
+            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
               <div class="aspect-square">
                 <img
                   src="{{ nft.image_url || '/assets/images/placeholder.png' }}"
@@ -180,11 +180,11 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
                 @if(nft.price)
                   <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
                 @endif
-                <div class="mt-2 flex space-x-2">
-                  @if(nft.is_for_sale)
-                    <button class="make-offer-btn flex-1 text-xs bg-purple-100 text-purple-700 py-1 px-2 rounded hover:bg-purple-200 transition">Make Offer</button>
-                  @endif
-                </div>
+                @if(nft.is_for_sale)
+                  <div class="mt-2">
+                    <span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span>
+                  </div>
+                @endif
               </div>
             </div>
           @endforeach

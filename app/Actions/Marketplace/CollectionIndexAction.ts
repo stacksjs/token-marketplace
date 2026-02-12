@@ -1,6 +1,7 @@
 import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
+import type { RequestInstance } from '@stacksjs/types'
 
 // Helper to generate slug from name
 function generateSlug(name: string): string {
@@ -22,14 +23,35 @@ function toCamelCase(obj: Record<string, any>): Record<string, any> {
 
 export default new Action({
   name: 'Collection Index',
-  description: 'Fetch all collections',
+  description: 'Fetch all collections with optional search and sort',
   method: 'GET',
 
-  async handle() {
-    const collections = await db
-      .selectFrom('collections')
-      .selectAll()
-      .execute()
+  async handle(request: RequestInstance) {
+    const search = request.getParam('search') || ''
+    const sort = request.getParam('sort') || 'name'
+
+    let query = db.selectFrom('collections').selectAll()
+
+    // Search by name
+    if (search) {
+      query = query.where('name', 'like', `%${search}%`)
+    }
+
+    // Sort
+    switch (sort) {
+      case 'recent':
+        query = query.orderBy('created_at', 'desc')
+        break
+      case 'popular':
+        query = query.orderBy('total_amount_of_nfts', 'desc')
+        break
+      case 'name':
+      default:
+        query = query.orderBy('name', 'asc')
+        break
+    }
+
+    const collections = await query.execute()
 
     // Transform to camelCase and ensure slugs
     const collectionsWithSlugs = collections.map((collection) => {
@@ -39,8 +61,6 @@ export default new Action({
         slug: camelCased.slug || generateSlug(camelCased.name),
       }
     })
-
-    console.log('[CollectionIndex] returning', collectionsWithSlugs.length, 'collections:', JSON.stringify(collectionsWithSlugs.slice(0, 2)))
 
     return response.json({ collections: collectionsWithSlugs })
   },
