@@ -31,7 +31,7 @@ try {
               type="text"
               name="search"
               id="rarity-search"
-              ref="raritySearch"
+              oninput="raritySearchInput(this)"
               class="block w-full h-12 pl-4 pr-12 transition duration-150 ease-in-out border-none rounded-md bg-gray-0.25 cursor-pointer placeholder:text-gray-3 focus:ring-2 focus:ring-pink-8 sm:text-sm"
               placeholder="Search Collections..."
             />
@@ -45,7 +45,7 @@ try {
 
         <!-- Sort & Filter -->
         <div class="flex items-center justify-end space-x-4">
-          <select ref="raritySort" class="h-10 rounded-md border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8">
+          <select onchange="raritySortChange(this)" class="h-10 rounded-md border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8">
             <option value="name">Name</option>
             <option value="recent">Recent</option>
             <option value="popular">Popular</option>
@@ -59,7 +59,7 @@ try {
       <h2 id="collections-heading" class="sr-only">Collections</h2>
 
       <div class="max-w-2xl px-4 py-16 mx-auto sm:py-12 sm:px-6 lg:max-w-full lg:px-2">
-        <div ref="rarityGrid" class="grid grid-cols-1 mt-6 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
+        <div class="grid grid-cols-1 mt-6 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
           @foreach(rarityCollections as collection)
             <div>
               <a href="/rarity/{{ collection.slug }}" class="group">
@@ -95,44 +95,63 @@ try {
 
   <script client>
     {
-      const searchInput = STX.useRef('raritySearch')
-      const sortSelect = STX.useRef('raritySort')
-      const gridContainer = STX.useRef('rarityGrid')
-      let debounceTimer = null
+      var RARITY_API = 'http://localhost:3008'
+      var _raritySearchVal = ''
+      var _raritySortVal = 'name'
+      var _rarityGridEl = null
+      var _rarityTimer = null
 
-      async function searchRarity() {
-        const search = searchInput?.value || ''
-        const sort = sortSelect?.value || 'name'
+      async function doRaritySearch() {
+        if (!_rarityGridEl) return
         try {
-          const res = await fetch(`${API_URL}/marketplace/rarity?search=${encodeURIComponent(search)}&sort=${sort}`)
-          const data = await res.json()
-          const collections = data.collections || []
-          if (!gridContainer) return
+          var res = await fetch(RARITY_API + '/marketplace/rarity?search=' + encodeURIComponent(_raritySearchVal) + '&sort=' + _raritySortVal)
+          var data = await res.json()
+          var collections = data.collections || []
 
-          gridContainer.innerHTML = collections.map(c => `
-            <div>
-              <a href="/rarity/${c.slug}" class="group">
-                <div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">
-                  <img src="${c.imageUrl || '/assets/images/placeholder.png'}" alt="${c.name}" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />
-                </div>
-              </a>
-              <div class="flex justify-between mt-4">
-                <div class="flex items-center w-11/12">
-                  <p class="pt-2 text-lg font-semibold truncate text-gray-6">${c.name}</p>
-                </div>
-              </div>
-            </div>
-          `).join('')
+          var html = ''
+          for (var i = 0; i < collections.length; i++) {
+            var c = collections[i]
+            html += '<div>'
+              + '<a href="/rarity/' + c.slug + '" class="group">'
+              + '<div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">'
+              + '<img src="' + (c.imageUrl || '/assets/images/placeholder.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" />'
+              + '</div></a>'
+              + '<div class="flex justify-between mt-4"><div class="flex items-center w-11/12">'
+              + '<p class="pt-2 text-lg font-semibold truncate text-gray-6">' + c.name + '</p>'
+              + '</div></div></div>'
+          }
+          _rarityGridEl.innerHTML = html
         } catch (err) {
           console.error('Search failed:', err)
         }
       }
 
-      searchInput?.addEventListener('input', () => {
-        clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(searchRarity, 300)
-      })
-      sortSelect?.addEventListener('change', searchRarity)
+      window.raritySearchInput = function(el) {
+        _raritySearchVal = el.value
+        if (!_rarityGridEl) {
+          var n = el.parentNode.parentNode.parentNode.parentNode.parentNode
+          var section = n.children[1]
+          if (section) {
+            var inner = section.children[1]
+            if (inner && inner.children[0]) _rarityGridEl = inner.children[0]
+          }
+        }
+        clearTimeout(_rarityTimer)
+        _rarityTimer = setTimeout(doRaritySearch, 300)
+      }
+
+      window.raritySortChange = function(el) {
+        _raritySortVal = el.value
+        if (!_rarityGridEl) {
+          var n = el.parentNode.parentNode.parentNode.parentNode
+          var section = n.children[1]
+          if (section) {
+            var inner = section.children[1]
+            if (inner && inner.children[0]) _rarityGridEl = inner.children[0]
+          }
+        }
+        doRaritySearch()
+      }
     }
   </script>
 @endsection

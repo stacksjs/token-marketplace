@@ -1,65 +1,53 @@
-<div x-data="drawerComponent()"
-  @drawer-open.window="open = true"
-  @drawer-close.window="open = false"
-  @keydown.escape.window="open = false"
-  x-cloak
->
+<!-- Drawer panel - shown/hidden via window.DrawerManager -->
+<div>
   <!-- Backdrop -->
-  <div
-    x-show="open"
-    x-transition.opacity.duration.300ms
-    @click="DrawerManager.close()"
-    class="fixed inset-0 z-50 bg-black/60"
-  ></div>
+  <div onclick="DrawerManager.close()" style="display:none" class="fixed inset-0 z-50 bg-black/60"></div>
 
   <!-- Panel -->
-  <div
-    x-show="open"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="translate-x-full"
-    x-transition:enter-end="translate-x-0"
-    x-transition:leave="transition ease-in duration-300"
-    x-transition:leave-start="translate-x-0"
-    x-transition:leave-end="translate-x-full"
-    class="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto z-50"
-    data-drawer-panel
-  >
+  <div style="display:none; transform:translateX(100%)" class="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto z-50" data-drawer-panel>
     <!-- Close Button -->
-    <button
-      @click="DrawerManager.close()"
-      type="button"
-      class="absolute top-4 right-4 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition"
-    >
+    <button onclick="DrawerManager.close()" type="button" class="absolute top-4 right-4 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition">
       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
 
     <!-- Content -->
-    <div x-ref="drawerContent">
-      <slot />
-    </div>
+    <div></div>
   </div>
 </div>
 
 <script client>
-  function drawerComponent() {
-    return {
-      open: false,
-      init() {
-        window.DrawerManager = {
-          open: () => window.dispatchEvent(new CustomEvent('drawer-open')),
-          close: () => {
-            window.dispatchEvent(new CustomEvent('drawer-close'))
-            if (window.NFTModal) window.NFTModal.currentNft = null
-          },
-          setContent: (html) => {
-            const el = this.$refs.drawerContent
-            if (el) el.innerHTML = html
-          },
-          _query: (selector) => {
-            return this.$refs.drawerContent?.querySelector(selector)
-          },
+  {
+    var _drawerRoot = document.currentScript.previousElementSibling
+
+    window.DrawerManager = {
+      open: function() {
+        if (!_drawerRoot) return
+        var backdrop = _drawerRoot.children[0]
+        var panel = _drawerRoot.children[1]
+        if (backdrop) backdrop.style.display = ''
+        if (panel) {
+          panel.style.display = ''
+          panel.style.transform = 'translateX(0)'
+        }
+      },
+      close: function() {
+        if (!_drawerRoot) return
+        var backdrop = _drawerRoot.children[0]
+        var panel = _drawerRoot.children[1]
+        if (backdrop) backdrop.style.display = 'none'
+        if (panel) {
+          panel.style.transform = 'translateX(100%)'
+          setTimeout(function() { panel.style.display = 'none' }, 300)
+        }
+      },
+      setContent: function(html) {
+        if (!_drawerRoot) return
+        var panel = _drawerRoot.children[1]
+        if (panel) {
+          var content = panel.children[1]
+          if (content) content.innerHTML = html
         }
       }
     }

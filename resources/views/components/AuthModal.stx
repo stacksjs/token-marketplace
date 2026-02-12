@@ -1,16 +1,13 @@
-<div x-data="authModal()"
-  @auth-open.window="open = true"
-  @keydown.escape.window="open = false"
-  x-cloak
->
+<!-- Auth Modal - shown/hidden via window.AuthManager.open() -->
+<div>
   <!-- Backdrop -->
-  <div x-show="open" x-transition.opacity @click="open = false" class="fixed inset-0 z-[55] bg-black/60"></div>
+  <div onclick="AuthManager.closeModal()" style="display:none" class="fixed inset-0 z-[55] bg-black/60"></div>
 
   <!-- Panel -->
-  <div x-show="open" x-transition class="fixed inset-0 z-[55] flex items-center justify-center p-4">
+  <div style="display:none" class="fixed inset-0 z-[55] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
       <!-- Close -->
-      <button @click="open = false" class="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition">
+      <button onclick="AuthManager.closeModal()" class="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-5 hover:text-gray-8 transition">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -18,52 +15,52 @@
 
       <div class="p-8">
         <!-- Login Form -->
-        <div x-show="isLogin">
+        <div>
           <h2 class="text-2xl font-bold text-gray-9 mb-6">Sign In</h2>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
-              <input type="email" x-model="email" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
+              <input type="email" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
-              <input type="password" x-model="password" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your password" />
+              <input type="password" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your password" />
             </div>
-            <button @click="doLogin()" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Sign In</button>
+            <button onclick="AuthManager.doLogin(this)" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Sign In</button>
           </div>
           <p class="mt-4 text-sm text-gray-5 text-center">
-            Don't have an account? <button @click="showRegister()" class="text-pink-8 hover:text-pink-9 font-medium">Sign Up</button>
+            Don't have an account? <button onclick="AuthManager.showRegister(this)" class="text-pink-8 hover:text-pink-9 font-medium">Sign Up</button>
           </p>
         </div>
 
         <!-- Register Form -->
-        <div x-show="isRegister" x-transition>
+        <div style="display:none">
           <h2 class="text-2xl font-bold text-gray-9 mb-6">Create Account</h2>
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
-              <input type="text" x-model="regName" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your name" />
+              <input type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your name" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
-              <input type="email" x-model="regEmail" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
+              <input type="email" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
-              <input type="password" x-model="regPassword" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Choose a password" />
+              <input type="password" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Choose a password" />
             </div>
-            <button @click="doRegister()" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Create Account</button>
+            <button onclick="AuthManager.doRegister(this)" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Create Account</button>
           </div>
           <p class="mt-4 text-sm text-gray-5 text-center">
-            Already have an account? <button @click="showLogin()" class="text-pink-8 hover:text-pink-9 font-medium">Sign In</button>
+            Already have an account? <button onclick="AuthManager.showLogin(this)" class="text-pink-8 hover:text-pink-9 font-medium">Sign In</button>
           </p>
         </div>
 
         <!-- Link Wallet -->
-        <div x-show="isLinkWallet" x-transition class="text-center">
+        <div style="display:none" class="text-center">
           <h2 class="text-2xl font-bold text-gray-9 mb-4">Link Your Wallet</h2>
           <p class="text-gray-5 mb-6">Connect your wallet address to your account for a personalized experience.</p>
-          <button @click="AuthManager.linkWallet()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">Link Wallet</button>
+          <button onclick="AuthManager.linkWallet()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">Link Wallet</button>
         </div>
       </div>
     </div>
@@ -71,110 +68,157 @@
 </div>
 
 <script client>
-  function authModal() {
-    return {
-      open: false,
-      view: 0,
-      email: '',
-      password: '',
-      regName: '',
-      regEmail: '',
-      regPassword: '',
-      get isLogin() { return this.view === 0 },
-      get isRegister() { return this.view === 1 },
-      get isLinkWallet() { return this.view === 2 },
-      showLogin() { this.view = 0 },
-      showRegister() { this.view = 1 },
-      doLogin() {
-        if (this.email && this.password) AuthManager.login(this.email, this.password)
-      },
-      doRegister() {
-        if (this.regName && this.regEmail && this.regPassword) AuthManager.register(this.regName, this.regEmail, this.regPassword)
+  {
+    var _authRoot = document.currentScript.previousElementSibling
+    var AUTH_API = 'http://localhost:3008'
+
+    function getAuthViews() {
+      if (!_authRoot) return null
+      var panel = _authRoot.children[1]
+      if (!panel) return null
+      var inner = panel.children[0]
+      if (!inner) return null
+      var content = inner.children[1]
+      if (!content) return null
+      return {
+        backdrop: _authRoot.children[0],
+        panel: panel,
+        login: content.children[0],
+        register: content.children[1],
+        linkWallet: content.children[2]
       }
     }
-  }
 
-  window.AuthManager = {
-    _token: localStorage.getItem('auth_token'),
-    _user: null,
+    function showAuthView(view) {
+      var v = getAuthViews()
+      if (!v) return
+      if (v.login) v.login.style.display = view === 0 ? '' : 'none'
+      if (v.register) v.register.style.display = view === 1 ? '' : 'none'
+      if (v.linkWallet) v.linkWallet.style.display = view === 2 ? '' : 'none'
+    }
 
-    isLoggedIn() { return !!this._token },
-    getToken() { return this._token },
+    function getLoginInputs(btn) {
+      var form = btn.parentNode
+      var emailInput = form.children[0].children[1]
+      var passInput = form.children[1].children[1]
+      return { email: emailInput, password: passInput }
+    }
 
-    open() {
-      window.dispatchEvent(new CustomEvent('auth-open'))
-    },
+    function getRegisterInputs(btn) {
+      var form = btn.parentNode
+      var nameInput = form.children[0].children[1]
+      var emailInput = form.children[1].children[1]
+      var passInput = form.children[2].children[1]
+      return { name: nameInput, email: emailInput, password: passInput }
+    }
 
-    async login(email, password) {
-      try {
-        const res = await fetch(API_URL + '/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        })
-        const data = await res.json()
-        if (data.token) {
-          this._token = data.token
-          this._user = data.user
-          localStorage.setItem('auth_token', data.token)
-          Toast.success('Signed in successfully')
-          return true
+    window.AuthManager = {
+      _token: localStorage.getItem('auth_token'),
+      _user: null,
+
+      isLoggedIn: function() { return !!this._token },
+      getToken: function() { return this._token },
+
+      open: function() {
+        var v = getAuthViews()
+        if (!v) return
+        if (v.backdrop) v.backdrop.style.display = ''
+        if (v.panel) v.panel.style.display = ''
+        showAuthView(0)
+      },
+
+      closeModal: function() {
+        var v = getAuthViews()
+        if (!v) return
+        if (v.backdrop) v.backdrop.style.display = 'none'
+        if (v.panel) v.panel.style.display = 'none'
+      },
+
+      showLogin: function() { showAuthView(0) },
+      showRegister: function() { showAuthView(1) },
+
+      doLogin: async function(btn) {
+        var inputs = getLoginInputs(btn)
+        var email = inputs.email ? inputs.email.value : ''
+        var password = inputs.password ? inputs.password.value : ''
+        if (!email || !password) return
+        try {
+          var res = await fetch(AUTH_API + '/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password }),
+          })
+          var data = await res.json()
+          if (data.token) {
+            this._token = data.token
+            this._user = data.user
+            localStorage.setItem('auth_token', data.token)
+            if (window.Toast) Toast.success('Signed in successfully')
+            this.closeModal()
+            return true
+          }
+          if (window.Toast) Toast.error(data.error || 'Login failed')
+          return false
+        } catch (err) {
+          if (window.Toast) Toast.error('Login failed')
+          return false
         }
-        Toast.error(data.error || 'Login failed')
-        return false
-      } catch (err) {
-        Toast.error('Login failed')
-        return false
-      }
-    },
+      },
 
-    async register(name, email, password) {
-      try {
-        const res = await fetch(API_URL + '/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password }),
-        })
-        const data = await res.json()
-        if (data.token) {
-          this._token = data.token
-          this._user = data.user
-          localStorage.setItem('auth_token', data.token)
-          Toast.success('Account created successfully')
-          return true
+      doRegister: async function(btn) {
+        var inputs = getRegisterInputs(btn)
+        var name = inputs.name ? inputs.name.value : ''
+        var email = inputs.email ? inputs.email.value : ''
+        var password = inputs.password ? inputs.password.value : ''
+        if (!name || !email || !password) return
+        try {
+          var res = await fetch(AUTH_API + '/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, email: email, password: password }),
+          })
+          var data = await res.json()
+          if (data.token) {
+            this._token = data.token
+            this._user = data.user
+            localStorage.setItem('auth_token', data.token)
+            if (window.Toast) Toast.success('Account created successfully')
+            this.closeModal()
+            return true
+          }
+          if (window.Toast) Toast.error(data.error || 'Registration failed')
+          return false
+        } catch (err) {
+          if (window.Toast) Toast.error('Registration failed')
+          return false
         }
-        Toast.error(data.error || 'Registration failed')
-        return false
-      } catch (err) {
-        Toast.error('Registration failed')
-        return false
-      }
-    },
+      },
 
-    async linkWallet() {
-      if (!this._token || !WalletManager.isConnected()) return
-      try {
-        const res = await fetch(API_URL + '/auth/link-wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this._token },
-          body: JSON.stringify({ walletAddress: WalletManager.getAddress() }),
-        })
-        const data = await res.json()
-        if (data.success || res.ok) {
-          Toast.success('Wallet linked to your account')
-        } else {
-          Toast.error(data.error || 'Failed to link wallet')
+      linkWallet: async function() {
+        if (!this._token) return
+        try {
+          var res = await fetch(AUTH_API + '/auth/link-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this._token },
+            body: JSON.stringify({ walletAddress: window._connectedWalletAddr || '' }),
+          })
+          var data = await res.json()
+          if (data.success || res.ok) {
+            if (window.Toast) Toast.success('Wallet linked to your account')
+          } else {
+            if (window.Toast) Toast.error(data.error || 'Failed to link wallet')
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to link wallet')
         }
-      } catch (err) {
-        Toast.error('Failed to link wallet')
-      }
-    },
+      },
 
-    logout() {
-      this._token = null
-      this._user = null
-      localStorage.removeItem('auth_token')
-      Toast.success('Signed out')
-    },
+      logout: function() {
+        this._token = null
+        this._user = null
+        localStorage.removeItem('auth_token')
+        if (window.Toast) Toast.success('Signed out')
+      }
+    }
   }
 </script>

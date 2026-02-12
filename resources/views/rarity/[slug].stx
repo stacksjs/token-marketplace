@@ -174,7 +174,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
     <!-- Top Ranked NFTs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Top Ranked</h2>
-      @if(topRanked.length > 0)
+      
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(topRanked as nft)
             <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
@@ -199,7 +199,7 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
             </div>
           @endforeach
         </div>
-      @else
+      @if(topRanked.length == 0)
         <div class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
