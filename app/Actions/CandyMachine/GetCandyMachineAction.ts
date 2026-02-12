@@ -64,7 +64,7 @@ export default new Action({
     if (includeOnChain && candyMachine.candy_machine_address) {
       try {
         const tokenService = getTokenService()
-        onChainData = await tokenService.getCandyMachineOnChainInfo(
+        onChainData = await tokenService.getCandyMachineInfo(
           candyMachine.candy_machine_address
         )
       } catch (error) {

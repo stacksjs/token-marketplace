@@ -1,6 +1,7 @@
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
+import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'GetWalletBalance',
@@ -15,28 +16,16 @@ export default new Action({
     }
 
     try {
-      const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com'
-      const res = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getBalance',
-          params: [walletAddress],
-        }),
+      const tokenService = getTokenService()
+      const result = await tokenService.getBalance(walletAddress)
+
+      return response.json({
+        balance: result.sol,
+        lamports: result.lamports,
       })
-      const data = await res.json()
-
-      if (data.result && data.result.value !== undefined) {
-        const lamports = data.result.value
-        const sol = lamports / 1_000_000_000
-        return response.json({ balance: sol })
-      }
-
-      return response.json({ balance: 0 })
-    } catch (_) {
-      return response.json({ balance: 0 })
+    }
+    catch (_) {
+      return response.json({ balance: 0, lamports: 0 })
     }
   },
 })

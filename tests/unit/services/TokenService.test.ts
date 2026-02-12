@@ -52,17 +52,9 @@ describe('TokenService', () => {
       expect(results[0].status).toBe('confirmed')
     })
 
-    test('mintFromCandyMachine returns mint address', async () => {
+    test('getCandyMachineInfo returns structured info', async () => {
       const service = new TokenService()
-      const result = await service.mintFromCandyMachine('candyMachineAddr')
-      expect(result.mint).toBeDefined()
-      expect(result.mint.length).toBe(44)
-      expect(result.signature).toBeDefined()
-    })
-
-    test('getCandyMachineOnChainInfo returns structured info', async () => {
-      const service = new TokenService()
-      const info = await service.getCandyMachineOnChainInfo('someAddress')
+      const info = await service.getCandyMachineInfo('someAddress')
       expect(info.address).toBe('someAddress')
       expect(info.itemsAvailable).toBeGreaterThan(0)
       expect(info.itemsRedeemed).toBeDefined()
@@ -91,7 +83,7 @@ describe('TokenService', () => {
       const result = await service.transferNFT('mintAddr', 'toAddr')
       expect(result.signature).toBeDefined()
       expect(result.signature.length).toBe(88)
-      expect(result.status).toBe('confirmed')
+      expect(result.confirmed).toBe(true)
     })
 
     test('getNFTsByOwner returns array of mints', async () => {
@@ -111,9 +103,9 @@ describe('TokenService', () => {
   })
 
   describe('Marketplace Operations (mock mode)', () => {
-    test('listNFTForSale returns listing with delegate info', async () => {
+    test('listNFT returns listing with delegate info', async () => {
       const service = new TokenService()
-      const listing = await service.listNFTForSale('mintAddr', BigInt(1000000000))
+      const listing = await service.listNFT('mintAddr', BigInt(1000000000))
       expect(listing.id).toBeDefined()
       expect(listing.mint).toBe('mintAddr')
       expect(listing.price).toBe(BigInt(1000000000))
@@ -126,7 +118,7 @@ describe('TokenService', () => {
       const service = new TokenService()
       const result = await service.delistNFT('mintAddr')
       expect(result.signature).toBeDefined()
-      expect(result.status).toBe('confirmed')
+      expect(result.confirmed).toBe(true)
     })
 
     test('buyListedNFT returns signature + listing', async () => {
@@ -208,22 +200,6 @@ describe('TokenService', () => {
       expect(result.provider).toBeDefined()
     })
 
-    test('uploadBatch handles success/failure array', async () => {
-      const service = new TokenService()
-      const result = await service.uploadBatch([
-        { path: '/tmp/1.png' },
-        { path: '/tmp/2.png' },
-      ])
-      expect(result.results).toBeInstanceOf(Array)
-      expect(result.results.length).toBe(2)
-      expect(result.failed).toBeInstanceOf(Array)
-    })
-
-    test('estimateStorageCost returns lamports', async () => {
-      const service = new TokenService()
-      const cost = await service.estimateStorageCost(10240) // 10KB
-      expect(cost).toBeGreaterThan(BigInt(0))
-    })
   })
 
   describe('Merkle Tree Operations', () => {

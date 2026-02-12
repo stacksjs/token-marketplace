@@ -152,3 +152,33 @@ export default {
     defaultMintLimit: Number(envVars.GUARD_DEFAULT_MINT_LIMIT) || 0,
   },
 }
+
+/**
+ * Extract the ts-tokens compatible configuration subset.
+ * Pass the result directly to `ts.setConfig()`.
+ */
+export function getTsTokensConfig() {
+  return {
+    chain: 'solana' as const,
+    network: (envVars.SOLANA_NETWORK || 'devnet') as 'mainnet-beta' | 'devnet' | 'testnet',
+    rpcUrl: envVars.SOLANA_RPC_URL || defaultRpcUrls[envVars.SOLANA_NETWORK || 'devnet'] || defaultRpcUrls.devnet,
+    commitment: (envVars.SOLANA_COMMITMENT || 'confirmed') as 'processed' | 'confirmed' | 'finalized',
+    wallet: {
+      keypairPath: envVars.SOLANA_KEYPAIR_PATH || '~/.config/solana/id.json',
+    },
+    storageProvider: (envVars.STORAGE_PROVIDER || 'arweave') as 'arweave' | 'ipfs' | 'shadow-drive' | 'local',
+    storage: {
+      provider: (envVars.STORAGE_PROVIDER || 'arweave') as 'arweave' | 'ipfs' | 'shadow-drive' | 'local',
+      arweave: {
+        gateway: envVars.ARWEAVE_GATEWAY || 'https://arweave.net',
+      },
+      ipfs: {
+        gateway: envVars.IPFS_GATEWAY || 'https://ipfs.io',
+      },
+      local: {
+        baseDir: envVars.LOCAL_STORAGE_PATH || './storage/uploads',
+        baseUrl: envVars.LOCAL_STORAGE_URL || 'http://localhost:3000/uploads',
+      },
+    },
+  }
+}

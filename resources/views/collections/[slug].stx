@@ -228,7 +228,13 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
                   <div class="mt-2">
                     <span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span>
                   </div>
+                  <button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="{{ nft.id }}" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">Buy Now</button>
                 @endif
+                <button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="{{ nft.id }}" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Make Offer</button>
+                <div style="display:none" class="mt-2 coll-offer-form">
+                  <input type="number" step="0.01" min="0" placeholder="Amount (SOL)" class="w-full h-8 rounded border border-gray-300 px-2 text-xs focus:border-pink-8 focus:ring-pink-8 coll-offer-amount" onclick="event.stopPropagation()" />
+                  <button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="{{ nft.id }}" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit Offer</button>
+                </div>
               </div>
             </div>
           @endforeach
@@ -310,7 +316,12 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
             + '<div class="p-3"><p class="font-semibold text-gray-9 truncate">' + (nft.name || '') + '</p>'
           if (nft.rarity_rank) html += '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>'
           if (nft.price) html += '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>'
-          if (nft.is_for_sale) html += '<div class="mt-2"><span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span></div>'
+          if (nft.is_for_sale) {
+            html += '<div class="mt-2"><span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span></div>'
+            html += '<button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="' + nft.id + '" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">Buy Now</button>'
+          }
+          html += '<button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="' + nft.id + '" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Make Offer</button>'
+          html += '<div style="display:none" class="mt-2 coll-offer-form"><input type="number" step="0.01" min="0" placeholder="Amount (SOL)" class="w-full h-8 rounded border border-gray-300 px-2 text-xs focus:border-pink-8 focus:ring-pink-8 coll-offer-amount" onclick="event.stopPropagation()" /><button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="' + nft.id + '" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit Offer</button></div>'
           html += '</div></div>'
           return html
         }
@@ -427,6 +438,86 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
               console.error('Failed to load collection activity:', err)
               container.innerHTML = '<p class="text-center text-gray-5 py-8">Failed to load activity</p>'
             })
+        }
+
+        window.collBuyNow = async function(btn) {
+          var nftId = btn.dataset.nftId
+          var walletAddr = localStorage.getItem('wallet_addr')
+          if (!walletAddr) {
+            if (window.Toast) Toast.error('Please connect your wallet first')
+            else alert('Please connect your wallet first')
+            return
+          }
+          btn.disabled = true
+          btn.textContent = 'Buying...'
+          try {
+            var res = await fetch(COLL_API + '/nfts/buy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nftId: Number(nftId), buyerWalletAddress: walletAddr })
+            })
+            var data = await res.json()
+            if (data.error) {
+              if (window.Toast) Toast.error(data.error)
+              else alert(data.error)
+            } else {
+              if (window.Toast) Toast.success('Purchase successful!')
+              else alert('Purchase successful!')
+            }
+          } catch (err) {
+            if (window.Toast) Toast.error('Failed to buy NFT')
+            else alert('Failed to buy NFT')
+          }
+          btn.disabled = false
+          btn.textContent = 'Buy Now'
+        }
+
+        window.collToggleOffer = function(btn) {
+          var form = btn.nextElementSibling
+          if (form) {
+            form.style.display = form.style.display === 'none' ? '' : 'none'
+          }
+        }
+
+        window.collSubmitOffer = async function(btn) {
+          var nftId = btn.dataset.nftId
+          var walletAddr = localStorage.getItem('wallet_addr')
+          if (!walletAddr) {
+            if (window.Toast) Toast.error('Please connect your wallet first')
+            else alert('Please connect your wallet first')
+            return
+          }
+          var amountInput = btn.previousElementSibling
+          var amount = amountInput ? amountInput.value : ''
+          if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+            if (window.Toast) Toast.error('Enter a valid offer amount')
+            else alert('Enter a valid offer amount')
+            return
+          }
+          btn.disabled = true
+          btn.textContent = 'Submitting...'
+          try {
+            var res = await fetch(COLL_API + '/nfts/offer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), bidderWalletAddress: walletAddr })
+            })
+            var data = await res.json()
+            if (data.error) {
+              if (window.Toast) Toast.error(data.error)
+              else alert(data.error)
+            } else {
+              if (window.Toast) Toast.success('Offer submitted!')
+              else alert('Offer submitted!')
+              btn.parentNode.style.display = 'none'
+              if (amountInput) amountInput.value = ''
+            }
+          } catch (err) {
+            if (window.Toast) Toast.error('Failed to submit offer')
+            else alert('Failed to submit offer')
+          }
+          btn.disabled = false
+          btn.textContent = 'Submit Offer'
         }
 
         loadCollectionActivity()

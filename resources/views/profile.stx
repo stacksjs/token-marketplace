@@ -51,6 +51,7 @@ const pageTitle = 'My Profile | Naked NFTs'
             <button onclick="profileSwitchTab(2, this)" class="border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">My Offers</button>
             <button onclick="profileSwitchTab(3, this)" class="border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">Auctions</button>
             <button onclick="profileSwitchTab(4, this)" class="border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">History</button>
+            <button onclick="profileSwitchTab(5, this)" class="border-b-2 border-transparent text-gray-5 hover:text-gray-7 hover:border-gray-300 py-4 px-1 text-sm font-medium">Escrows</button>
           </nav>
         </div>
       </div>
@@ -152,7 +153,22 @@ const pageTitle = 'My Profile | Naked NFTs'
         if (activeTab === 0) {
           if (profileData.ownedNfts && profileData.ownedNfts.length > 0) {
             els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.ownedNfts.map(function(nft) {
-              return nftCard(nft, '<button onclick="profileListNft(' + nft.id + ', this)" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">List for Sale</button>')
+              var extra = '<button onclick="profileListNft(' + nft.id + ', this)" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">List for Sale</button>'
+              extra += '<button onclick="profileToggleAuctionForm(this)" class="mt-1 w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2 rounded transition">Create Auction</button>'
+              extra += '<div style="display:none" class="mt-2 p-2 bg-gray-50 rounded">'
+                + '<select class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-auction-type"><option value="english">English</option><option value="dutch">Dutch</option></select>'
+                + '<input type="number" step="0.01" min="0" placeholder="Start Price (SOL)" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-auction-start" />'
+                + '<input type="number" step="0.01" min="0" placeholder="Reserve Price (SOL)" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-auction-reserve" />'
+                + '<input type="number" min="1" placeholder="Duration (hours)" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-auction-duration" />'
+                + '<button onclick="profileCreateAuction(' + nft.id + ', this)" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-1.5 rounded transition">Submit Auction</button>'
+                + '</div>'
+              extra += '<button onclick="profileToggleEscrowForm(this)" class="mt-1 w-full bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold py-2 rounded transition">Create Escrow</button>'
+              extra += '<div style="display:none" class="mt-2 p-2 bg-gray-50 rounded">'
+                + '<input type="text" placeholder="Buyer Wallet" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-escrow-buyer" />'
+                + '<input type="number" step="0.01" min="0" placeholder="Price (SOL)" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-escrow-price" />'
+                + '<button onclick="profileCreateEscrow(' + nft.id + ', this)" class="w-full bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold py-1.5 rounded transition">Submit Escrow</button>'
+                + '</div>'
+              return nftCard(nft, extra)
             }).join('') + '</div>'
           } else {
             els.contentEl.innerHTML = emptyState('No NFTs in your wallet yet')
@@ -160,7 +176,13 @@ const pageTitle = 'My Profile | Naked NFTs'
         } else if (activeTab === 1) {
           if (profileData.listings && profileData.listings.length > 0) {
             els.contentEl.innerHTML = '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">' + profileData.listings.map(function(nft) {
-              return nftCard(nft, '<button onclick="profileDelistNft(' + nft.id + ', this)" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Delist</button>')
+              var extra = '<button onclick="profileDelistNft(' + nft.id + ', this)" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Delist</button>'
+              extra += '<button onclick="profileToggleOfferForm(this)" class="mt-1 w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded transition">Make Offer</button>'
+              extra += '<div style="display:none" class="mt-2 p-2 bg-gray-50 rounded">'
+                + '<input type="number" step="0.01" min="0" placeholder="Amount (SOL)" class="w-full h-7 rounded border border-gray-300 px-1 text-xs mb-1 profile-offer-amount" />'
+                + '<button onclick="profileMakeOffer(' + nft.id + ', this)" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded transition">Submit Offer</button>'
+                + '</div>'
+              return nftCard(nft, extra)
             }).join('') + '</div>'
           } else {
             els.contentEl.innerHTML = emptyState('No active listings')
@@ -190,7 +212,8 @@ const pageTitle = 'My Profile | Naked NFTs'
               var bid = Number(a.current_bid || a.starting_price).toFixed(4)
               var info = a.status === 'active' ? 'Ends: ' + new Date(a.end_time).toLocaleString() : a.status
               var cancelBtn = a.status === 'active' ? '<button onclick="profileCancelAuction(\'' + a.uuid + '\', this)" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded transition">Cancel</button>' : ''
-              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + a.nft_id + '</p><p class="text-sm text-gray-5">' + a.auction_type + ' &middot; ' + a.status + '</p></div><div class="flex items-center space-x-3"><div class="text-right"><p class="font-semibold text-gray-9">' + bid + ' SOL</p><p class="text-xs text-gray-5">' + info + '</p></div>' + cancelBtn + '</div></div></div>'
+              var bidSection = a.status === 'active' ? '<div class="mt-3 flex items-center space-x-2"><input type="number" step="0.01" min="0" placeholder="Bid (SOL)" class="h-8 w-32 rounded border border-gray-300 px-2 text-xs focus:border-pink-8 focus:ring-pink-8 profile-bid-amount" /><button onclick="profilePlaceBid(\'' + a.uuid + '\', this)" class="bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 px-4 rounded transition">Place Bid</button></div>' : ''
+              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + a.nft_id + '</p><p class="text-sm text-gray-5">' + a.auction_type + ' &middot; ' + a.status + '</p></div><div class="flex items-center space-x-3"><div class="text-right"><p class="font-semibold text-gray-9">' + bid + ' SOL</p><p class="text-xs text-gray-5">' + info + '</p></div>' + cancelBtn + '</div></div>' + bidSection + '</div>'
             })
             html += '</div>'
             els.contentEl.innerHTML = html
@@ -208,6 +231,25 @@ const pageTitle = 'My Profile | Naked NFTs'
             els.contentEl.innerHTML = html
           } else {
             els.contentEl.innerHTML = emptyState('No transaction history')
+          }
+        } else if (activeTab === 5) {
+          if (profileData.escrows && profileData.escrows.length > 0) {
+            var html = '<div class="space-y-3">'
+            profileData.escrows.forEach(function(e) {
+              var price = Number(e.price || 0).toFixed(4)
+              var buyer = e.buyer_wallet_address || ''
+              var shortBuyer = buyer ? buyer.slice(0, 4) + '...' + buyer.slice(-4) : ''
+              var actions = ''
+              if (e.status === 'pending') {
+                actions = '<button onclick="profileSettleEscrow(\'' + e.uuid + '\', this)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-4 rounded transition">Settle</button>'
+                  + '<button onclick="profileCancelEscrow(\'' + e.uuid + '\', this)" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded transition ml-2">Cancel</button>'
+              }
+              html += '<div class="bg-white rounded-lg p-4 shadow-sm"><div class="flex items-center justify-between"><div><p class="font-medium text-gray-8">NFT #' + e.nft_id + '</p><p class="text-sm text-gray-5">' + price + ' SOL &middot; Buyer: ' + shortBuyer + ' &middot; ' + e.status + '</p></div><div class="flex items-center space-x-2">' + actions + '</div></div></div>'
+            })
+            html += '</div>'
+            els.contentEl.innerHTML = html
+          } else {
+            els.contentEl.innerHTML = emptyState('No escrows')
           }
         }
       }
@@ -425,6 +467,200 @@ const pageTitle = 'My Profile | Naked NFTs'
           }
         } catch (err) {
           if (window.Toast) Toast.error('Failed to cancel auction')
+        }
+        btn.disabled = false
+        btn.textContent = 'Cancel'
+      }
+
+      window.profileToggleOfferForm = function(btn) {
+        var form = btn.nextElementSibling
+        if (form) form.style.display = form.style.display === 'none' ? '' : 'none'
+      }
+
+      window.profileMakeOffer = async function(nftId, btn) {
+        var amountInput = btn.previousElementSibling
+        var amount = amountInput ? amountInput.value : ''
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+          if (window.Toast) Toast.error('Enter a valid offer amount')
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Submitting...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), bidderWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Offer submitted!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to submit offer')
+        }
+        btn.disabled = false
+        btn.textContent = 'Submit Offer'
+      }
+
+      window.profileToggleAuctionForm = function(btn) {
+        var form = btn.nextElementSibling
+        if (form) form.style.display = form.style.display === 'none' ? '' : 'none'
+      }
+
+      window.profileCreateAuction = async function(nftId, btn) {
+        var form = btn.parentNode
+        var typeEl = form.children[0]
+        var startEl = form.children[1]
+        var reserveEl = form.children[2]
+        var durationEl = form.children[3]
+        var auctionType = typeEl ? typeEl.value : 'english'
+        var startPrice = startEl ? startEl.value : ''
+        var reservePrice = reserveEl ? reserveEl.value : ''
+        var duration = durationEl ? durationEl.value : ''
+        if (!startPrice || !duration) {
+          if (window.Toast) Toast.error('Start price and duration are required')
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/auction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nftId: Number(nftId),
+              auctionType: auctionType,
+              startingPrice: Number(startPrice),
+              reservePrice: reservePrice ? Number(reservePrice) : undefined,
+              durationHours: Number(duration),
+              sellerWalletAddress: profileWalletAddr
+            })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Auction created!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to create auction')
+        }
+        btn.disabled = false
+        btn.textContent = 'Submit Auction'
+      }
+
+      window.profilePlaceBid = async function(auctionId, btn) {
+        var amountInput = btn.previousElementSibling
+        var amount = amountInput ? amountInput.value : ''
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+          if (window.Toast) Toast.error('Enter a valid bid amount')
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Bidding...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/auction/bid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auctionId: auctionId, amount: Number(amount), bidderWalletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Bid placed!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to place bid')
+        }
+        btn.disabled = false
+        btn.textContent = 'Place Bid'
+      }
+
+      window.profileToggleEscrowForm = function(btn) {
+        var form = btn.nextElementSibling
+        if (form) form.style.display = form.style.display === 'none' ? '' : 'none'
+      }
+
+      window.profileCreateEscrow = async function(nftId, btn) {
+        var form = btn.parentNode
+        var buyerInput = form.children[0]
+        var priceInput = form.children[1]
+        var buyer = buyerInput ? buyerInput.value.trim() : ''
+        var price = priceInput ? priceInput.value : ''
+        if (!buyer || !price) {
+          if (window.Toast) Toast.error('Buyer wallet and price are required')
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/escrow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nftId: Number(nftId), sellerWalletAddress: profileWalletAddr, buyerWalletAddress: buyer, price: Number(price) })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Escrow created!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to create escrow')
+        }
+        btn.disabled = false
+        btn.textContent = 'Submit Escrow'
+      }
+
+      window.profileSettleEscrow = async function(escrowId, btn) {
+        btn.disabled = true
+        btn.textContent = 'Settling...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/escrow/settle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ escrowId: escrowId, walletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Escrow settled!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to settle escrow')
+        }
+        btn.disabled = false
+        btn.textContent = 'Settle'
+      }
+
+      window.profileCancelEscrow = async function(escrowId, btn) {
+        btn.disabled = true
+        btn.textContent = 'Cancelling...'
+        try {
+          var res = await fetch(PROFILE_API + '/nfts/escrow/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ escrowId: escrowId, walletAddress: profileWalletAddr })
+          })
+          var data = await res.json()
+          if (data.error) {
+            if (window.Toast) Toast.error(data.error)
+          } else {
+            if (window.Toast) Toast.success('Escrow cancelled!')
+            loadProfileData(profileWalletAddr)
+          }
+        } catch (err) {
+          if (window.Toast) Toast.error('Failed to cancel escrow')
         }
         btn.disabled = false
         btn.textContent = 'Cancel'

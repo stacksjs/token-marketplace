@@ -104,9 +104,9 @@ describe('Candy Machine API Actions', () => {
       expect(content).toContain('recentMints')
     })
 
-    test('uses getCandyMachineOnChainInfo for on-chain data', () => {
+    test('uses getCandyMachineInfo for on-chain data', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('getCandyMachineOnChainInfo')
+      expect(content).toContain('getCandyMachineInfo')
     })
   })
 
@@ -127,9 +127,9 @@ describe('Candy Machine API Actions', () => {
       expect(content).toContain("method: 'POST'")
     })
 
-    test('uses getCandyMachineOnChainInfo', () => {
+    test('uses getCandyMachineInfo', () => {
       const content = readFileSync(actionPath, 'utf-8')
-      expect(content).toContain('getCandyMachineOnChainInfo')
+      expect(content).toContain('getCandyMachineInfo')
     })
 
     test('detects sold out status', () => {

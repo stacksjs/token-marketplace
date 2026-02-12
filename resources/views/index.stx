@@ -287,6 +287,9 @@ try {
                 @if(nft.price)
                   <p class="mt-1 text-sm font-semibold text-pink-8">{{ nft.price }} SOL</p>
                 @endif
+                @if(nft.isForSale)
+                  <button onclick="event.stopPropagation(); buyNow(this)" data-nft-id="{{ nft.id }}" data-mint-address="{{ nft.mintAddress }}" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">Buy Now</button>
+                @endif
               </div>
             @endforeach
           </div>
@@ -294,4 +297,42 @@ try {
       </div>
     </section>
     @endif
+
+    <script client>
+      {
+        var HOME_API = window.API_BASE || 'http://localhost:3008'
+
+        window.buyNow = async function(btn) {
+          var nftId = btn.dataset.nftId
+          var walletAddr = localStorage.getItem('wallet_addr')
+          if (!walletAddr) {
+            if (window.Toast) Toast.error('Please connect your wallet first')
+            else alert('Please connect your wallet first')
+            return
+          }
+          btn.disabled = true
+          btn.textContent = 'Buying...'
+          try {
+            var res = await fetch(HOME_API + '/nfts/buy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nftId: Number(nftId), buyerWalletAddress: walletAddr })
+            })
+            var data = await res.json()
+            if (data.error) {
+              if (window.Toast) Toast.error(data.error)
+              else alert(data.error)
+            } else {
+              if (window.Toast) Toast.success('Purchase successful!')
+              else alert('Purchase successful!')
+            }
+          } catch (err) {
+            if (window.Toast) Toast.error('Failed to buy NFT')
+            else alert('Failed to buy NFT')
+          }
+          btn.disabled = false
+          btn.textContent = 'Buy Now'
+        }
+      }
+    </script>
 @endsection

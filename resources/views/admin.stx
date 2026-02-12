@@ -23,6 +23,7 @@ const pageTitle = 'Admin | Naked NFTs'
         <button onclick="adminSwitchTab(3, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Guards</button>
         <button onclick="adminSwitchTab(4, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Presales</button>
         <button onclick="adminSwitchTab(5, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Status</button>
+        <button onclick="adminSwitchTab(6, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Tokens</button>
       </div>
 
       <!-- Tab panels container -->
@@ -322,6 +323,101 @@ const pageTitle = 'Admin | Naked NFTs'
               Recalculate Stats
             </button>
             <p class="mt-2 text-sm admin-stats-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 6: Tokens -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Create Token</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-name" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Symbol</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-symbol" maxlength="10" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Decimals</label>
+                <input type="number" min="0" max="18" value="9" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-decimals" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Initial Supply</label>
+                <input type="number" min="0" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-supply" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">URI (metadata)</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-uri" placeholder="https://..." />
+              </div>
+            </div>
+            <button onclick="adminCreateToken(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Create Token
+            </button>
+            <p class="mt-2 text-sm admin-token-create-result"></p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Mint Tokens</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Mint Address</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-mint-addr" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Amount</label>
+                <input type="number" min="0" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-mint-amount" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Destination Wallet</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-mint-dest" />
+              </div>
+            </div>
+            <button onclick="adminMintTokens(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Mint Tokens
+            </button>
+            <p class="mt-2 text-sm admin-token-mint-result"></p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Transfer Tokens</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Mint Address</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-xfer-mint" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Amount</label>
+                <input type="number" min="0" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-xfer-amount" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">From Wallet</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-xfer-from" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">To Wallet</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-xfer-to" />
+              </div>
+            </div>
+            <button onclick="adminTransferTokens(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Transfer Tokens
+            </button>
+            <p class="mt-2 text-sm admin-token-xfer-result"></p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Token Info Lookup</h2>
+            <div class="flex items-end gap-4">
+              <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-7 mb-1">Mint Address</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-token-lookup-addr" />
+              </div>
+              <button onclick="adminLookupToken(this)" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm h-10">
+                Lookup
+              </button>
+            </div>
+            <div class="mt-4 admin-token-lookup-result"></div>
           </div>
         </div>
       </div>
@@ -702,6 +798,125 @@ const pageTitle = 'Admin | Naked NFTs'
         }
         btn.disabled = false
         btn.textContent = 'Recalculate Stats'
+      }
+
+      window.adminCreateToken = async function(btn) {
+        var name = getVal('admin-token-name').trim()
+        var symbol = getVal('admin-token-symbol').trim()
+        if (!name || !symbol) { setResult('admin-token-create-result', 'Name and symbol are required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var body = {
+            name: name,
+            symbol: symbol,
+            decimals: Number(getVal('admin-token-decimals')) || 9
+          }
+          var supply = getVal('admin-token-supply')
+          if (supply) body.initialSupply = Number(supply)
+          var uri = getVal('admin-token-uri').trim()
+          if (uri) body.uri = uri
+          var res = await fetch(ADMIN_API + '/token/create', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-token-create-result', 'Token created! Mint: ' + (data.mintAddress || data.mint || ''), false)
+          } else {
+            setResult('admin-token-create-result', data.error || 'Failed to create token', true)
+          }
+        } catch (err) {
+          setResult('admin-token-create-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Create Token'
+      }
+
+      window.adminMintTokens = async function(btn) {
+        var mintAddr = getVal('admin-token-mint-addr').trim()
+        var amount = getVal('admin-token-mint-amount')
+        var dest = getVal('admin-token-mint-dest').trim()
+        if (!mintAddr || !amount || !dest) { setResult('admin-token-mint-result', 'Mint address, amount, and destination are required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Minting...'
+        try {
+          var res = await fetch(ADMIN_API + '/token/mint', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({ mintAddress: mintAddr, amount: Number(amount), destinationWallet: dest })
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-token-mint-result', 'Tokens minted successfully!', false)
+          } else {
+            setResult('admin-token-mint-result', data.error || 'Failed to mint tokens', true)
+          }
+        } catch (err) {
+          setResult('admin-token-mint-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Mint Tokens'
+      }
+
+      window.adminTransferTokens = async function(btn) {
+        var mint = getVal('admin-token-xfer-mint').trim()
+        var amount = getVal('admin-token-xfer-amount')
+        var from = getVal('admin-token-xfer-from').trim()
+        var to = getVal('admin-token-xfer-to').trim()
+        if (!mint || !amount || !from || !to) { setResult('admin-token-xfer-result', 'All fields are required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Transferring...'
+        try {
+          var res = await fetch(ADMIN_API + '/token/transfer', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({ mintAddress: mint, amount: Number(amount), fromWallet: from, toWallet: to })
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-token-xfer-result', 'Tokens transferred successfully!', false)
+          } else {
+            setResult('admin-token-xfer-result', data.error || 'Failed to transfer tokens', true)
+          }
+        } catch (err) {
+          setResult('admin-token-xfer-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Transfer Tokens'
+      }
+
+      window.adminLookupToken = async function(btn) {
+        var mintAddr = getVal('admin-token-lookup-addr').trim()
+        if (!mintAddr) { return }
+        btn.disabled = true
+        btn.textContent = 'Looking up...'
+        var resultEl = getAdminEl('admin-token-lookup-result')
+        try {
+          var res = await fetch(ADMIN_API + '/token/' + encodeURIComponent(mintAddr), {
+            headers: adminHeaders()
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var info = data.token || data
+            var html = '<div class="bg-gray-50 rounded-lg p-4 text-sm">'
+              + '<p><span class="font-semibold text-gray-7">Name:</span> ' + (info.name || '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Symbol:</span> ' + (info.symbol || '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Decimals:</span> ' + (info.decimals !== undefined ? info.decimals : '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Supply:</span> ' + (info.supply !== undefined ? info.supply : '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Mint:</span> <span class="font-mono text-gray-5">' + (info.mintAddress || mintAddr) + '</span></p>'
+              + (info.uri ? '<p><span class="font-semibold text-gray-7">URI:</span> ' + info.uri + '</p>' : '')
+              + '</div>'
+            if (resultEl) resultEl.innerHTML = html
+          } else {
+            if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">' + (data.error || 'Token not found') + '</p>'
+          }
+        } catch (err) {
+          if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">Error: ' + err.message + '</p>'
+        }
+        btn.disabled = false
+        btn.textContent = 'Lookup'
       }
 
       // Auto-load collections on page load

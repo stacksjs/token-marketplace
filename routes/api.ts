@@ -153,3 +153,11 @@ route.post('/nfts/auction/cancel', 'Actions/Nft/CancelAuctionAction')
 route.post('/nfts/escrow', 'Actions/Nft/CreateEscrowAction')
 route.post('/nfts/escrow/settle', 'Actions/Nft/SettleEscrowAction')
 route.post('/nfts/escrow/cancel', 'Actions/Nft/CancelEscrowAction')
+
+// Fungible Token routes (admin - requires authentication)
+route.group({ prefix: '/token', middleware: 'auth' }, () => {
+  route.post('/create', 'Actions/Token/CreateTokenAction')
+  route.post('/mint', 'Actions/Token/MintTokensAction')
+  route.post('/transfer', 'Actions/Token/TransferTokensAction')
+  route.get('/{mintAddress}', 'Actions/Token/GetTokenInfoAction')
+})

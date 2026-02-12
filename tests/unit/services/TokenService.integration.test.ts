@@ -27,13 +27,8 @@ describe('TokenService Integration (mock mode)', () => {
     const addResults = await service.addConfigLines(cm.candyMachine, configLines)
     expect(addResults.length).toBeGreaterThan(0)
 
-    // Mint
-    const mint = await service.mintFromCandyMachine(cm.candyMachine)
-    expect(mint.mint).toBeDefined()
-    expect(mint.mint.length).toBe(44)
-
-    // Check on-chain info
-    const info = await service.getCandyMachineOnChainInfo(cm.candyMachine)
+    // Check info
+    const info = await service.getCandyMachineInfo(cm.candyMachine)
     expect(info.address).toBe(cm.candyMachine)
     expect(info.itemsAvailable).toBeGreaterThan(0)
   })
@@ -42,7 +37,7 @@ describe('TokenService Integration (mock mode)', () => {
     const service = new TokenService()
 
     // List
-    const listing = await service.listNFTForSale('mintAddr', BigInt(2000000000))
+    const listing = await service.listNFT('mintAddr', BigInt(2000000000))
     expect(listing.delegated).toBe(true)
 
     // Buy

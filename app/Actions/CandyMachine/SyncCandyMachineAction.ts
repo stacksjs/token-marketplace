@@ -33,7 +33,7 @@ export default new Action({
       const tokenService = getTokenService()
 
       // Fetch on-chain state from ts-tokens
-      const onChainInfo = await tokenService.getCandyMachineOnChainInfo(
+      const onChainInfo = await tokenService.getCandyMachineInfo(
         candyMachine.candy_machine_address
       )
 
