@@ -16,19 +16,25 @@ export default new Action({
     }
 
     // Owned NFTs
-    const ownedNfts = await db
-      .selectFrom('nfts')
-      .selectAll()
-      .where('owner_address', '=', walletAddress)
-      .execute()
+    let ownedNfts: any[] = []
+    try {
+      ownedNfts = await db
+        .selectFrom('nfts')
+        .selectAll()
+        .where('owner_wallet_address', '=', walletAddress)
+        .execute()
+    } catch (_) {}
 
     // Active listings (owned + for sale)
-    const listings = await db
-      .selectFrom('nfts')
-      .selectAll()
-      .where('owner_address', '=', walletAddress)
-      .where('is_for_sale', '=', 1)
-      .execute()
+    let listings: any[] = []
+    try {
+      listings = await db
+        .selectFrom('nfts')
+        .selectAll()
+        .where('owner_wallet_address', '=', walletAddress)
+        .where('is_for_sale', '=', 1)
+        .execute()
+    } catch (_) {}
 
     // Sent offers
     let sentOffers: any[] = []
