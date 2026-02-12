@@ -4,6 +4,7 @@ const collectionSlug = slug || ''
 let collection = null
 let topRanked = []
 let rarityBars = []
+let hasMore = false
 let error = null
 
 const colorMap = {
@@ -19,8 +20,9 @@ try {
   if (res.ok) {
     const data = await res.json()
     collection = data.collection
-    const ranked = data.collection?.topRanked || []
+    const ranked = data.rankedNfts?.data || data.collection?.topRanked || []
     const dist = data.collection?.rarityDistribution || {}
+    hasMore = (data.rankedNfts?.page || 1) < (data.rankedNfts?.totalPages || 1)
 
     // Pre-process top ranked with flattened color classes
     topRanked = ranked.map(nft => {
@@ -176,8 +178,15 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
 
     <!-- Top Ranked NFTs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-      <h2 class="text-2xl font-bold text-gray-9 mb-6">Top Ranked</h2>
-      
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-9">Top Ranked</h2>
+        <select onchange="rarityNftSortChanged(this)" class="h-9 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8">
+          <option value="rank_asc">Rank: Best First</option>
+          <option value="rank_desc">Rank: Lowest First</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(topRanked as nft)
             <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
@@ -203,6 +212,16 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
             </div>
           @endforeach
         </div>
+
+        <!-- Load More Button -->
+        @if(hasMore)
+        <div class="flex justify-center mt-8">
+          <button onclick="rarityNftLoadMore(this)" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-7 font-semibold px-8 py-3 rounded-lg transition text-sm">
+            Load More
+          </button>
+        </div>
+        @endif
+
       @if(topRanked.length == 0)
         <div class="text-center py-12">
           <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -212,5 +231,87 @@ const pageTitle = `${collection?.name || 'Collection'} Rarity | Naked NFTs`
         </div>
       @endif
     </div>
+
+    <script client>
+      {
+        var RARITY_DETAIL_API = window.API_BASE || 'http://localhost:3008'
+        var _rarityDetailSlug = window.location.pathname.split('/').pop()
+        var _rarityNftPage = 1
+        var _rarityNftHasMore = true
+        var _rarityNftLoading = false
+        var _rarityNftSort = 'rank_asc'
+
+        var _rarityColorMap = {
+          legendary: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+          epic: { bg: 'bg-purple-100', text: 'text-purple-800' },
+          rare: { bg: 'bg-blue-100', text: 'text-blue-800' },
+          uncommon: { bg: 'bg-green-100', text: 'text-green-800' },
+          common: { bg: 'bg-gray-100', text: 'text-gray-800' }
+        }
+
+        function rarityNftCardHtml(nft) {
+          var key = (nft.rarity || 'common').toLowerCase()
+          var colors = _rarityColorMap[key] || _rarityColorMap.common
+          var html = '<div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
+            + '<div class="aspect-square"><img src="' + (nft.imageUrl || nft.image_url || '/assets/images/anonymouse.png') + '" alt="' + (nft.name || '') + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></div>'
+            + '<div class="p-3"><p class="font-semibold text-gray-9 truncate">' + (nft.name || '') + '</p>'
+            + '<div class="flex items-center justify-between mt-1"><span class="text-xs text-gray-5">Rank #' + (nft.rank || nft.rarity_rank || '?') + '</span>'
+          if (nft.rarity) {
+            html += '<span class="text-xs font-medium px-2 py-0.5 rounded-full ' + colors.bg + ' ' + colors.text + '">' + nft.rarity + '</span>'
+          }
+          html += '</div></div></div>'
+          return html
+        }
+
+        window.rarityNftSortChanged = function(el) {
+          _rarityNftSort = el.value
+          _rarityNftPage = 1
+          _rarityNftHasMore = true
+          var grid = el.parentNode.nextElementSibling
+          if (!grid) return
+          fetch(RARITY_DETAIL_API + '/marketplace/rarity/' + _rarityDetailSlug + '?page=1&sort=' + _rarityNftSort)
+            .then(function(res) { return res.json() })
+            .then(function(data) {
+              var ranked = (data.collection && data.collection.topRanked) || []
+              if (ranked.length < (data.perPage || 20)) _rarityNftHasMore = false
+              var html = ''
+              for (var i = 0; i < ranked.length; i++) html += rarityNftCardHtml(ranked[i])
+              grid.innerHTML = html
+              var loadMoreWrap = grid.nextElementSibling
+              if (loadMoreWrap && loadMoreWrap.children.length > 0) {
+                loadMoreWrap.style.display = _rarityNftHasMore ? '' : 'none'
+              }
+            })
+            .catch(function(err) { console.error('Sort failed:', err) })
+        }
+
+        window.rarityNftLoadMore = async function(btn) {
+          if (_rarityNftLoading || !_rarityNftHasMore) return
+          _rarityNftLoading = true
+          btn.disabled = true
+          btn.textContent = 'Loading...'
+          _rarityNftPage++
+          try {
+            var res = await fetch(RARITY_DETAIL_API + '/marketplace/rarity/' + _rarityDetailSlug + '?page=' + _rarityNftPage + '&sort=' + _rarityNftSort)
+            var data = await res.json()
+            var ranked = (data.collection && data.collection.topRanked) || []
+            if (ranked.length < (data.perPage || 20)) _rarityNftHasMore = false
+            var grid = btn.parentNode.previousElementSibling
+            if (grid) {
+              for (var i = 0; i < ranked.length; i++) {
+                grid.insertAdjacentHTML('beforeend', rarityNftCardHtml(ranked[i]))
+              }
+            }
+            if (!_rarityNftHasMore) btn.parentNode.style.display = 'none'
+          } catch (err) {
+            console.error('Load more failed:', err)
+            _rarityNftPage--
+          }
+          _rarityNftLoading = false
+          btn.disabled = false
+          btn.textContent = 'Load More'
+        }
+      }
+    </script>
   @endif
 @endsection

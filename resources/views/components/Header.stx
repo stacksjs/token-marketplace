@@ -113,6 +113,7 @@
 
 <script client>
   {
+    var _headerEl = document.currentScript.previousElementSibling
     var API_URL = window.API_BASE || 'http://localhost:3008'
 
     function getWalletProvider() {
@@ -130,9 +131,8 @@
     }
 
     function findConnectBtn() {
-      var headers = document.getElementsByTagName('header')
-      if (!headers || !headers.length) return null
-      var nav = headers[0].children[0]
+      if (!_headerEl) return null
+      var nav = _headerEl.children[0]
       var maxW = nav ? nav.children[0] : null
       var row = maxW ? maxW.children[0] : null
       var right = row ? row.children[1] : null

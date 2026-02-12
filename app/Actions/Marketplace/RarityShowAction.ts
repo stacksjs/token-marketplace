@@ -2,7 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
-import { generateSlug } from '../helpers'
+import { generateSlug, paginate } from '../helpers'
 
 export default new Action({
   name: 'Rarity Show',
@@ -56,11 +56,15 @@ export default new Action({
       }
     }
 
-    // Get top ranked NFTs (sorted by rarity)
+    // Rank all NFTs by rarity
     const rarityOrder = ['Legendary', 'Epic', 'Rare', 'Uncommon', 'Common']
-    const topRanked = nfts
+    const sortParam = request.getParam('sort') || 'rank_asc'
+    const page = Math.max(1, Number(request.getParam('page')) || 1)
+    const limit = Math.min(100, Math.max(1, Number(request.getParam('limit')) || 20))
+
+    // First sort by rarity to assign ranks
+    const rankedByRarity = [...nfts]
       .sort((a, b) => rarityOrder.indexOf((a as any).rarity || 'Common') - rarityOrder.indexOf((b as any).rarity || 'Common'))
-      .slice(0, 10)
       .map((nft: any, index) => ({
         id: nft.id,
         name: nft.name,
@@ -69,12 +73,34 @@ export default new Action({
         imageUrl: nft.image_url,
       }))
 
+    // Apply user-requested sort
+    let sorted = rankedByRarity
+    switch (sortParam) {
+      case 'rank_desc':
+        sorted = rankedByRarity.slice().reverse()
+        break
+      case 'name':
+        sorted = rankedByRarity.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        break
+      case 'rank_asc':
+      default:
+        break
+    }
+
+    const paginated = paginate(sorted, page, limit)
+
     return response.json({
       collection: {
         ...collection,
         totalSupply: totalNfts,
         rarityDistribution,
-        topRanked,
+      },
+      rankedNfts: {
+        data: paginated.data,
+        total: paginated.total,
+        page: paginated.page,
+        limit: paginated.limit,
+        totalPages: paginated.totalPages,
       },
     })
   },

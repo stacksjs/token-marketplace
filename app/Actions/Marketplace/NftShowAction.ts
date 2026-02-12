@@ -36,15 +36,18 @@ export default new Action({
       }
     }
 
-    // Fetch pending offers
+    // Fetch pending offers (exclude expired)
     let offers: any[] = []
     try {
-      offers = await db
+      const allOffers = await db
         .selectFrom('offers')
         .selectAll()
         .where('nft_id', '=', Number(id))
         .where('status', '=', 'pending')
         .execute()
+
+      const now = new Date().toISOString()
+      offers = allOffers.filter((o: any) => !o.expiry_at || o.expiry_at > now)
     } catch (_) {
       // offers table may not exist yet
     }

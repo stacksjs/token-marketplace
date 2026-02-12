@@ -2,7 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
-import { generateSlug, toCamelCase } from '../helpers'
+import { generateSlug, paginate, toCamelCase } from '../helpers'
 
 export default new Action({
   name: 'Collection Index',
@@ -12,6 +12,8 @@ export default new Action({
   async handle(request: RequestInstance) {
     const search = request.getParam('search') || ''
     const sort = request.getParam('sort') || 'name'
+    const page = Math.max(1, Number(request.getParam('page')) || 1)
+    const limit = Math.min(100, Math.max(1, Number(request.getParam('limit')) || 20))
 
     let query = db.selectFrom('collections').selectAll()
 
@@ -55,6 +57,14 @@ export default new Action({
       }
     })
 
-    return response.json({ collections: collectionsWithSlugs })
+    const paginated = paginate(collectionsWithSlugs, page, limit)
+
+    return response.json({
+      collections: paginated.data,
+      total: paginated.total,
+      page: paginated.page,
+      limit: paginated.limit,
+      totalPages: paginated.totalPages,
+    })
   },
 })

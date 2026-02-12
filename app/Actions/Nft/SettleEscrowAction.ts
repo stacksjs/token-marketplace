@@ -5,13 +5,12 @@ import type { RequestInstance } from '@stacksjs/types'
 import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
-  name: 'Buy NFT',
-  description: 'Build an unsigned buy transaction for client wallet signing',
+  name: 'Settle Escrow',
+  description: 'Settle an escrow and transfer NFT to buyer',
   method: 'POST',
 
   async handle(request: RequestInstance) {
     const body = await request.json()
-
     const { nftId, buyerWalletAddress } = body
 
     if (!nftId || !buyerWalletAddress) {
@@ -31,51 +30,30 @@ export default new Action({
       return response.notFound({ error: 'NFT not found' })
     }
 
-    if (!nft.is_for_sale) {
+    if ((nft as any).escrow_status !== 'active') {
       return response.json({
-        error: 'NFT is not for sale',
-      }, 400)
-    }
-
-    if (!nft.mint_address) {
-      return response.json({
-        error: 'NFT has not been minted yet',
-      }, 400)
-    }
-
-    if (!nft.owner_wallet_address) {
-      return response.json({
-        error: 'NFT owner information is missing',
-      }, 400)
-    }
-
-    if (nft.owner_wallet_address === buyerWalletAddress) {
-      return response.json({
-        error: 'Cannot buy your own NFT',
+        error: 'NFT is not in escrow',
       }, 400)
     }
 
     try {
       const tokenService = getTokenService()
-      const unsignedTx = await tokenService.buildBuyTransaction(nft.mint_address, buyerWalletAddress)
+      const escrowId = (nft as any).escrow_id || String(nft.id)
+      const transaction = await tokenService.buildSettleEscrowTransaction(
+        escrowId,
+        buyerWalletAddress,
+      )
 
       return response.json({
         success: true,
         transaction: {
-          serializedTransaction: unsignedTx.serializedTransaction,
-          message: unsignedTx.message,
-        },
-        nft: {
-          id: nft.id,
-          name: nft.name,
-          mintAddress: nft.mint_address,
-          price: nft.price,
-          ownerWalletAddress: nft.owner_wallet_address,
+          serializedTransaction: transaction.serializedTransaction,
+          message: transaction.message,
         },
       })
     } catch (error) {
       return response.json({
-        error: 'Failed to build buy transaction',
+        error: 'Failed to settle escrow',
         details: error instanceof Error ? error.message : 'Unknown error',
       }, 500)
     }

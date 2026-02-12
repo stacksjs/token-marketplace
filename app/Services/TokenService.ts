@@ -136,6 +136,14 @@ function mockDelay(ms: number = 500): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/**
+ * Unsigned transaction returned to client for wallet signing
+ */
+export interface UnsignedTransaction {
+  serializedTransaction: string  // base64-encoded serialized transaction
+  message: string  // human-readable description for wallet popup
+}
+
 // Types from ts-tokens (re-export for convenience)
 export interface CandyMachineConfig {
   itemsAvailable: number
@@ -1286,6 +1294,345 @@ export class TokenService {
         verified: c.verified,
       })),
       enforcedByMarketplace: info.enforcedByMarketplace,
+    }
+  }
+
+  // ============================================
+  // Build Transaction Methods (server-builds, client-signs)
+  // ============================================
+
+  /**
+   * Build an unsigned list transaction for client signing
+   */
+  async buildListTransaction(mintAddress: string, price: bigint, sellerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'list',
+          mint: mintAddress,
+          price: price.toString(),
+          seller: sellerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: `List NFT for ${Number(price) / 1e9} SOL`,
+      }
+    }
+
+    const result = await tsListNFT(
+      { mint: mintAddress, price, currency: 'SOL', buildOnly: true },
+      this.getTsConfig()
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: `List NFT for ${Number(price) / 1e9} SOL`,
+    }
+  }
+
+  /**
+   * Build an unsigned buy transaction for client signing
+   */
+  async buildBuyTransaction(mintAddress: string, buyerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'buy',
+          mint: mintAddress,
+          buyer: buyerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Buy listed NFT',
+      }
+    }
+
+    const result = await tsBuyListedNFT(
+      mintAddress,
+      { ...this.getTsConfig(), buyerAddress, buildOnly: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Buy listed NFT',
+    }
+  }
+
+  /**
+   * Build an unsigned delist transaction for client signing
+   */
+  async buildDelistTransaction(mintAddress: string, sellerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'delist',
+          mint: mintAddress,
+          seller: sellerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Delist NFT from marketplace',
+      }
+    }
+
+    const result = await tsDelistNFT(
+      mintAddress,
+      { ...this.getTsConfig(), buildOnly: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Delist NFT from marketplace',
+    }
+  }
+
+  /**
+   * Build an unsigned mint transaction for client signing
+   */
+  async buildMintTransaction(candyMachineAddress: string, payerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'mint',
+          candyMachine: candyMachineAddress,
+          payer: payerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Mint NFT from candy machine',
+      }
+    }
+
+    const result = await tsMintFromCandyMachine({
+      candyMachine: candyMachineAddress,
+      payerAddress,
+      buildOnly: true,
+    })
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Mint NFT from candy machine',
+    }
+  }
+
+  /**
+   * Build an unsigned accept-offer transaction for client signing
+   */
+  async buildAcceptOfferTransaction(offerId: string, sellerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'accept_offer',
+          offerId,
+          seller: sellerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Accept offer on NFT',
+      }
+    }
+
+    const result = await tsAcceptOffer(
+      offerId,
+      { ...this.getTsConfig(), buildOnly: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Accept offer on NFT',
+    }
+  }
+
+  /**
+   * Build an unsigned cancel-auction transaction for client signing
+   */
+  async buildCancelAuctionTransaction(auctionId: string, sellerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'cancel_auction',
+          auctionId,
+          seller: sellerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Cancel auction',
+      }
+    }
+
+    const result = await tsCancelAuction(
+      auctionId,
+      { ...this.getTsConfig(), buildOnly: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Cancel auction',
+    }
+  }
+
+  /**
+   * Build an unsigned create-escrow transaction for client signing
+   */
+  async buildCreateEscrowTransaction(mintAddress: string, sellerAddress: string, price: bigint): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'create_escrow',
+          mint: mintAddress,
+          seller: sellerAddress,
+          price: price.toString(),
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: `Create escrow for ${Number(price) / 1e9} SOL`,
+      }
+    }
+
+    const result = await tsCreateEscrow(
+      { mint: mintAddress, price, sellerAddress, buildOnly: true },
+      this.getTsConfig()
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: `Create escrow for ${Number(price) / 1e9} SOL`,
+    }
+  }
+
+  /**
+   * Build an unsigned settle-escrow transaction for client signing
+   */
+  async buildSettleEscrowTransaction(escrowId: string, buyerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'settle_escrow',
+          escrowId,
+          buyer: buyerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Settle escrow and transfer NFT',
+      }
+    }
+
+    const result = await tsSettleEscrow(
+      escrowId,
+      { ...this.getTsConfig(), buyerAddress, buildOnly: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Settle escrow and transfer NFT',
+    }
+  }
+
+  /**
+   * Build an unsigned cancel-escrow transaction for client signing
+   */
+  async buildCancelEscrowTransaction(escrowId: string, sellerAddress: string): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'cancel_escrow',
+          escrowId,
+          seller: sellerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: 'Cancel escrow and return NFT',
+      }
+    }
+
+    const result = await tsSettleEscrow(
+      escrowId,
+      { ...this.getTsConfig(), sellerAddress, buildOnly: true, cancel: true }
+    )
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Cancel escrow and return NFT',
+    }
+  }
+
+  // ============================================
+  // Transaction Verification
+  // ============================================
+
+  /**
+   * Verify a transaction on-chain by its signature
+   */
+  async verifyTransaction(signature: string): Promise<{ confirmed: boolean; slot?: number; err?: string }> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        confirmed: true,
+        slot: Math.floor(Math.random() * 1000000),
+      }
+    }
+
+    try {
+      const connection = this.getConnection()
+      const result = await connection.getSignatureStatuses([signature])
+      const status = result?.value?.[0]
+
+      if (!status) {
+        return { confirmed: false, err: 'Transaction not found' }
+      }
+
+      if (status.err) {
+        return { confirmed: false, err: JSON.stringify(status.err) }
+      }
+
+      const confirmed = status.confirmationStatus === 'confirmed'
+        || status.confirmationStatus === 'finalized'
+
+      return {
+        confirmed,
+        slot: status.slot,
+      }
+    } catch (error) {
+      return {
+        confirmed: false,
+        err: error instanceof Error ? error.message : 'Verification failed',
+      }
     }
   }
 

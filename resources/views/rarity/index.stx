@@ -2,12 +2,14 @@
 const pageTitle = 'Rarity | Naked NFTs'
 const API_URL = process.env.API_URL || 'http://localhost:3008'
 let rarityCollections = []
+let hasMore = false
 
 try {
   const res = await fetch(`${API_URL}/marketplace/rarity`)
   if (res.ok) {
     const data = await res.json()
     rarityCollections = data.collections || []
+    hasMore = (data.page || 1) < (data.totalPages || 1)
   }
 } catch (err) {
   console.error('Failed to fetch rarity data:', err)
@@ -99,71 +101,113 @@ try {
             </div>
           @endforeach
         </div>
+        <!-- Load More Button -->
+        @if(hasMore)
+        <div class="flex justify-center mt-8 mb-8">
+          <button onclick="rarityLoadMore(this)" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-7 font-semibold px-8 py-3 rounded-lg transition text-sm">
+            Load More
+          </button>
+        </div>
+        @endif
       </div>
     </section>
   </main>
 
   <script client>
     {
+      var _rarityRoot = document.currentScript.previousElementSibling
       var RARITY_API = window.API_BASE || 'http://localhost:3008'
       var _raritySearchVal = ''
       var _raritySortVal = 'name'
       var _rarityGridEl = null
       var _rarityTimer = null
+      var _rarityPage = 1
+      var _rarityHasMore = true
+      var _rarityLoading = false
+      var _rarityLoadMoreEl = null
+
+      function rarityCollCardHtml(c) {
+        return '<div>'
+          + '<a href="/rarity/' + c.slug + '" class="group">'
+          + '<div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">'
+          + '<img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
+          + '</div></a>'
+          + '<div class="flex justify-between mt-4"><div class="flex-1 min-w-0">'
+          + '<p class="pt-2 text-lg font-semibold truncate text-gray-6">' + c.name + '</p>'
+          + '<p class="text-sm text-gray-4">' + (c.totalItems || 0) + ' items</p>'
+          + '</div></div></div>'
+      }
+
+      function updateRarityLoadMoreBtn() {
+        if (_rarityLoadMoreEl) _rarityLoadMoreEl.style.display = _rarityHasMore ? '' : 'none'
+      }
 
       async function doRaritySearch() {
         if (!_rarityGridEl) return
+        _rarityPage = 1
+        _rarityHasMore = true
         try {
-          var res = await fetch(RARITY_API + '/marketplace/rarity?search=' + encodeURIComponent(_raritySearchVal) + '&sort=' + _raritySortVal)
+          var res = await fetch(RARITY_API + '/marketplace/rarity?search=' + encodeURIComponent(_raritySearchVal) + '&sort=' + _raritySortVal + '&page=1')
           var data = await res.json()
           var collections = data.collections || []
+          if (collections.length < (data.perPage || 12)) _rarityHasMore = false
 
           var html = ''
           if (collections.length === 0) {
             html = '<div class="col-span-full text-center py-12"><svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg><p class="mt-4 text-gray-5">No collections found</p></div>'
           }
           for (var i = 0; i < collections.length; i++) {
-            var c = collections[i]
-            html += '<div>'
-              + '<a href="/rarity/' + c.slug + '" class="group">'
-              + '<div class="w-full overflow-hidden transition duration-150 ease-in-out bg-gray-200 rounded-md min-h-80 aspect-w-1 aspect-h-1 group-hover:opacity-75 lg:aspect-none lg:h-80">'
-              + '<img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="object-cover object-center w-full h-full lg:h-full lg:w-full" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
-              + '</div></a>'
-              + '<div class="flex justify-between mt-4"><div class="flex-1 min-w-0">'
-              + '<p class="pt-2 text-lg font-semibold truncate text-gray-6">' + c.name + '</p>'
-              + '<p class="text-sm text-gray-4">' + (c.totalItems || 0) + ' items</p>'
-              + '</div></div></div>'
+            html += rarityCollCardHtml(collections[i])
           }
           _rarityGridEl.innerHTML = html
+          updateRarityLoadMoreBtn()
         } catch (err) {
           console.error('Search failed:', err)
         }
       }
 
+      window.rarityLoadMore = async function(btn) {
+        if (_rarityLoading || !_rarityHasMore || !_rarityGridEl) return
+        _rarityLoading = true
+        btn.disabled = true
+        btn.textContent = 'Loading...'
+        _rarityPage++
+        try {
+          var res = await fetch(RARITY_API + '/marketplace/rarity?search=' + encodeURIComponent(_raritySearchVal) + '&sort=' + _raritySortVal + '&page=' + _rarityPage)
+          var data = await res.json()
+          var collections = data.collections || []
+          if (collections.length < (data.perPage || 12)) _rarityHasMore = false
+
+          for (var i = 0; i < collections.length; i++) {
+            _rarityGridEl.insertAdjacentHTML('beforeend', rarityCollCardHtml(collections[i]))
+          }
+          updateRarityLoadMoreBtn()
+        } catch (err) {
+          console.error('Load more failed:', err)
+          _rarityPage--
+        }
+        _rarityLoading = false
+        btn.disabled = false
+        btn.textContent = 'Load More'
+      }
+
+      function findRarityEls() {
+        if (_rarityGridEl) return
+        var els = _rarityRoot.getElementsByClassName('gap-y-10')
+        _rarityGridEl = els[0] || null
+        if (_rarityGridEl) _rarityLoadMoreEl = _rarityGridEl.nextElementSibling
+      }
+
       window.raritySearchInput = function(el) {
         _raritySearchVal = el.value
-        if (!_rarityGridEl) {
-          var n = el.parentNode.parentNode.parentNode.parentNode.parentNode
-          var section = n.children[1]
-          if (section) {
-            var inner = section.children[1]
-            if (inner && inner.children[0]) _rarityGridEl = inner.children[0]
-          }
-        }
+        findRarityEls(el)
         clearTimeout(_rarityTimer)
         _rarityTimer = setTimeout(doRaritySearch, 300)
       }
 
       window.raritySortChange = function(el) {
         _raritySortVal = el.value
-        if (!_rarityGridEl) {
-          var n = el.parentNode.parentNode.parentNode.parentNode
-          var section = n.children[1]
-          if (section) {
-            var inner = section.children[1]
-            if (inner && inner.children[0]) _rarityGridEl = inner.children[0]
-          }
-        }
+        findRarityEls(el)
         doRaritySearch()
       }
     }

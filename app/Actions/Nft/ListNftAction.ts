@@ -6,7 +6,7 @@ import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'List NFT',
-  description: 'List an NFT for sale on the marketplace using on-chain delegate pattern',
+  description: 'Build an unsigned list transaction for client wallet signing',
   method: 'POST',
 
   async handle(request: RequestInstance) {
@@ -57,55 +57,27 @@ export default new Action({
     }
 
     try {
-      // On-chain listing via ts-tokens delegate pattern
       const tokenService = getTokenService()
       const priceLamports = BigInt(Math.floor(price * 1e9))
-      const listing = await tokenService.listNFTForSale(nft.mint_address, priceLamports)
-
-      // Update NFT in database
-      await db
-        .updateTable('nfts')
-        .set({
-          is_for_sale: 1,
-          price,
-          listing_id: listing.id,
-          delegate_address: listing.delegateAddress,
-          listed_at: new Date().toISOString(),
-          listing_price: Number(priceLamports),
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', Number(nftId))
-        .execute()
-
-      // Get updated NFT
-      const updatedNft = await db
-        .selectFrom('nfts')
-        .selectAll()
-        .where('id', '=', Number(nftId))
-        .executeTakeFirst()
+      const unsignedTx = await tokenService.buildListTransaction(nft.mint_address, priceLamports, sellerWalletAddress)
 
       return response.json({
         success: true,
-        listing: {
-          id: listing.id,
-          signature: listing.signature,
-          delegateAddress: listing.delegateAddress,
-          delegated: listing.delegated,
+        transaction: {
+          serializedTransaction: unsignedTx.serializedTransaction,
+          message: unsignedTx.message,
         },
         nft: {
-          id: updatedNft?.id,
-          uuid: updatedNft?.uuid,
-          name: updatedNft?.name,
-          mintAddress: updatedNft?.mint_address,
-          imageUrl: updatedNft?.image_url,
-          price: updatedNft?.price,
-          isForSale: updatedNft?.is_for_sale === 1,
-          ownerWalletAddress: updatedNft?.owner_wallet_address,
+          id: nft.id,
+          name: nft.name,
+          mintAddress: nft.mint_address,
+          price,
+          ownerWalletAddress: nft.owner_wallet_address,
         },
       })
     } catch (error) {
       return response.json({
-        error: 'Failed to list NFT',
+        error: 'Failed to build list transaction',
         details: error instanceof Error ? error.message : 'Unknown error',
       }, 500)
     }

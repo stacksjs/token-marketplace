@@ -6,7 +6,7 @@ import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'Mint NFT',
-  description: 'Execute a mint from a candy machine',
+  description: 'Build an unsigned mint transaction for client wallet signing',
   method: 'POST',
 
   async handle(request: RequestInstance) {
@@ -53,11 +53,10 @@ export default new Action({
 
     // Calculate mint price
     let mintPrice = candyMachine.mint_price || 0
-    let presale = null
 
     // Check presale eligibility if presaleId provided
     if (presaleId) {
-      presale = await db
+      const presale = await db
         .selectFrom('presales')
         .selectAll()
         .where('id', '=', Number(presaleId))
@@ -69,7 +68,6 @@ export default new Action({
         const startsAt = presale.presale_starts_at ? new Date(presale.presale_starts_at) : null
         const expiresAt = presale.presale_expires_at ? new Date(presale.presale_expires_at) : null
 
-        // Check timing
         if (startsAt && now < startsAt) {
           return response.json({
             error: 'Presale has not started yet',
@@ -118,7 +116,7 @@ export default new Action({
       }
     }
 
-    // Create mint transaction record
+    // Create mint transaction record with pending status
     const uuid = crypto.randomUUID()
 
     await db
@@ -135,77 +133,22 @@ export default new Action({
       .execute()
 
     try {
-      // Update status to processing
-      await db
-        .updateTable('mint_transactions')
-        .set({
-          status: 'processing',
-          updated_at: new Date().toISOString(),
-        })
-        .where('uuid', '=', uuid)
-        .execute()
-
-      // Execute mint on-chain
       const tokenService = getTokenService()
-      const result = await tokenService.mintFromCandyMachine(
-        candyMachine.candy_machine_address
+      const unsignedTx = await tokenService.buildMintTransaction(
+        candyMachine.candy_machine_address,
+        walletAddress
       )
-
-      // Update mint transaction with result
-      await db
-        .updateTable('mint_transactions')
-        .set({
-          status: 'confirmed',
-          mint_address: result.mint,
-          transaction_signature: result.signature,
-          updated_at: new Date().toISOString(),
-        })
-        .where('uuid', '=', uuid)
-        .execute()
-
-      // Update candy machine items redeemed
-      await db
-        .updateTable('candy_machines')
-        .set({
-          items_redeemed: (candyMachine.items_redeemed || 0) + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', Number(candyMachineId))
-        .execute()
-
-      // Check if sold out
-      const newItemsRemaining = itemsRemaining - 1
-      if (newItemsRemaining <= 0) {
-        await db
-          .updateTable('candy_machines')
-          .set({
-            status: 'sold_out',
-            message: 'All items have been minted',
-            status_changed_at: new Date().toISOString(),
-          })
-          .where('id', '=', Number(candyMachineId))
-          .execute()
-
-        if (candyMachine.collection_id) {
-          await db
-            .updateTable('collections')
-            .set({
-              is_minting: 0,
-              updated_at: new Date().toISOString(),
-            })
-            .where('id', '=', candyMachine.collection_id)
-            .execute()
-        }
-      }
 
       return response.json({
         success: true,
+        transaction: {
+          serializedTransaction: unsignedTx.serializedTransaction,
+          message: unsignedTx.message,
+        },
         mint: {
           transactionId: uuid,
-          mintAddress: result.mint,
-          transactionSignature: result.signature,
           amountPaid: mintPrice,
-          status: 'confirmed',
+          status: 'pending',
         },
       }, 201)
     } catch (error) {
@@ -221,7 +164,7 @@ export default new Action({
         .execute()
 
       return response.json({
-        error: 'Mint failed',
+        error: 'Failed to build mint transaction',
         details: error instanceof Error ? error.message : 'Unknown error',
         transactionId: uuid,
       }, 500)

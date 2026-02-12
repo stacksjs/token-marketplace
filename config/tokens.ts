@@ -1,6 +1,14 @@
 // Use direct environment variable access to avoid circular dependencies
 const envVars = typeof Bun !== 'undefined' ? Bun.env : process.env
 
+// Network-aware RPC URL defaults
+const network = envVars.SOLANA_NETWORK || 'devnet'
+const defaultRpcUrls: Record<string, string> = {
+  'mainnet-beta': 'https://api.mainnet-beta.solana.com',
+  devnet: 'https://api.devnet.solana.com',
+  testnet: 'https://api.testnet.solana.com',
+}
+
 /**
  * **Token/NFT Configuration**
  *
@@ -18,8 +26,8 @@ export default {
    * Blockchain network configuration
    */
   chain: 'solana',
-  network: envVars.SOLANA_NETWORK || 'devnet',
-  rpcUrl: envVars.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+  network,
+  rpcUrl: envVars.SOLANA_RPC_URL || defaultRpcUrls[network] || defaultRpcUrls.devnet,
 
   /**
    * Wallet configuration

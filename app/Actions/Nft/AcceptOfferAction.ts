@@ -6,7 +6,7 @@ import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
   name: 'Accept Offer',
-  description: 'Accept an offer on an NFT',
+  description: 'Build an unsigned accept-offer transaction for client wallet signing',
   method: 'POST',
 
   async handle(request: RequestInstance) {
@@ -52,49 +52,28 @@ export default new Action({
 
     try {
       const tokenService = getTokenService()
-      const result = await tokenService.acceptOffer(offerId)
-
-      // Update offer status
-      await db
-        .updateTable('offers')
-        .set({
-          status: 'accepted',
-          transaction_signature: result.signature,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', offer.id)
-        .execute()
-
-      // Transfer NFT ownership in database
-      await db
-        .updateTable('nfts')
-        .set({
-          owner_wallet_address: offer.buyer_wallet_address,
-          is_for_sale: 0,
-          listing_id: null,
-          delegate_address: null,
-          listed_at: null,
-          listing_price: null,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', Number(offer.nft_id))
-        .execute()
+      const unsignedTx = await tokenService.buildAcceptOfferTransaction(offerId, sellerWalletAddress)
 
       return response.json({
         success: true,
         transaction: {
-          signature: result.signature,
+          serializedTransaction: unsignedTx.serializedTransaction,
+          message: unsignedTx.message,
         },
         offer: {
           id: offerId,
-          status: 'accepted',
           amount: offer.amount,
           buyerWalletAddress: offer.buyer_wallet_address,
+        },
+        nft: {
+          id: nft.id,
+          name: nft.name,
+          mintAddress: nft.mint_address,
         },
       })
     } catch (error) {
       return response.json({
-        error: 'Failed to accept offer',
+        error: 'Failed to build accept offer transaction',
         details: error instanceof Error ? error.message : 'Unknown error',
       }, 500)
     }

@@ -5,6 +5,7 @@ const API_URL = process.env.API_URL || 'http://localhost:3008'
 const collectionSlug = slug || ''
 let collection = null
 let nfts = []
+let hasMore = false
 let error = null
 
 try {
@@ -12,7 +13,8 @@ try {
   if (res.ok) {
     const data = await res.json()
     collection = data.collection
-    nfts = data.collection?.nfts || []
+    nfts = data.nfts || data.collection?.nfts || []
+    hasMore = (data.page || 1) < (data.totalPages || 1)
   } else {
     error = 'Collection not found'
   }
@@ -173,6 +175,36 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
     <!-- NFTs Grid -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h2 class="text-2xl font-bold text-gray-9 mb-6">Items ({{ nfts.length }})</h2>
+
+        <!-- Filter Bar -->
+        <div class="flex flex-wrap items-center gap-3 mb-6">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-5">Price:</label>
+            <input type="number" placeholder="Min" oninput="collNftFilterChanged()" class="w-20 h-9 rounded border border-gray-300 px-2 text-sm focus:border-pink-8 focus:ring-pink-8 coll-filter-min" />
+            <span class="text-gray-4">-</span>
+            <input type="number" placeholder="Max" oninput="collNftFilterChanged()" class="w-20 h-9 rounded border border-gray-300 px-2 text-sm focus:border-pink-8 focus:ring-pink-8 coll-filter-max" />
+          </div>
+          <select onchange="collNftFilterChanged()" class="h-9 rounded border border-gray-300 px-2 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 coll-filter-rarity">
+            <option value="">All Rarities</option>
+            <option value="legendary">Legendary</option>
+            <option value="epic">Epic</option>
+            <option value="rare">Rare</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="common">Common</option>
+          </select>
+          <label class="flex items-center gap-1.5 text-sm text-gray-7 cursor-pointer">
+            <input type="checkbox" onchange="collNftFilterChanged()" class="rounded border-gray-300 text-pink-8 focus:ring-pink-8 coll-filter-forsale" />
+            For Sale Only
+          </label>
+          <select onchange="collNftFilterChanged()" class="h-9 rounded border border-gray-300 px-2 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 coll-filter-sort">
+            <option value="name">Name</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="rarity">Rarity</option>
+            <option value="recent">Recent</option>
+          </select>
+        </div>
+
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           @foreach(nfts as nft)
             <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
@@ -202,6 +234,15 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           @endforeach
         </div>
 
+        <!-- Load More Button -->
+        @if(hasMore)
+        <div class="flex justify-center mt-8">
+          <button onclick="collNftLoadMore(this)" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-7 font-semibold px-8 py-3 rounded-lg transition text-sm">
+            Load More
+          </button>
+        </div>
+        @endif
+
         @if(nfts.length == 0)
           <div class="text-center py-12">
             <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -211,5 +252,185 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           </div>
         @endif
     </div>
+
+    <!-- Collection Activity -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <h2 class="text-2xl font-bold text-gray-9 mb-6">Collection Activity</h2>
+      <div class="coll-activity-container">
+        <div class="flex justify-center py-8">
+          <div class="spinner h-6 w-6 border-4 border-pink-8 border-t-transparent rounded-full"></div>
+        </div>
+      </div>
+    </div>
+
+    <script client>
+      {
+        var _collRoot = document.currentScript.previousElementSibling
+        var COLL_API = window.API_BASE || 'http://localhost:3008'
+        var _collSlug = window.location.pathname.split('/').pop()
+        var _collNftPage = 1
+        var _collNftHasMore = true
+        var _collNftLoading = false
+        var _collFilterTimer = null
+
+        function getCollEl(cls) {
+          var els = _collRoot.getElementsByClassName(cls)
+          return els[0] || null
+        }
+
+        function getCollFilters() {
+          var minEl = getCollEl('coll-filter-min')
+          var maxEl = getCollEl('coll-filter-max')
+          var rarityEl = getCollEl('coll-filter-rarity')
+          var forSaleEl = getCollEl('coll-filter-forsale')
+          var sortEl = getCollEl('coll-filter-sort')
+          return {
+            minPrice: minEl ? minEl.value : '',
+            maxPrice: maxEl ? maxEl.value : '',
+            rarity: rarityEl ? rarityEl.value : '',
+            forSale: forSaleEl ? forSaleEl.checked : false,
+            sort: sortEl ? sortEl.value : 'name'
+          }
+        }
+
+        function buildCollFilterQuery(page) {
+          var f = getCollFilters()
+          var q = '?page=' + page
+          if (f.minPrice) q += '&minPrice=' + f.minPrice
+          if (f.maxPrice) q += '&maxPrice=' + f.maxPrice
+          if (f.rarity) q += '&rarity=' + encodeURIComponent(f.rarity)
+          if (f.forSale) q += '&forSale=true'
+          if (f.sort) q += '&sort=' + f.sort
+          return q
+        }
+
+        function nftCardHtml(nft) {
+          var html = '<div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
+            + '<div class="aspect-square"><img src="' + (nft.image_url || '/assets/images/anonymouse.png') + '" alt="' + (nft.name || '') + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></div>'
+            + '<div class="p-3"><p class="font-semibold text-gray-9 truncate">' + (nft.name || '') + '</p>'
+          if (nft.rarity_rank) html += '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>'
+          if (nft.price) html += '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>'
+          if (nft.is_for_sale) html += '<div class="mt-2"><span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span></div>'
+          html += '</div></div>'
+          return html
+        }
+
+        function getCollGridEl() {
+          var els = _collRoot.getElementsByClassName('grid-cols-2')
+          for (var i = 0; i < els.length; i++) {
+            if (els[i].classList.contains('gap-4')) return els[i]
+          }
+          return null
+        }
+
+        window.collNftFilterChanged = function() {
+          clearTimeout(_collFilterTimer)
+          _collFilterTimer = setTimeout(function() {
+            _collNftPage = 1
+            _collNftHasMore = true
+            var gridEl = getCollGridEl()
+            if (!gridEl) return
+            fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildCollFilterQuery(1))
+              .then(function(res) { return res.json() })
+              .then(function(data) {
+                var nfts = (data.collection && data.collection.nfts) || data.nfts || []
+                if (nfts.length < (data.perPage || 20)) _collNftHasMore = false
+                var html = ''
+                for (var i = 0; i < nfts.length; i++) html += nftCardHtml(nfts[i])
+                gridEl.innerHTML = html
+                var loadMoreBtn = gridEl.nextElementSibling
+                if (loadMoreBtn) loadMoreBtn.style.display = _collNftHasMore ? '' : 'none'
+              })
+              .catch(function(err) { console.error('Filter failed:', err) })
+          }, 300)
+        }
+
+        window.collNftLoadMore = async function(btn) {
+          if (_collNftLoading || !_collNftHasMore) return
+          _collNftLoading = true
+          btn.disabled = true
+          btn.textContent = 'Loading...'
+          _collNftPage++
+          try {
+            var res = await fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildCollFilterQuery(_collNftPage))
+            var data = await res.json()
+            var nfts = (data.collection && data.collection.nfts) || data.nfts || []
+            if (nfts.length < (data.perPage || 20)) _collNftHasMore = false
+            var gridEl = getCollGridEl()
+            if (gridEl) {
+              for (var i = 0; i < nfts.length; i++) {
+                gridEl.insertAdjacentHTML('beforeend', nftCardHtml(nfts[i]))
+              }
+            }
+            if (!_collNftHasMore) btn.parentNode.style.display = 'none'
+          } catch (err) {
+            console.error('Load more failed:', err)
+            _collNftPage--
+          }
+          _collNftLoading = false
+          btn.disabled = false
+          btn.textContent = 'Load More'
+        }
+
+        function collActivityIcon(type) {
+          if (type === 'mint') return '<svg class="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>'
+          if (type === 'sale' || type === 'buy') return '<svg class="h-5 w-5 text-pink-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" /></svg>'
+          if (type === 'offer') return '<svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>'
+          if (type === 'list') return '<svg class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>'
+          return '<svg class="h-5 w-5 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+        }
+
+        function collActivityLabel(type) {
+          if (type === 'mint') return 'Minted'
+          if (type === 'sale' || type === 'buy') return 'Sold'
+          if (type === 'offer') return 'Offer'
+          if (type === 'list') return 'Listed'
+          return type || 'Activity'
+        }
+
+        function loadCollectionActivity() {
+          var containers = _collRoot.getElementsByClassName('coll-activity-container')
+          var container = containers[0]
+          if (!container) return
+          fetch(COLL_API + '/marketplace/activity?collectionSlug=' + _collSlug + '&limit=10')
+            .then(function(res) { return res.json() })
+            .then(function(data) {
+              var events = data.events || data.activity || []
+              if (events.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-5 py-8">No activity for this collection yet</p>'
+                return
+              }
+              var html = '<div class="space-y-3">'
+              for (var i = 0; i < events.length; i++) {
+                var e = events[i]
+                var addr = e.wallet_address || e.address || ''
+                var shortAddr = addr ? addr.slice(0, 4) + '...' + addr.slice(-4) : ''
+                var nftName = e.nft_name || e.name || 'NFT #' + (e.nft_id || '')
+                var timeAgo = e.created_at ? new Date(e.created_at).toLocaleDateString() : ''
+                var amount = e.amount || e.price ? Number(e.amount || e.price).toFixed(2) + ' SOL' : ''
+                html += '<div class="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition">'
+                  + '<div class="flex items-center space-x-3">'
+                  + '<div class="flex-shrink-0">' + collActivityIcon(e.type || e.event_type) + '</div>'
+                  + '<div>'
+                  + '<p class="font-medium text-gray-8">' + nftName + '</p>'
+                  + '<p class="text-sm text-gray-5">' + collActivityLabel(e.type || e.event_type) + (shortAddr ? ' by ' + shortAddr : '') + '</p>'
+                  + '</div></div>'
+                  + '<div class="text-right">'
+                  + (amount ? '<p class="font-semibold text-gray-9">' + amount + '</p>' : '')
+                  + (timeAgo ? '<p class="text-xs text-gray-4">' + timeAgo + '</p>' : '')
+                  + '</div></div>'
+              }
+              html += '</div>'
+              container.innerHTML = html
+            })
+            .catch(function(err) {
+              console.error('Failed to load collection activity:', err)
+              container.innerHTML = '<p class="text-center text-gray-5 py-8">Failed to load activity</p>'
+            })
+        }
+
+        loadCollectionActivity()
+      }
+    </script>
   @endif
 @endsection

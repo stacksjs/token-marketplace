@@ -1,0 +1,711 @@
+<script server>
+const pageTitle = 'Admin | Naked NFTs'
+</script>
+
+@layout('default')
+@section('title', pageTitle)
+@section('content')
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold text-gray-9">Admin Dashboard</h1>
+        <p class="mt-1 text-gray-5">Manage collections, candy machines, and marketplace settings</p>
+      </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Tab navigation -->
+      <div class="flex space-x-1 bg-gray-200 rounded-xl p-1 mb-8">
+        <button onclick="adminSwitchTab(0, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-white text-gray-9 shadow-sm transition">Collections</button>
+        <button onclick="adminSwitchTab(1, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Candy Machine</button>
+        <button onclick="adminSwitchTab(2, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Config Lines</button>
+        <button onclick="adminSwitchTab(3, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Guards</button>
+        <button onclick="adminSwitchTab(4, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Presales</button>
+        <button onclick="adminSwitchTab(5, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Status</button>
+      </div>
+
+      <!-- Tab panels container -->
+      <div id="admin-panels">
+        <!-- Tab 0: Collections -->
+        <div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Existing Collections</h2>
+            <div class="admin-collections-list text-gray-5">Loading collections...</div>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Create Collection</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-coll-name" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Symbol</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-coll-symbol" maxlength="10" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">Description</label>
+                <textarea rows="3" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-pink-8 focus:ring-pink-8 admin-coll-desc"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Image URL</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-coll-image" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Royalty %</label>
+                <input type="number" min="0" max="100" step="0.1" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-coll-royalty" />
+              </div>
+            </div>
+            <button onclick="adminCreateCollection(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Create Collection
+            </button>
+            <p class="mt-2 text-sm admin-coll-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 1: Deploy Candy Machine -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Deploy Candy Machine</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Collection ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-collid" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Items Available</label>
+                <input type="number" min="1" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-items" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Mint Price (SOL)</label>
+                <input type="number" step="0.01" min="0" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-price" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Symbol</label>
+                <input type="text" maxlength="10" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-symbol" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Creator Address</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-creator" placeholder="Wallet address" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Collection Mint Address</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-colmint" placeholder="Mint address" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Seller Fee (basis points)</label>
+                <input type="number" min="0" max="10000" value="500" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-fee" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Treasury Address (optional)</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cm-treasury" placeholder="Defaults to creator" />
+              </div>
+            </div>
+            <button onclick="adminDeployCM(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Deploy Candy Machine
+            </button>
+            <p class="mt-2 text-sm admin-cm-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 2: Add Config Lines -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Add Config Lines</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Candy Machine ID</label>
+                  <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cl-cmid" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Start Index</label>
+                  <input type="number" value="0" min="0" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-cl-start" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Config Lines (JSON array)</label>
+                <textarea rows="8" class="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-pink-8 focus:ring-pink-8 admin-cl-lines" placeholder='[
+  {"name": "NFT #1", "uri": "https://arweave.net/..."},
+  {"name": "NFT #2", "uri": "https://arweave.net/..."}
+]'></textarea>
+                <p class="text-xs text-gray-4 mt-1">Each object needs "name" and "uri" fields</p>
+              </div>
+            </div>
+            <button onclick="adminAddConfigLines(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Add Config Lines
+            </button>
+            <p class="mt-2 text-sm admin-cl-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 3: Manage Guards -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Manage Guards</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Candy Machine ID</label>
+                  <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-cmid" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Action</label>
+                  <select class="w-full h-10 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 admin-guard-action">
+                    <option value="add">Add Guards</option>
+                    <option value="update">Update Guards</option>
+                    <option value="remove">Remove Guards</option>
+                  </select>
+                </div>
+              </div>
+              <div class="border-t border-gray-200 pt-4">
+                <h3 class="text-sm font-semibold text-gray-8 mb-3">SOL Payment</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-7 mb-1">Amount (lamports)</label>
+                    <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-sol" placeholder="500000000 (0.5 SOL)" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-7 mb-1">Destination Address</label>
+                    <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-dest" placeholder="Treasury wallet" />
+                  </div>
+                </div>
+              </div>
+              <div class="border-t border-gray-200 pt-4">
+                <h3 class="text-sm font-semibold text-gray-8 mb-3">Date Range</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-7 mb-1">Start Date</label>
+                    <input type="datetime-local" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-start" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-7 mb-1">End Date</label>
+                    <input type="datetime-local" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-end" />
+                  </div>
+                </div>
+              </div>
+              <div class="border-t border-gray-200 pt-4">
+                <h3 class="text-sm font-semibold text-gray-8 mb-3">Mint Limit</h3>
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Limit per Wallet</label>
+                  <input type="number" min="0" class="w-64 h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-guard-limit" placeholder="0 = no limit" />
+                </div>
+              </div>
+            </div>
+            <button onclick="adminSetGuards(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Submit Guards
+            </button>
+            <p class="mt-2 text-sm admin-guard-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 4: Presales -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Create Presale</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Collection ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-ps-collid" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Discount (basis points, 500 = 5%)</label>
+                <input type="number" min="0" max="10000" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-ps-discount" placeholder="500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Max Mints Per Wallet</label>
+                <input type="number" min="1" value="1" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-ps-maxmints" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Active on Create</label>
+                <select class="w-full h-10 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 admin-ps-active">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Presale Starts At</label>
+                <input type="datetime-local" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-ps-starts" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Presale Expires At</label>
+                <input type="datetime-local" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-ps-expires" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">Wallet Addresses (one per line)</label>
+                <textarea rows="4" class="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-pink-8 focus:ring-pink-8 admin-ps-wallets" placeholder="AbCd1234...&#10;EfGh5678..."></textarea>
+              </div>
+            </div>
+            <button onclick="adminCreatePresale(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Create Presale
+            </button>
+            <p class="mt-2 text-sm admin-ps-result"></p>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Update Presale</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Presale ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-psu-id" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Active</label>
+                <select class="w-full h-10 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 admin-psu-active">
+                  <option value="">No change</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Discount (basis points)</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-psu-discount" placeholder="Leave empty for no change" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Max Mints per Wallet</label>
+                <input type="number" min="1" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-psu-maxmints" placeholder="Leave empty for no change" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">New Wallet Addresses (replaces existing, one per line)</label>
+                <textarea rows="3" class="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-pink-8 focus:ring-pink-8 admin-psu-wallets" placeholder="Leave empty for no change"></textarea>
+              </div>
+            </div>
+            <button onclick="adminUpdatePresale(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Update Presale
+            </button>
+            <p class="mt-2 text-sm admin-psu-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 5: Status Controls -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Update Candy Machine Status</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Candy Machine ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-status-cmid" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">New Status</label>
+                <select class="w-full h-10 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 admin-status-val">
+                  <option value="not_started">Not Started</option>
+                  <option value="ready">Ready</option>
+                  <option value="minting">Minting</option>
+                  <option value="paused">Paused</option>
+                  <option value="sold_out">Sold Out</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Message (optional)</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-status-msg" placeholder="Status message..." />
+              </div>
+            </div>
+            <button onclick="adminUpdateStatus(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Update Status
+            </button>
+            <p class="mt-2 text-sm admin-status-result"></p>
+            <p class="mt-2 text-xs text-gray-4">
+              Valid transitions: not_started &rarr; ready &rarr; minting &harr; paused, minting &rarr; sold_out, failed &rarr; not_started
+            </p>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Update Collection Stats</h2>
+            <p class="text-sm text-gray-5 mb-4">Recalculate floor price, volume traded, and unique holders for a collection.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Collection ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-stats-collid" />
+              </div>
+            </div>
+            <button onclick="adminUpdateStats(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Recalculate Stats
+            </button>
+            <p class="mt-2 text-sm admin-stats-result"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script client>
+    {
+      var _adminRoot = document.currentScript.previousElementSibling
+      var ADMIN_API = window.API_BASE || 'http://localhost:3008'
+
+      function getAdminEl(cls) {
+        var els = _adminRoot.getElementsByClassName(cls)
+        return els[0] || null
+      }
+
+      function getVal(cls) {
+        var el = getAdminEl(cls)
+        return el ? el.value : ''
+      }
+
+      function setResult(cls, msg, isError) {
+        var el = getAdminEl(cls)
+        if (el) {
+          el.textContent = msg
+          el.style.color = isError ? '#dc2626' : '#16a34a'
+          setTimeout(function() { el.textContent = '' }, 6000)
+        }
+      }
+
+      function adminHeaders() {
+        var h = { 'Content-Type': 'application/json' }
+        var token = localStorage.getItem('auth_token')
+        if (token) h['Authorization'] = 'Bearer ' + token
+        return h
+      }
+
+      window.adminSwitchTab = function(idx, btn) {
+        var panels = btn.parentNode.nextElementSibling
+        if (!panels) return
+        var tabs = panels.children
+        for (var i = 0; i < tabs.length; i++) {
+          tabs[i].style.display = i === idx ? '' : 'none'
+        }
+        var tabBar = btn.parentNode
+        var buttons = tabBar.children
+        for (var j = 0; j < buttons.length; j++) {
+          if (j === idx) {
+            buttons[j].className = 'flex-1 py-2.5 text-sm font-semibold rounded-lg bg-white text-gray-9 shadow-sm transition'
+          } else {
+            buttons[j].className = 'flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition'
+          }
+        }
+        if (idx === 0) loadCollectionsList()
+      }
+
+      function loadCollectionsList() {
+        var els = _adminRoot.getElementsByClassName('admin-collections-list')
+        var el = els[0]
+        if (!el) return
+        fetch(ADMIN_API + '/marketplace/collections?limit=100')
+          .then(function(r) { return r.json() })
+          .then(function(data) {
+            var cols = data.collections || []
+            if (cols.length === 0) {
+              el.innerHTML = '<p class="text-gray-4">No collections found</p>'
+              return
+            }
+            var html = '<div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr class="border-b border-gray-200">'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">ID</th>'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">Name</th>'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">Slug</th>'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">NFTs</th>'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">Floor</th>'
+              + '<th class="text-left py-2 px-3 font-semibold text-gray-7">Minting</th>'
+              + '</tr></thead><tbody>'
+            for (var i = 0; i < cols.length; i++) {
+              var c = cols[i]
+              html += '<tr class="border-b border-gray-100 hover:bg-gray-50">'
+                + '<td class="py-2 px-3 text-gray-5">' + (c.id || '-') + '</td>'
+                + '<td class="py-2 px-3 font-medium text-gray-8">' + (c.name || '-') + '</td>'
+                + '<td class="py-2 px-3 text-gray-5">' + (c.slug || '-') + '</td>'
+                + '<td class="py-2 px-3 text-gray-6">' + (c.nft_count || c.nftCount || 0) + '</td>'
+                + '<td class="py-2 px-3 text-gray-6">' + (c.floor_price || c.floorPrice ? (c.floor_price || c.floorPrice) + ' SOL' : '-') + '</td>'
+                + '<td class="py-2 px-3">' + (c.is_minting || c.isMinting ? '<span class="text-emerald-600 font-semibold">Active</span>' : '<span class="text-gray-4">No</span>') + '</td>'
+                + '</tr>'
+            }
+            html += '</tbody></table></div>'
+            el.innerHTML = html
+          })
+          .catch(function() { el.innerHTML = '<p class="text-red-500">Failed to load collections</p>' })
+      }
+
+      window.adminCreateCollection = async function(btn) {
+        var name = getVal('admin-coll-name').trim()
+        if (!name) { setResult('admin-coll-result', 'Name is required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var body = {
+            name: name,
+            symbol: getVal('admin-coll-symbol').trim(),
+            description: getVal('admin-coll-desc').trim()
+          }
+          var img = getVal('admin-coll-image').trim()
+          if (img) body.image_url = img
+          var royalty = getVal('admin-coll-royalty')
+          if (royalty) body.royalty_basis_points = Math.round(Number(royalty) * 100)
+          var res = await fetch(ADMIN_API + '/marketplace/collections', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-coll-result', 'Collection created! ID: ' + (data.collection ? data.collection.id : 'unknown'), false)
+            loadCollectionsList()
+          } else {
+            setResult('admin-coll-result', data.error || 'Failed to create', true)
+          }
+        } catch (err) {
+          setResult('admin-coll-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Create Collection'
+      }
+
+      window.adminDeployCM = async function(btn) {
+        var collId = getVal('admin-cm-collid')
+        var items = getVal('admin-cm-items')
+        var symbol = getVal('admin-cm-symbol').trim()
+        var creator = getVal('admin-cm-creator').trim()
+        var colMint = getVal('admin-cm-colmint').trim()
+        if (!collId || !items || !symbol || !creator || !colMint) {
+          setResult('admin-cm-result', 'Collection ID, items, symbol, creator, and collection mint are required', true)
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Deploying...'
+        try {
+          var body = {
+            collectionId: Number(collId),
+            itemsAvailable: Number(items),
+            symbol: symbol,
+            creatorAddress: creator,
+            collectionMint: colMint
+          }
+          var price = getVal('admin-cm-price')
+          if (price) body.mintPrice = Math.floor(Number(price) * 1e9)
+          var fee = getVal('admin-cm-fee')
+          if (fee) body.sellerFeeBasisPoints = Number(fee)
+          var treasury = getVal('admin-cm-treasury').trim()
+          if (treasury) body.treasuryAddress = treasury
+          var res = await fetch(ADMIN_API + '/candy-machine', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var cm = data.candyMachine || {}
+            setResult('admin-cm-result', 'Deployed! ID: ' + (cm.id || '?') + ', Address: ' + (cm.candyMachineAddress || ''), false)
+          } else {
+            setResult('admin-cm-result', data.error || 'Failed to deploy', true)
+          }
+        } catch (err) {
+          setResult('admin-cm-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Deploy Candy Machine'
+      }
+
+      window.adminAddConfigLines = async function(btn) {
+        var cmId = getVal('admin-cl-cmid')
+        var linesRaw = getVal('admin-cl-lines').trim()
+        if (!cmId || !linesRaw) {
+          setResult('admin-cl-result', 'Candy Machine ID and config lines are required', true)
+          return
+        }
+        var lines
+        try {
+          lines = JSON.parse(linesRaw)
+          if (!Array.isArray(lines)) throw new Error('Must be a JSON array')
+        } catch (e) {
+          setResult('admin-cl-result', 'Invalid JSON: ' + e.message, true)
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Adding...'
+        try {
+          var startIdx = Number(getVal('admin-cl-start')) || 0
+          var res = await fetch(ADMIN_API + '/candy-machine/' + cmId + '/config-lines', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({ configLines: lines, startIndex: startIdx })
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-cl-result', 'Added ' + (data.linesAdded || lines.length) + ' config lines', false)
+          } else {
+            setResult('admin-cl-result', data.error || 'Failed to add config lines', true)
+          }
+        } catch (err) {
+          setResult('admin-cl-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Add Config Lines'
+      }
+
+      window.adminSetGuards = async function(btn) {
+        var cmId = getVal('admin-guard-cmid')
+        var action = getVal('admin-guard-action')
+        if (!cmId) { setResult('admin-guard-result', 'Candy Machine ID is required', true); return }
+        var guards = {}
+        var solLamports = getVal('admin-guard-sol')
+        var solDest = getVal('admin-guard-dest').trim()
+        if (solLamports && solDest) {
+          guards.solPayment = { lamports: Number(solLamports), destination: solDest }
+        }
+        var startDate = getVal('admin-guard-start')
+        if (startDate) guards.startDate = { date: new Date(startDate).toISOString() }
+        var endDate = getVal('admin-guard-end')
+        if (endDate) guards.endDate = { date: new Date(endDate).toISOString() }
+        var mintLimit = getVal('admin-guard-limit')
+        if (mintLimit) guards.mintLimit = { limit: Number(mintLimit) }
+        if (Object.keys(guards).length === 0) {
+          setResult('admin-guard-result', 'At least one guard setting is required', true)
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Submitting...'
+        try {
+          var res = await fetch(ADMIN_API + '/candy-machine/' + cmId + '/guards', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({ guards: guards, action: action })
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-guard-result', 'Guards ' + action + 'ed successfully', false)
+          } else {
+            setResult('admin-guard-result', data.error || 'Failed to manage guards', true)
+          }
+        } catch (err) {
+          setResult('admin-guard-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Submit Guards'
+      }
+
+      window.adminCreatePresale = async function(btn) {
+        var collId = getVal('admin-ps-collid')
+        if (!collId) { setResult('admin-ps-result', 'Collection ID is required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var walletsRaw = getVal('admin-ps-wallets').trim()
+          var wallets = walletsRaw ? walletsRaw.split('\n').map(function(w) { return w.trim() }).filter(Boolean) : []
+          var body = {
+            collectionId: Number(collId),
+            walletAddresses: wallets,
+            maxMintsPerWallet: Number(getVal('admin-ps-maxmints')) || 1,
+            isActive: getVal('admin-ps-active') === 'true'
+          }
+          var discount = getVal('admin-ps-discount')
+          if (discount) body.discount = Number(discount)
+          var starts = getVal('admin-ps-starts')
+          if (starts) body.presaleStartsAt = new Date(starts).toISOString()
+          var expires = getVal('admin-ps-expires')
+          if (expires) body.presaleExpiresAt = new Date(expires).toISOString()
+          var res = await fetch(ADMIN_API + '/presale', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var ps = data.presale || {}
+            setResult('admin-ps-result', 'Presale created! ID: ' + (ps.id || '?') + ', UUID: ' + (ps.uuid || ''), false)
+          } else {
+            setResult('admin-ps-result', data.error || 'Failed to create presale', true)
+          }
+        } catch (err) {
+          setResult('admin-ps-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Create Presale'
+      }
+
+      window.adminUpdatePresale = async function(btn) {
+        var psId = getVal('admin-psu-id')
+        if (!psId) { setResult('admin-psu-result', 'Presale ID is required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Updating...'
+        try {
+          var body = {}
+          var activeVal = getVal('admin-psu-active')
+          if (activeVal) body.isActive = activeVal === 'true'
+          var discount = getVal('admin-psu-discount')
+          if (discount) body.discount = Number(discount)
+          var maxMints = getVal('admin-psu-maxmints')
+          if (maxMints) body.maxMintsPerWallet = Number(maxMints)
+          var walletsRaw = getVal('admin-psu-wallets').trim()
+          if (walletsRaw) body.walletAddresses = walletsRaw.split('\n').map(function(w) { return w.trim() }).filter(Boolean)
+          if (Object.keys(body).length === 0) {
+            setResult('admin-psu-result', 'At least one field must be changed', true)
+            btn.disabled = false
+            btn.textContent = 'Update Presale'
+            return
+          }
+          var res = await fetch(ADMIN_API + '/presale/' + psId, {
+            method: 'PATCH',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-psu-result', 'Presale updated!', false)
+          } else {
+            setResult('admin-psu-result', data.error || 'Failed to update', true)
+          }
+        } catch (err) {
+          setResult('admin-psu-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Update Presale'
+      }
+
+      window.adminUpdateStatus = async function(btn) {
+        var cmId = getVal('admin-status-cmid')
+        var newStatus = getVal('admin-status-val')
+        if (!cmId) { setResult('admin-status-result', 'Candy Machine ID is required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Updating...'
+        try {
+          var body = { status: newStatus }
+          var msg = getVal('admin-status-msg').trim()
+          if (msg) body.message = msg
+          var res = await fetch(ADMIN_API + '/candy-machine/' + cmId + '/status', {
+            method: 'PATCH',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var cm = data.candyMachine || {}
+            setResult('admin-status-result', 'Status updated to: ' + (cm.status || newStatus), false)
+          } else {
+            setResult('admin-status-result', data.error || 'Failed to update status', true)
+          }
+        } catch (err) {
+          setResult('admin-status-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Update Status'
+      }
+
+      window.adminUpdateStats = async function(btn) {
+        var collId = getVal('admin-stats-collid')
+        if (!collId) { setResult('admin-stats-result', 'Collection ID is required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Recalculating...'
+        try {
+          var res = await fetch(ADMIN_API + '/marketplace/collections/stats', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify({ collectionId: Number(collId) })
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var s = data.stats || {}
+            setResult('admin-stats-result', 'Floor: ' + (s.floorPrice || 0) + ' SOL, Volume: ' + (s.volumeTraded || 0) + ' SOL, Holders: ' + (s.uniqueHolders || 0), false)
+          } else {
+            setResult('admin-stats-result', data.error || 'Failed to recalculate', true)
+          }
+        } catch (err) {
+          setResult('admin-stats-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Recalculate Stats'
+      }
+
+      // Auto-load collections on page load
+      loadCollectionsList()
+    }
+  </script>
+@endsection

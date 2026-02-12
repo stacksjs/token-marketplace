@@ -5,13 +5,12 @@ import type { RequestInstance } from '@stacksjs/types'
 import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
-  name: 'Delist NFT',
-  description: 'Build an unsigned delist transaction for client wallet signing',
+  name: 'Cancel Escrow',
+  description: 'Cancel an escrow and return NFT to seller',
   method: 'POST',
 
   async handle(request: RequestInstance) {
     const body = await request.json()
-
     const { nftId, sellerWalletAddress } = body
 
     if (!nftId || !sellerWalletAddress) {
@@ -31,43 +30,46 @@ export default new Action({
       return response.notFound({ error: 'NFT not found' })
     }
 
-    if (!nft.is_for_sale) {
+    if ((nft as any).escrow_status !== 'active') {
       return response.json({
-        error: 'NFT is not currently listed for sale',
+        error: 'NFT is not in escrow',
       }, 400)
     }
 
-    if (nft.owner_wallet_address !== sellerWalletAddress) {
+    if ((nft as any).owner_wallet_address !== sellerWalletAddress) {
       return response.json({
-        error: 'Only the owner can delist an NFT',
-      }, 400)
-    }
-
-    if (!nft.mint_address) {
-      return response.json({
-        error: 'NFT has not been minted yet',
+        error: 'Only the NFT owner can cancel the escrow',
       }, 400)
     }
 
     try {
       const tokenService = getTokenService()
-      const unsignedTx = await tokenService.buildDelistTransaction(nft.mint_address, sellerWalletAddress)
+      const escrowId = (nft as any).escrow_id || String(nft.id)
+      const transaction = await tokenService.buildCancelEscrowTransaction(
+        escrowId,
+        sellerWalletAddress,
+      )
+
+      // Update NFT escrow status in DB
+      await db
+        .updateTable('nfts')
+        .set({
+          escrow_status: null,
+          updated_at: new Date().toISOString(),
+        })
+        .where('id', '=', Number(nftId))
+        .execute()
 
       return response.json({
         success: true,
         transaction: {
-          serializedTransaction: unsignedTx.serializedTransaction,
-          message: unsignedTx.message,
-        },
-        nft: {
-          id: nft.id,
-          name: nft.name,
-          mintAddress: nft.mint_address,
+          serializedTransaction: transaction.serializedTransaction,
+          message: transaction.message,
         },
       })
     } catch (error) {
       return response.json({
-        error: 'Failed to build delist transaction',
+        error: 'Failed to cancel escrow',
         details: error instanceof Error ? error.message : 'Unknown error',
       }, 500)
     }

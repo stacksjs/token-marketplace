@@ -5,18 +5,17 @@ import type { RequestInstance } from '@stacksjs/types'
 import { getTokenService } from '../../Services/TokenService'
 
 export default new Action({
-  name: 'Buy NFT',
-  description: 'Build an unsigned buy transaction for client wallet signing',
+  name: 'Create Escrow',
+  description: 'Create an escrow for an NFT sale',
   method: 'POST',
 
   async handle(request: RequestInstance) {
     const body = await request.json()
+    const { nftId, sellerWalletAddress, price } = body
 
-    const { nftId, buyerWalletAddress } = body
-
-    if (!nftId || !buyerWalletAddress) {
+    if (!nftId || !sellerWalletAddress || !price) {
       return response.json({
-        error: 'nftId and buyerWalletAddress are required',
+        error: 'nftId, sellerWalletAddress, and price are required',
       }, 400)
     }
 
@@ -31,51 +30,43 @@ export default new Action({
       return response.notFound({ error: 'NFT not found' })
     }
 
-    if (!nft.is_for_sale) {
-      return response.json({
-        error: 'NFT is not for sale',
-      }, 400)
-    }
-
     if (!nft.mint_address) {
       return response.json({
         error: 'NFT has not been minted yet',
       }, 400)
     }
 
-    if (!nft.owner_wallet_address) {
+    if ((nft as any).owner_wallet_address !== sellerWalletAddress) {
       return response.json({
-        error: 'NFT owner information is missing',
+        error: 'Only the NFT owner can create an escrow',
       }, 400)
     }
 
-    if (nft.owner_wallet_address === buyerWalletAddress) {
+    if ((nft as any).escrow_status === 'active') {
       return response.json({
-        error: 'Cannot buy your own NFT',
+        error: 'NFT is already in escrow',
       }, 400)
     }
 
     try {
       const tokenService = getTokenService()
-      const unsignedTx = await tokenService.buildBuyTransaction(nft.mint_address, buyerWalletAddress)
+      const priceLamports = BigInt(Math.floor(price * 1e9))
+      const transaction = await tokenService.buildCreateEscrowTransaction(
+        nft.mint_address,
+        sellerWalletAddress,
+        priceLamports,
+      )
 
       return response.json({
         success: true,
         transaction: {
-          serializedTransaction: unsignedTx.serializedTransaction,
-          message: unsignedTx.message,
-        },
-        nft: {
-          id: nft.id,
-          name: nft.name,
-          mintAddress: nft.mint_address,
-          price: nft.price,
-          ownerWalletAddress: nft.owner_wallet_address,
+          serializedTransaction: transaction.serializedTransaction,
+          message: transaction.message,
         },
       })
     } catch (error) {
       return response.json({
-        error: 'Failed to build buy transaction',
+        error: 'Failed to create escrow',
         details: error instanceof Error ? error.message : 'Unknown error',
       }, 500)
     }
