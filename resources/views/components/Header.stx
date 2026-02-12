@@ -79,58 +79,87 @@
 </header>
 
 <script client>
-  var API_URL = 'http://localhost:3008'
+  {
+    var API_URL = 'http://localhost:3008'
 
-  // Wallet detection matching ts-tokens wallets module
-  function getWalletProvider() {
-    if (window.phantom?.solana) return window.phantom.solana
-    if (window.solana?.isPhantom) return window.solana
-    if (window.solflare) return window.solflare
-    if (window.backpack) return window.backpack
-    if (window.coinbaseSolana) return window.coinbaseSolana
-    if (window.trustwallet?.solana) return window.trustwallet.solana
-    if (window.exodus?.solana) return window.exodus.solana
-    if (window.braveSolana) return window.braveSolana
-    if (window.glowSolana) return window.glowSolana
-    if (window.solana) return window.solana
-    return null
-  }
-
-  window.connectWallet = async function(btn) {
-    var provider = getWalletProvider()
-    if (!provider) {
-      window.open('https://phantom.app/', '_blank')
-      return
+    function getWalletProvider() {
+      if (window.phantom?.solana) return window.phantom.solana
+      if (window.solana?.isPhantom) return window.solana
+      if (window.solflare) return window.solflare
+      if (window.backpack) return window.backpack
+      if (window.coinbaseSolana) return window.coinbaseSolana
+      if (window.trustwallet?.solana) return window.trustwallet.solana
+      if (window.exodus?.solana) return window.exodus.solana
+      if (window.braveSolana) return window.braveSolana
+      if (window.glowSolana) return window.glowSolana
+      if (window.solana) return window.solana
+      return null
     }
-    try {
-      var resp = await provider.connect()
-      var addr = resp.publicKey.toString()
-      var res = await fetch(API_URL + '/wallet/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: addr }),
-      })
-      var data = await res.json()
-      if (data.success) {
-        var short = data.address.slice(0, 4) + '...' + data.address.slice(-4)
-        btn.style.display = 'none'
-        var panel = btn.nextElementSibling
-        panel.style.display = 'flex'
-        panel.children[1].children[1].textContent = short
+
+    function findConnectBtn() {
+      var headers = document.getElementsByTagName('header')
+      if (!headers || !headers.length) return null
+      var nav = headers[0].children[0]
+      var maxW = nav ? nav.children[0] : null
+      var row = maxW ? maxW.children[0] : null
+      var right = row ? row.children[1] : null
+      var shrink = right ? right.children[0] : null
+      return shrink ? shrink.children[0] : null
+    }
+
+    function showHeaderConnected(connectBtn, addr) {
+      var short = addr.slice(0, 4) + '...' + addr.slice(-4)
+      connectBtn.style.display = 'none'
+      var panel = connectBtn.nextElementSibling
+      panel.style.display = 'flex'
+      panel.children[1].children[1].textContent = short
+      localStorage.setItem('wallet_addr', addr)
+    }
+
+    function showHeaderDisconnected(connectBtn) {
+      connectBtn.style.display = ''
+      connectBtn.nextElementSibling.style.display = 'none'
+      localStorage.removeItem('wallet_addr')
+    }
+
+    window.connectWallet = async function(btn) {
+      var provider = getWalletProvider()
+      if (!provider) {
+        window.open('https://phantom.app/', '_blank')
+        return
       }
-    } catch (err) {
-      console.error('Wallet connect failed:', err)
+      try {
+        var resp = await provider.connect()
+        var addr = resp.publicKey.toString()
+        var res = await fetch(API_URL + '/wallet/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: addr }),
+        })
+        var data = await res.json()
+        if (data.success) {
+          showHeaderConnected(btn, data.address)
+        }
+      } catch (err) {
+        console.error('Wallet connect failed:', err)
+      }
     }
-  }
 
-  window.disconnectWallet = async function(btn) {
-    try {
-      await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
-    } catch (_) {}
-    var provider = getWalletProvider()
-    if (provider) { try { await provider.disconnect() } catch (_) {} }
-    var panel = btn.parentNode
-    panel.style.display = 'none'
-    panel.previousElementSibling.style.display = ''
+    window.disconnectWallet = async function(btn) {
+      try {
+        await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
+      } catch (_) {}
+      var provider = getWalletProvider()
+      if (provider) { try { await provider.disconnect() } catch (_) {} }
+      var connectBtn = btn.parentNode.previousElementSibling
+      showHeaderDisconnected(connectBtn)
+    }
+
+    // On page load: restore wallet state from localStorage
+    var _savedAddr = localStorage.getItem('wallet_addr')
+    if (_savedAddr) {
+      var _btn = findConnectBtn()
+      if (_btn) showHeaderConnected(_btn, _savedAddr)
+    }
   }
 </script>
