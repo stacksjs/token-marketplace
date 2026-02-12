@@ -3,6 +3,7 @@ const pageTitle = 'All Collections | Naked NFTs'
 
 const API_URL = process.env.API_URL || 'http://localhost:3008'
 let collections = []
+let hasMore = false
 let error = null
 
 try {
@@ -10,6 +11,7 @@ try {
   if (res.ok) {
     const data = await res.json()
     collections = data.collections || []
+    hasMore = (data.page || 1) < (data.totalPages || 1)
   } else {
     error = 'Failed to load collections'
   }
@@ -150,6 +152,14 @@ try {
             </a>
           </div>
         </div>
+        <!-- Load More Button -->
+        @if(hasMore)
+        <div class="flex justify-center mt-12">
+          <button onclick="collectionsLoadMore(this)" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-7 font-semibold px-8 py-3 rounded-lg transition text-sm">
+            Load More
+          </button>
+        </div>
+        @endif
       </div>
     @endif
   </div>
@@ -161,37 +171,80 @@ try {
       var _sortVal = 'name'
       var _gridEl = null
       var _debounceTimer = null
+      var _collectionsPage = 1
+      var _collectionsHasMore = true
+      var _collectionsLoading = false
+      var _loadMoreBtnEl = null
+
+      function collectionCardHtml(c) {
+        return '<a href="/collections/' + c.slug + '" class="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-150 ease-in-out hover:opacity-75 hover:shadow-lg xl:w-auto">'
+          + '<span aria-hidden="true" class="absolute inset-0"><img src="' + (c.heroImageUrl || c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + ' Banner" class="h-1/2 w-full object-cover object-center" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></span>'
+          + '<span aria-hidden="true" class="relative top-32"><img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="h-36 w-36 rounded-full border-4 border-white object-cover object-center shadow-lg" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></span>'
+          + '<div class="relative top-36 flex items-center justify-center font-semibold text-gray-8">'
+          + (c.isMinting ? '<div class="flex items-center text-emerald-600"><div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-600"></div><span class="ml-2 text-sm uppercase">Minting Live</span></div>' : '')
+          + (c.isFeatured && !c.isMinting ? '<span class="text-sm uppercase text-violet-600">Featured</span>' : '')
+          + '</div>'
+          + '<span class="relative mt-40 break-all text-center text-xl font-bold text-gray-8">' + c.name + '</span>'
+          + '<p class="relative text-center text-sm text-gray-6 mt-2 line-clamp-2">' + (c.description || '') + '</p>'
+          + '<div class="relative mt-4 flex space-x-6 text-sm text-gray-5"><div class="text-center"><p class="font-semibold text-gray-8">' + (c.totalAmountOfNfts || 0) + '</p><p>Items</p></div></div>'
+          + (c.isMinting ? '<div class="relative mt-4 w-full"><span class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white">Mint Now</span></div>' : '')
+          + '</a>'
+      }
+
+      var _getListedCard = '<div class="group relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-500 hover:shadow-lg"><a href="mailto:chris@meema.io" class="flex flex-col items-center"><div class="relative mb-3 h-80 w-full overflow-hidden rounded-lg bg-white sm:aspect-w-2 sm:aspect-h-1 sm:h-64 md:aspect-w-1 md:aspect-h-1"><div class="flex flex-row justify-center"><img src="/assets/images/get-listed.png" alt="" class="h-full w-full object-cover object-center" /></div></div><h3 class="mt-2 text-2xl font-semibold text-gray-9 group-hover:text-pink-9">Get Listed</h3><p class="mt-2 text-base text-gray-400 text-center">Are you interested in getting your collection listed?</p></a></div>'
+
+      function updateLoadMoreBtn() {
+        if (_loadMoreBtnEl) {
+          _loadMoreBtnEl.style.display = _collectionsHasMore ? '' : 'none'
+        }
+      }
 
       async function doCollectionSearch() {
         if (!_gridEl) return
+        _collectionsPage = 1
+        _collectionsHasMore = true
         try {
-          var res = await fetch(COLLECTIONS_API + '/marketplace/collections?search=' + encodeURIComponent(_searchVal) + '&sort=' + _sortVal)
+          var res = await fetch(COLLECTIONS_API + '/marketplace/collections?search=' + encodeURIComponent(_searchVal) + '&sort=' + _sortVal + '&page=1')
           var data = await res.json()
           var collections = data.collections || []
+          if (collections.length < (data.perPage || 12)) _collectionsHasMore = false
 
           var html = ''
           for (var i = 0; i < collections.length; i++) {
-            var c = collections[i]
-            html += '<a href="/collections/' + c.slug + '" class="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-150 ease-in-out hover:opacity-75 hover:shadow-lg xl:w-auto">'
-              + '<span aria-hidden="true" class="absolute inset-0"><img src="' + (c.heroImageUrl || c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + ' Banner" class="h-1/2 w-full object-cover object-center" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></span>'
-              + '<span aria-hidden="true" class="relative top-32"><img src="' + (c.imageUrl || '/assets/images/anonymouse.png') + '" alt="' + c.name + '" class="h-36 w-36 rounded-full border-4 border-white object-cover object-center shadow-lg" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></span>'
-              + '<div class="relative top-36 flex items-center justify-center font-semibold text-gray-8">'
-              + (c.isMinting ? '<div class="flex items-center text-emerald-600"><div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-600"></div><span class="ml-2 text-sm uppercase">Minting Live</span></div>' : '')
-              + (c.isFeatured && !c.isMinting ? '<span class="text-sm uppercase text-violet-600">Featured</span>' : '')
-              + '</div>'
-              + '<span class="relative mt-40 break-all text-center text-xl font-bold text-gray-8">' + c.name + '</span>'
-              + '<p class="relative text-center text-sm text-gray-6 mt-2 line-clamp-2">' + (c.description || '') + '</p>'
-              + '<div class="relative mt-4 flex space-x-6 text-sm text-gray-5"><div class="text-center"><p class="font-semibold text-gray-8">' + (c.totalAmountOfNfts || 0) + '</p><p>Items</p></div></div>'
-              + (c.isMinting ? '<div class="relative mt-4 w-full"><span class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white">Mint Now</span></div>' : '')
-              + '</a>'
+            html += collectionCardHtml(collections[i])
           }
-
-          html += '<div class="group relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-0.25 p-6 transition duration-500 hover:shadow-lg"><a href="mailto:chris@meema.io" class="flex flex-col items-center"><div class="relative mb-3 h-80 w-full overflow-hidden rounded-lg bg-white sm:aspect-w-2 sm:aspect-h-1 sm:h-64 md:aspect-w-1 md:aspect-h-1"><div class="flex flex-row justify-center"><img src="/assets/images/get-listed.png" alt="" class="h-full w-full object-cover object-center" /></div></div><h3 class="mt-2 text-2xl font-semibold text-gray-9 group-hover:text-pink-9">Get Listed</h3><p class="mt-2 text-base text-gray-400 text-center">Are you interested in getting your collection listed?</p></a></div>'
-
+          html += _getListedCard
           _gridEl.innerHTML = html
+          updateLoadMoreBtn()
         } catch (err) {
           console.error('Search failed:', err)
         }
+      }
+
+      window.collectionsLoadMore = async function(btn) {
+        if (_collectionsLoading || !_collectionsHasMore || !_gridEl) return
+        _collectionsLoading = true
+        btn.disabled = true
+        btn.textContent = 'Loading...'
+        _collectionsPage++
+        try {
+          var res = await fetch(COLLECTIONS_API + '/marketplace/collections?search=' + encodeURIComponent(_searchVal) + '&sort=' + _sortVal + '&page=' + _collectionsPage)
+          var data = await res.json()
+          var collections = data.collections || []
+          if (collections.length < (data.perPage || 12)) _collectionsHasMore = false
+
+          var getListedEl = _gridEl.lastElementChild
+          for (var i = 0; i < collections.length; i++) {
+            getListedEl.insertAdjacentHTML('beforebegin', collectionCardHtml(collections[i]))
+          }
+          updateLoadMoreBtn()
+        } catch (err) {
+          console.error('Load more failed:', err)
+          _collectionsPage--
+        }
+        _collectionsLoading = false
+        btn.disabled = false
+        btn.textContent = 'Load More'
       }
 
       window.collectionSearchInput = function(el) {
@@ -199,6 +252,7 @@ try {
         if (!_gridEl) {
           var n = el.parentNode.parentNode.parentNode.parentNode
           if (n.children[1] && n.children[1].children[0]) _gridEl = n.children[1].children[0]
+          if (n.children[1] && n.children[1].children[1]) _loadMoreBtnEl = n.children[1].children[1]
         }
         clearTimeout(_debounceTimer)
         _debounceTimer = setTimeout(doCollectionSearch, 300)
@@ -209,6 +263,7 @@ try {
         if (!_gridEl) {
           var n = el.parentNode.parentNode.parentNode
           if (n.children[1] && n.children[1].children[0]) _gridEl = n.children[1].children[0]
+          if (n.children[1] && n.children[1].children[1]) _loadMoreBtnEl = n.children[1].children[1]
         }
         doCollectionSearch()
       }
