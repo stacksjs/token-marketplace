@@ -180,15 +180,46 @@
       try {
         var resp = await provider.connect()
         var addr = resp.publicKey.toString()
-        var res = await fetch(API_URL + '/wallet/connect', {
+
+        // Step 1: Get challenge nonce
+        var challengeRes = await fetch(API_URL + '/auth/wallet/challenge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ walletAddress: addr }),
         })
-        var data = await res.json()
-        if (data.success) {
-          showHeaderConnected(btn, data.address)
+        var challengeData = await challengeRes.json()
+
+        if (challengeData.nonce && challengeData.message) {
+          // Step 2: Sign the message
+          var encodedMessage = new TextEncoder().encode(challengeData.message)
+          var signResult = await provider.signMessage(encodedMessage, 'utf8')
+          var sigBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(signResult.signature)))
+
+          // Step 3: Verify signature and get JWT
+          var verifyRes = await fetch(API_URL + '/auth/wallet/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress: addr,
+              signature: sigBase64,
+              nonce: challengeData.nonce,
+            }),
+          })
+          var verifyData = await verifyRes.json()
+
+          if (verifyData.token) {
+            localStorage.setItem('auth_token', verifyData.token)
+          }
         }
+
+        // Also notify the simple connect endpoint
+        await fetch(API_URL + '/wallet/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: addr }),
+        })
+
+        showHeaderConnected(btn, addr)
       } catch (err) {
         console.error('Wallet connect failed:', err)
       }

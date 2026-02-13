@@ -7,6 +7,7 @@ export default {
   primaryKey: 'id',
   autoIncrement: true,
   belongsTo: ['Collection'],
+  hasMany: ['Offer', 'Auction'],
   traits: {
     useUuid: true,
     useTimestamps: true,
@@ -177,6 +178,38 @@ export default {
       fillable: true,
       validation: {
         rule: schema.number().optional().min(0),
+      },
+    },
+
+    listingId: {
+      order: 18,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    delegateAddress: {
+      order: 19,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    listedAt: {
+      order: 20,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    listingPrice: {
+      order: 21,
+      fillable: true,
+      validation: {
+        rule: schema.number().optional(),
       },
     },
   },

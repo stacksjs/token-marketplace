@@ -742,6 +742,262 @@ export class TokenService {
   }
 
   // ============================================
+  // Platform Fee Operations
+  // ============================================
+
+  calculatePlatformFee(salePriceLamports: bigint): { feeAmount: bigint; netAmount: bigint } {
+    const config = tokensConfig as any
+    const feeConfig = config.marketplace?.platformFee
+    if (!feeConfig?.enabled || !feeConfig?.walletAddress) {
+      return { feeAmount: BigInt(0), netAmount: salePriceLamports }
+    }
+    const bps = BigInt(feeConfig.basisPoints || 100)
+    const feeAmount = (salePriceLamports * bps) / BigInt(10000)
+    const netAmount = salePriceLamports - feeAmount
+    return { feeAmount, netAmount }
+  }
+
+  // ============================================
+  // Quick Mint (one-off NFT creation)
+  // ============================================
+
+  async buildQuickMintTransaction(config: {
+    name: string
+    symbol?: string
+    uri?: string
+    ownerAddress: string
+    collection?: string
+    sellerFeeBasisPoints?: number
+  }): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'quick_mint',
+          name: config.name,
+          owner: config.ownerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: `Mint NFT: ${config.name}`,
+      }
+    }
+
+    const result = await tsNft!.createNFT({
+      name: config.name,
+      symbol: config.symbol,
+      uri: config.uri,
+      collection: config.collection,
+      sellerFeeBasisPoints: config.sellerFeeBasisPoints,
+      buildOnly: true,
+    } as any)
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: `Mint NFT: ${config.name}`,
+    }
+  }
+
+  // ============================================
+  // Update NFT Metadata
+  // ============================================
+
+  async buildUpdateNFTTransaction(options: {
+    mint: string
+    name?: string
+    symbol?: string
+    uri?: string
+    sellerFeeBasisPoints?: number
+    ownerAddress: string
+  }): Promise<UnsignedTransaction> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        serializedTransaction: btoa(JSON.stringify({
+          type: 'update_nft',
+          mint: options.mint,
+          updates: { name: options.name, symbol: options.symbol, uri: options.uri },
+          owner: options.ownerAddress,
+          mock: true,
+          timestamp: Date.now(),
+        })),
+        message: `Update NFT metadata`,
+      }
+    }
+
+    const result = await tsNft!.updateNFTMetadata({
+      mint: options.mint,
+      name: options.name,
+      symbol: options.symbol,
+      uri: options.uri,
+      sellerFeeBasisPoints: options.sellerFeeBasisPoints,
+      buildOnly: true,
+    } as any)
+    const serialized = typeof result.serializedTransaction === 'string'
+      ? result.serializedTransaction
+      : btoa(String.fromCharCode(...new Uint8Array(result.serializedTransaction)))
+
+    return {
+      serializedTransaction: serialized,
+      message: 'Update NFT metadata',
+    }
+  }
+
+  // ============================================
+  // Batch Create NFTs
+  // ============================================
+
+  async batchCreateNFTs(
+    nfts: Array<{ name: string; symbol?: string; uri?: string }>,
+    options: { collection?: string; sellerFeeBasisPoints?: number; isMutable?: boolean },
+    onProgress?: (completed: number, total: number) => void,
+  ): Promise<Array<{ success: boolean; mint?: string; signature?: string; error?: string }>> {
+    const results: Array<{ success: boolean; mint?: string; signature?: string; error?: string }> = []
+
+    if (this.mockMode) {
+      for (let i = 0; i < nfts.length; i++) {
+        await mockDelay(200)
+        results.push({
+          success: true,
+          mint: generateMockAddress(),
+          signature: generateMockSignature(),
+        })
+        if (onProgress) onProgress(i + 1, nfts.length)
+      }
+      return results
+    }
+
+    try {
+      const batchResult = await tsNft!.batchCreateSimpleNFTs({
+        items: nfts,
+        collection: options.collection,
+        sellerFeeBasisPoints: options.sellerFeeBasisPoints,
+        isMutable: options.isMutable ?? true,
+        onProgress: onProgress ? (completed: number, total: number) => onProgress(completed, total) : undefined,
+      } as any)
+
+      if (Array.isArray(batchResult)) {
+        for (const item of batchResult) {
+          results.push({
+            success: !item.error,
+            mint: item.mint?.toString(),
+            signature: item.signature?.toString(),
+            error: item.error?.toString(),
+          })
+        }
+      }
+    }
+    catch (error) {
+      for (let i = results.length; i < nfts.length; i++) {
+        results.push({
+          success: false,
+          error: error instanceof Error ? error.message : 'Batch creation failed',
+        })
+      }
+    }
+
+    return results
+  }
+
+  // ============================================
+  // Multi-Signature Operations
+  // ============================================
+
+  async createMultisig(config: {
+    signers: string[]
+    threshold: number
+    name?: string
+  }): Promise<{ address: string; signature: string }> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      return {
+        address: generateMockAddress(),
+        signature: generateMockSignature(),
+      }
+    }
+
+    const result = await ts!.multisig.createMultisig({
+      signers: config.signers,
+      threshold: config.threshold,
+    } as any)
+    return {
+      address: result.address?.toString() || generateMockAddress(),
+      signature: result.signature?.toString() || generateMockSignature(),
+    }
+  }
+
+  async buildMultisigTransaction(config: {
+    multisigAddress: string
+    instruction: any
+  }): Promise<string> {
+    if (this.mockMode) {
+      await mockDelay(500)
+      return btoa(JSON.stringify({
+        type: 'multisig_tx',
+        multisig: config.multisigAddress,
+        mock: true,
+        timestamp: Date.now(),
+      }))
+    }
+
+    const result = await ts!.multisig.buildTransaction({
+      multisigAddress: config.multisigAddress,
+      instruction: config.instruction,
+    } as any)
+    return typeof result === 'string' ? result : btoa(String.fromCharCode(...new Uint8Array(result)))
+  }
+
+  async signMultisigTransaction(transactionData: string, signerAddress: string): Promise<{ signature: string }> {
+    if (this.mockMode) {
+      await mockDelay(400)
+      return { signature: generateMockSignature() }
+    }
+
+    const result = await ts!.multisig.signTransaction({
+      transaction: transactionData,
+      signer: signerAddress,
+    } as any)
+    return { signature: result.signature?.toString() || generateMockSignature() }
+  }
+
+  async executeMultisigTransaction(transactionData: string): Promise<{ signature: string; status: string }> {
+    if (this.mockMode) {
+      await mockDelay(800)
+      return {
+        signature: generateMockSignature(),
+        status: 'executed',
+      }
+    }
+
+    const result = await ts!.multisig.executeTransaction({
+      transaction: transactionData,
+    } as any)
+    return {
+      signature: result.signature?.toString() || generateMockSignature(),
+      status: 'executed',
+    }
+  }
+
+  async canExecuteMultisig(collectedSignatures: number, requiredSignatures: number): Promise<boolean> {
+    return collectedSignatures >= requiredSignatures
+  }
+
+  async cancelMultisigTransaction(transactionData: string): Promise<{ status: string }> {
+    if (this.mockMode) {
+      await mockDelay(400)
+      return { status: 'cancelled' }
+    }
+
+    await ts!.multisig.cancelTransaction({
+      transaction: transactionData,
+    } as any)
+    return { status: 'cancelled' }
+  }
+
+  // ============================================
   // Token Operations (Fungible)
   // ============================================
 
@@ -1255,7 +1511,7 @@ export class TokenService {
 
   private buildMerkleTreeHelper(leaves: Uint8Array[]): Uint8Array {
     if (leaves.length === 0) return new Uint8Array(32)
-    if (leaves.length === 1) return leaves[0]
+    if (leaves.length === 1) return leaves[0]!
 
     const sortedLeaves = [...leaves].sort(this.compareBytes)
     let currentLayer = sortedLeaves
@@ -1263,15 +1519,15 @@ export class TokenService {
       const nextLayer: Uint8Array[] = []
       for (let i = 0; i < currentLayer.length; i += 2) {
         if (i + 1 < currentLayer.length) {
-          nextLayer.push(this.hashPair(currentLayer[i], currentLayer[i + 1]))
+          nextLayer.push(this.hashPair(currentLayer[i]!, currentLayer[i + 1]!))
         }
         else {
-          nextLayer.push(currentLayer[i])
+          nextLayer.push(currentLayer[i]!)
         }
       }
       currentLayer = nextLayer
     }
-    return currentLayer[0]
+    return currentLayer[0]!
   }
 
   private buildMerkleProofHelper(leaf: Uint8Array, leaves: Uint8Array[]): Uint8Array[] {
@@ -1286,16 +1542,16 @@ export class TokenService {
       const nextLayer: Uint8Array[] = []
       const siblingIndex = index % 2 === 0 ? index + 1 : index - 1
 
-      if (siblingIndex < currentLayer.length) {
-        proof.push(currentLayer[siblingIndex])
+      if (siblingIndex >= 0 && siblingIndex < currentLayer.length) {
+        proof.push(currentLayer[siblingIndex]!)
       }
 
       for (let i = 0; i < currentLayer.length; i += 2) {
         if (i + 1 < currentLayer.length) {
-          nextLayer.push(this.hashPair(currentLayer[i], currentLayer[i + 1]))
+          nextLayer.push(this.hashPair(currentLayer[i]!, currentLayer[i + 1]!))
         }
         else {
-          nextLayer.push(currentLayer[i])
+          nextLayer.push(currentLayer[i]!)
         }
       }
 
@@ -1309,7 +1565,7 @@ export class TokenService {
   private compareBytes(a: Uint8Array, b: Uint8Array): number {
     const minLen = Math.min(a.length, b.length)
     for (let i = 0; i < minLen; i++) {
-      if (a[i] !== b[i]) return a[i] - b[i]
+      if (a[i]! !== b[i]!) return a[i]! - b[i]!
     }
     return a.length - b.length
   }
@@ -1317,7 +1573,7 @@ export class TokenService {
   private bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
     if (a.length !== b.length) return false
     for (let i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) return false
+      if (a[i]! !== b[i]!) return false
     }
     return true
   }

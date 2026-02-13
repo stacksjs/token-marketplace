@@ -24,6 +24,9 @@ const pageTitle = 'Admin | Naked NFTs'
         <button onclick="adminSwitchTab(4, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Presales</button>
         <button onclick="adminSwitchTab(5, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Status</button>
         <button onclick="adminSwitchTab(6, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Tokens</button>
+        <button onclick="adminSwitchTab(7, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">NFT Edit</button>
+        <button onclick="adminSwitchTab(8, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Bulk Upload</button>
+        <button onclick="adminSwitchTab(9, this)" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-6 hover:text-gray-8 transition">Multi-sig</button>
       </div>
 
       <!-- Tab panels container -->
@@ -418,6 +421,129 @@ const pageTitle = 'Admin | Naked NFTs'
               </button>
             </div>
             <div class="mt-4 admin-token-lookup-result"></div>
+          </div>
+        </div>
+
+        <!-- Tab 7: NFT Edit -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Update NFT Metadata</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">NFT ID</label>
+                <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-id" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Wallet Address (owner)</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-wallet" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">New Name</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-name" placeholder="Leave empty for no change" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">New Symbol</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-symbol" maxlength="10" placeholder="Leave empty for no change" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">New URI</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-uri" placeholder="Leave empty for no change" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">New Royalty BPS</label>
+                <input type="number" min="0" max="10000" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-nftedit-bps" placeholder="Leave empty for no change" />
+              </div>
+            </div>
+            <button onclick="adminUpdateNft(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Update NFT
+            </button>
+            <p class="mt-2 text-sm admin-nftedit-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 8: Bulk Upload -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Bulk Create NFTs</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Collection ID (optional)</label>
+                  <input type="number" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-bulk-collid" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-7 mb-1">Seller Fee BPS (optional)</label>
+                  <input type="number" min="0" max="10000" value="500" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-bulk-fee" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">NFT Items (JSON array)</label>
+                <textarea rows="10" class="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-pink-8 focus:ring-pink-8 admin-bulk-items" placeholder='[
+  {"name": "NFT #1", "uri": "https://arweave.net/..."},
+  {"name": "NFT #2", "uri": "https://arweave.net/..."}
+]'></textarea>
+                <p class="text-xs text-gray-4 mt-1">Each object needs "name" and "uri" fields. Maximum 100 items.</p>
+              </div>
+            </div>
+            <button onclick="adminBulkCreate(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Create NFTs
+            </button>
+            <p class="mt-2 text-sm admin-bulk-result"></p>
+          </div>
+        </div>
+
+        <!-- Tab 9: Multi-sig -->
+        <div style="display:none">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">Create Multisig Account</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-msig-name" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Threshold</label>
+                <input type="number" min="1" max="11" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-msig-threshold" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">Description</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-msig-desc" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Authority Type</label>
+                <select class="w-full h-10 rounded border border-gray-300 px-3 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 admin-msig-authtype">
+                  <option value="owner">Owner</option>
+                  <option value="mint">Mint Authority</option>
+                  <option value="freeze">Freeze Authority</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-7 mb-1">Target Mint (optional)</label>
+                <input type="text" class="w-full h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-msig-mint" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-7 mb-1">Signer Wallet Addresses (one per line, min 2)</label>
+                <textarea rows="4" class="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-pink-8 focus:ring-pink-8 admin-msig-signers" placeholder="WalletAddr1...&#10;WalletAddr2..."></textarea>
+              </div>
+            </div>
+            <button onclick="adminCreateMultisig(this)" class="mt-4 bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm">
+              Create Multisig
+            </button>
+            <p class="mt-2 text-sm admin-msig-result"></p>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-xl font-bold text-gray-9 mb-4">My Pending Approvals</h2>
+            <div>
+              <label class="block text-sm font-medium text-gray-7 mb-1">Your Wallet Address</label>
+              <div class="flex items-end gap-4">
+                <input type="text" class="flex-1 h-10 rounded border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8 admin-msig-mywallet" />
+                <button onclick="adminLoadPending(this)" class="bg-pink-8 hover:bg-pink-9 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm h-10">
+                  Load
+                </button>
+              </div>
+            </div>
+            <div class="mt-4 admin-msig-pending text-gray-5">Enter your wallet address and click Load</div>
           </div>
         </div>
       </div>
@@ -917,6 +1043,144 @@ const pageTitle = 'Admin | Naked NFTs'
         }
         btn.disabled = false
         btn.textContent = 'Lookup'
+      }
+
+      window.adminUpdateNft = async function(btn) {
+        var nftId = getVal('admin-nftedit-id')
+        var wallet = getVal('admin-nftedit-wallet').trim()
+        if (!nftId || !wallet) { setResult('admin-nftedit-result', 'NFT ID and wallet address are required', true); return }
+        var body = { nftId: Number(nftId), walletAddress: wallet }
+        var name = getVal('admin-nftedit-name').trim()
+        if (name) body.name = name
+        var symbol = getVal('admin-nftedit-symbol').trim()
+        if (symbol) body.symbol = symbol
+        var uri = getVal('admin-nftedit-uri').trim()
+        if (uri) body.uri = uri
+        var bps = getVal('admin-nftedit-bps')
+        if (bps) body.sellerFeeBasisPoints = Number(bps)
+        btn.disabled = true
+        btn.textContent = 'Updating...'
+        try {
+          var res = await fetch(ADMIN_API + '/nfts/update', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-nftedit-result', 'NFT update transaction built successfully', false)
+          } else {
+            setResult('admin-nftedit-result', data.error || 'Failed to update', true)
+          }
+        } catch (err) {
+          setResult('admin-nftedit-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Update NFT'
+      }
+
+      window.adminBulkCreate = async function(btn) {
+        var itemsRaw = getVal('admin-bulk-items').trim()
+        if (!itemsRaw) { setResult('admin-bulk-result', 'Items JSON is required', true); return }
+        var items
+        try {
+          items = JSON.parse(itemsRaw)
+          if (!Array.isArray(items)) throw new Error('Must be a JSON array')
+        } catch (e) {
+          setResult('admin-bulk-result', 'Invalid JSON: ' + e.message, true)
+          return
+        }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var body = { items: items }
+          var collId = getVal('admin-bulk-collid')
+          if (collId) body.collectionId = Number(collId)
+          var fee = getVal('admin-bulk-fee')
+          if (fee) body.sellerFeeBasisPoints = Number(fee)
+          var res = await fetch(ADMIN_API + '/nfts/bulk-create', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            setResult('admin-bulk-result', 'Created: ' + (data.created || 0) + ', Failed: ' + (data.failed || 0), false)
+          } else {
+            setResult('admin-bulk-result', data.error || 'Failed to bulk create', true)
+          }
+        } catch (err) {
+          setResult('admin-bulk-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Create NFTs'
+      }
+
+      window.adminCreateMultisig = async function(btn) {
+        var name = getVal('admin-msig-name').trim()
+        var threshold = getVal('admin-msig-threshold')
+        var signersRaw = getVal('admin-msig-signers').trim()
+        if (!name || !threshold || !signersRaw) { setResult('admin-msig-result', 'Name, threshold, and signers are required', true); return }
+        var signers = signersRaw.split('\n').map(function(s) { return s.trim() }).filter(Boolean)
+        if (signers.length < 2) { setResult('admin-msig-result', 'At least 2 signers are required', true); return }
+        btn.disabled = true
+        btn.textContent = 'Creating...'
+        try {
+          var body = {
+            name: name,
+            threshold: Number(threshold),
+            signers: signers,
+            authorityType: getVal('admin-msig-authtype'),
+            description: getVal('admin-msig-desc').trim() || undefined,
+            targetMint: getVal('admin-msig-mint').trim() || undefined
+          }
+          var res = await fetch(ADMIN_API + '/multisig', {
+            method: 'POST',
+            headers: adminHeaders(),
+            body: JSON.stringify(body)
+          })
+          var data = await res.json()
+          if (res.ok && !data.error) {
+            var ms = data.multisig || {}
+            setResult('admin-msig-result', 'Multisig created! Address: ' + (ms.address || ''), false)
+          } else {
+            setResult('admin-msig-result', data.error || 'Failed to create', true)
+          }
+        } catch (err) {
+          setResult('admin-msig-result', 'Error: ' + err.message, true)
+        }
+        btn.disabled = false
+        btn.textContent = 'Create Multisig'
+      }
+
+      window.adminLoadPending = async function(btn) {
+        var wallet = getVal('admin-msig-mywallet').trim()
+        if (!wallet) return
+        var pendingEl = getAdminEl('admin-msig-pending')
+        if (!pendingEl) return
+        pendingEl.textContent = 'Loading...'
+        try {
+          var res = await fetch(ADMIN_API + '/multisig?walletAddress=' + encodeURIComponent(wallet), {
+            headers: adminHeaders()
+          })
+          var data = await res.json()
+          var accounts = data.accounts || []
+          if (accounts.length === 0) {
+            pendingEl.innerHTML = '<p class="text-gray-4">No multisig accounts found for this wallet</p>'
+            return
+          }
+          var html = ''
+          for (var a = 0; a < accounts.length; a++) {
+            var acc = accounts[a]
+            html += '<div class="border border-gray-200 rounded-lg p-4 mb-3">'
+              + '<p class="font-semibold text-gray-8">' + acc.name + ' (' + acc.threshold + '-of-' + acc.totalSigners + ')</p>'
+              + '<p class="text-xs text-gray-5 font-mono">' + (acc.address || '') + '</p>'
+              + '</div>'
+          }
+          pendingEl.innerHTML = html
+        } catch (err) {
+          pendingEl.innerHTML = '<p class="text-red-500">Error: ' + err.message + '</p>'
+        }
       }
 
       // Auto-load collections on page load

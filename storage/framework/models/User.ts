@@ -70,9 +70,8 @@ export default {
       order: 1,
       fillable: true,
       validation: {
-        rule: schema.string().email().required(),
+        rule: schema.string().optional(),
         message: {
-          required: 'Email is required',
           email: 'Email must be a valid email address',
         },
       },
@@ -84,15 +83,49 @@ export default {
       hidden: true,
       fillable: true,
       validation: {
-        rule: schema.string().required().min(6).max(255),
+        rule: schema.string().optional(),
         message: {
-          required: 'Password is required',
           min: 'Password must have a minimum of 6 characters',
           max: 'Password must have a maximum of 255 characters',
         },
       },
 
       factory: () => '123456',
+    },
+
+    walletAddress: {
+      unique: true,
+      order: 4,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    authType: {
+      order: 5,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    nonce: {
+      order: 6,
+      hidden: true,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
+    },
+
+    nonceExpiresAt: {
+      order: 7,
+      hidden: true,
+      fillable: true,
+      validation: {
+        rule: schema.string().optional(),
+      },
     },
   },
   get: {

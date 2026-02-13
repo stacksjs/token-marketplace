@@ -138,6 +138,19 @@ export default {
     minAuctionDuration: Number(envVars.MARKETPLACE_MIN_AUCTION_DURATION) || 3600,
     // Maximum auction duration in seconds (default 30 days)
     maxAuctionDuration: Number(envVars.MARKETPLACE_MAX_AUCTION_DURATION) || 2592000,
+    // Platform fee configuration
+    platformFee: {
+      enabled: envVars.PLATFORM_FEE_ENABLED !== 'false',
+      basisPoints: Number(envVars.PLATFORM_FEE_BPS) || 100,
+      walletAddress: envVars.PLATFORM_FEE_WALLET || '',
+    },
+  },
+
+  /**
+   * Admin configuration
+   */
+  admin: {
+    walletAddresses: (envVars.ADMIN_WALLETS || '').split(',').filter(Boolean),
   },
 
   /**

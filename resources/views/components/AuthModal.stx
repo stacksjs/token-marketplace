@@ -1,4 +1,4 @@
-<!-- Auth Modal - shown/hidden via window.AuthManager.open() -->
+<!-- Auth Modal - wallet-only authentication -->
 <div>
   <!-- Backdrop -->
   <div onclick="AuthManager.closeModal()" style="display:none" class="fixed inset-0 z-[55] bg-black/60"></div>
@@ -13,54 +13,46 @@
         </svg>
       </button>
 
-      <div class="p-8">
-        <!-- Login Form -->
+      <div class="p-8 text-center">
+        <!-- Connect Wallet View -->
         <div>
-          <h2 class="text-2xl font-bold text-gray-9 mb-6">Sign In</h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
-              <input type="email" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
-              <input type="password" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your password" />
-            </div>
-            <button onclick="AuthManager.doLogin(this)" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Sign In</button>
+          <div class="mx-auto mb-4 h-16 w-16 flex items-center justify-center rounded-full bg-pink-100">
+            <svg class="h-8 w-8 text-pink-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
           </div>
-          <p class="mt-4 text-sm text-gray-5 text-center">
-            Don't have an account? <button onclick="AuthManager.showRegister(this)" class="text-pink-8 hover:text-pink-9 font-medium">Sign Up</button>
-          </p>
+          <h2 class="text-2xl font-bold text-gray-9 mb-2">Connect Your Wallet</h2>
+          <p class="text-gray-5 mb-6">Connect your Solana wallet to sign in. Your wallet is your identity.</p>
+          <button onclick="AuthManager.connectWallet(this)" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 rounded-lg transition text-sm">
+            Connect Wallet
+          </button>
+          <p class="mt-4 text-xs text-gray-4">Supports Phantom, Solflare, Backpack, and other Solana wallets</p>
         </div>
 
-        <!-- Register Form -->
+        <!-- Signing View (shown during auth flow) -->
         <div style="display:none">
-          <h2 class="text-2xl font-bold text-gray-9 mb-6">Create Account</h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-7 mb-1">Name</label>
-              <input type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Your name" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-7 mb-1">Email</label>
-              <input type="email" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="you@example.com" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-7 mb-1">Password</label>
-              <input type="password" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-pink-8 focus:ring-pink-8" placeholder="Choose a password" />
-            </div>
-            <button onclick="AuthManager.doRegister(this)" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Create Account</button>
+          <div class="mx-auto mb-4 h-16 w-16 flex items-center justify-center rounded-full bg-blue-100">
+            <svg class="h-8 w-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
           </div>
-          <p class="mt-4 text-sm text-gray-5 text-center">
-            Already have an account? <button onclick="AuthManager.showLogin(this)" class="text-pink-8 hover:text-pink-9 font-medium">Sign In</button>
-          </p>
+          <h2 class="text-2xl font-bold text-gray-9 mb-2">Sign Message</h2>
+          <p class="text-gray-5 mb-4">Please approve the signature request in your wallet to verify ownership.</p>
         </div>
 
-        <!-- Link Wallet -->
-        <div style="display:none" class="text-center">
-          <h2 class="text-2xl font-bold text-gray-9 mb-4">Link Your Wallet</h2>
-          <p class="text-gray-5 mb-6">Connect your wallet address to your account for a personalized experience.</p>
-          <button onclick="AuthManager.linkWallet()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">Link Wallet</button>
+        <!-- Success View -->
+        <div style="display:none">
+          <div class="mx-auto mb-4 h-16 w-16 flex items-center justify-center rounded-full bg-emerald-100">
+            <svg class="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-9 mb-2">Connected!</h2>
+          <p class="text-gray-5 mb-4">Your wallet is connected and authenticated.</p>
+          <button onclick="AuthManager.closeModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">
+            Continue
+          </button>
         </div>
       </div>
     </div>
@@ -83,38 +75,22 @@
       return {
         backdrop: _authRoot.children[0],
         panel: panel,
-        login: content.children[0],
-        register: content.children[1],
-        linkWallet: content.children[2]
+        connect: content.children[0],
+        signing: content.children[1],
+        success: content.children[2]
       }
     }
 
-    function showAuthView(view) {
+    function showAuthStep(step) {
       var v = getAuthViews()
       if (!v) return
-      if (v.login) v.login.style.display = view === 0 ? '' : 'none'
-      if (v.register) v.register.style.display = view === 1 ? '' : 'none'
-      if (v.linkWallet) v.linkWallet.style.display = view === 2 ? '' : 'none'
-    }
-
-    function getLoginInputs(btn) {
-      var form = btn.parentNode
-      var emailInput = form.children[0].children[1]
-      var passInput = form.children[1].children[1]
-      return { email: emailInput, password: passInput }
-    }
-
-    function getRegisterInputs(btn) {
-      var form = btn.parentNode
-      var nameInput = form.children[0].children[1]
-      var emailInput = form.children[1].children[1]
-      var passInput = form.children[2].children[1]
-      return { name: nameInput, email: emailInput, password: passInput }
+      if (v.connect) v.connect.style.display = step === 0 ? '' : 'none'
+      if (v.signing) v.signing.style.display = step === 1 ? '' : 'none'
+      if (v.success) v.success.style.display = step === 2 ? '' : 'none'
     }
 
     window.AuthManager = {
       _token: localStorage.getItem('auth_token'),
-      _user: null,
 
       isLoggedIn: function() { return !!this._token },
       getToken: function() { return this._token },
@@ -124,7 +100,7 @@
         if (!v) return
         if (v.backdrop) v.backdrop.style.display = ''
         if (v.panel) v.panel.style.display = ''
-        showAuthView(0)
+        showAuthStep(0)
       },
 
       closeModal: function() {
@@ -134,89 +110,81 @@
         if (v.panel) v.panel.style.display = 'none'
       },
 
-      showLogin: function() { showAuthView(0) },
-      showRegister: function() { showAuthView(1) },
+      connectWallet: async function(btn) {
+        var provider = null
+        if (window.phantom && window.phantom.solana) provider = window.phantom.solana
+        else if (window.solana && window.solana.isPhantom) provider = window.solana
+        else if (window.solflare) provider = window.solflare
+        else if (window.backpack) provider = window.backpack
+        else if (window.solana) provider = window.solana
 
-      doLogin: async function(btn) {
-        var inputs = getLoginInputs(btn)
-        var email = inputs.email ? inputs.email.value : ''
-        var password = inputs.password ? inputs.password.value : ''
-        if (!email || !password) return
+        if (!provider) {
+          window.open('https://phantom.app/', '_blank')
+          return
+        }
+
         try {
-          var res = await fetch(AUTH_API + '/login', {
+          showAuthStep(1)
+          var resp = await provider.connect()
+          var addr = resp.publicKey.toString()
+
+          // Get challenge
+          var challengeRes = await fetch(AUTH_API + '/auth/wallet/challenge', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email, password: password }),
+            body: JSON.stringify({ walletAddress: addr })
           })
-          var data = await res.json()
-          if (data.token) {
-            this._token = data.token
-            this._user = data.user
-            localStorage.setItem('auth_token', data.token)
-            if (window.Toast) Toast.success('Signed in successfully')
-            this.closeModal()
-            return true
-          }
-          if (window.Toast) Toast.error(data.error || 'Login failed')
-          return false
-        } catch (err) {
-          if (window.Toast) Toast.error('Login failed')
-          return false
-        }
-      },
+          var challengeData = await challengeRes.json()
 
-      doRegister: async function(btn) {
-        var inputs = getRegisterInputs(btn)
-        var name = inputs.name ? inputs.name.value : ''
-        var email = inputs.email ? inputs.email.value : ''
-        var password = inputs.password ? inputs.password.value : ''
-        if (!name || !email || !password) return
-        try {
-          var res = await fetch(AUTH_API + '/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name, email: email, password: password }),
-          })
-          var data = await res.json()
-          if (data.token) {
-            this._token = data.token
-            this._user = data.user
-            localStorage.setItem('auth_token', data.token)
-            if (window.Toast) Toast.success('Account created successfully')
-            this.closeModal()
-            return true
-          }
-          if (window.Toast) Toast.error(data.error || 'Registration failed')
-          return false
-        } catch (err) {
-          if (window.Toast) Toast.error('Registration failed')
-          return false
-        }
-      },
+          if (challengeData.nonce && challengeData.message) {
+            // Sign message
+            var encodedMsg = new TextEncoder().encode(challengeData.message)
+            var signResult = await provider.signMessage(encodedMsg, 'utf8')
+            var sigArr = new Uint8Array(signResult.signature)
+            var sigStr = ''
+            for (var i = 0; i < sigArr.length; i++) {
+              sigStr += String.fromCharCode(sigArr[i])
+            }
+            var sigBase64 = btoa(sigStr)
 
-      linkWallet: async function() {
-        if (!this._token) return
-        try {
-          var res = await fetch(AUTH_API + '/auth/link-wallet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + this._token },
-            body: JSON.stringify({ walletAddress: window._connectedWalletAddr || '' }),
-          })
-          var data = await res.json()
-          if (data.success || res.ok) {
-            if (window.Toast) Toast.success('Wallet linked to your account')
-          } else {
-            if (window.Toast) Toast.error(data.error || 'Failed to link wallet')
+            // Verify
+            var verifyRes = await fetch(AUTH_API + '/auth/wallet/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                walletAddress: addr,
+                signature: sigBase64,
+                nonce: challengeData.nonce
+              })
+            })
+            var verifyData = await verifyRes.json()
+
+            if (verifyData.token) {
+              this._token = verifyData.token
+              localStorage.setItem('auth_token', verifyData.token)
+              localStorage.setItem('wallet_addr', addr)
+              showAuthStep(2)
+              if (window.Toast) Toast.success('Wallet connected and authenticated')
+              setTimeout(function() { AuthManager.closeModal() }, 1500)
+              return
+            }
           }
+
+          // Fallback: just store wallet addr
+          localStorage.setItem('wallet_addr', addr)
+          showAuthStep(2)
+          setTimeout(function() { AuthManager.closeModal() }, 1500)
         } catch (err) {
-          if (window.Toast) Toast.error('Failed to link wallet')
+          console.error('Wallet auth failed:', err)
+          showAuthStep(0)
+          if (window.Toast) Toast.error('Wallet connection failed')
         }
       },
 
       logout: function() {
         this._token = null
-        this._user = null
         localStorage.removeItem('auth_token')
+        localStorage.removeItem('wallet_addr')
         if (window.Toast) Toast.success('Signed out')
       }
     }

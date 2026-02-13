@@ -1,4 +1,5 @@
 import type { UserModel } from '@stacksjs/orm'
+import tokensConfig from '../config/tokens'
 
 /**
  * Authorization Gates Configuration
@@ -28,6 +29,9 @@ export const gates = {
    * Check if user can access admin area
    */
   'access-admin': (user: UserModel | null) => {
+    if (!user) return false
+    const adminWallets = tokensConfig.admin?.walletAddresses || []
+    if ((user as any).wallet_address && adminWallets.includes((user as any).wallet_address)) return true
     return user?.email?.endsWith('@stacksjs.org') ?? false
   },
 

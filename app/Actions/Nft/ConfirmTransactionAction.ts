@@ -3,6 +3,8 @@ import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
 import { getTokenService } from '../../Services/TokenService'
+import { PlatformFeeService } from '../../Services/PlatformFeeService'
+import tokensConfig from '../../../config/tokens'
 
 type ConfirmAction =
   | 'buy'
@@ -14,6 +16,8 @@ type ConfirmAction =
   | 'create_escrow'
   | 'settle_escrow'
   | 'cancel_escrow'
+  | 'quick_mint'
+  | 'update_nft'
 
 export default new Action({
   name: 'Confirm Transaction',
@@ -39,6 +43,7 @@ export default new Action({
     const validActions: ConfirmAction[] = [
       'buy', 'list', 'delist', 'mint', 'accept_offer',
       'cancel_auction', 'create_escrow', 'settle_escrow', 'cancel_escrow',
+      'quick_mint', 'update_nft',
     ]
 
     if (!validActions.includes(action)) {
@@ -78,6 +83,10 @@ export default new Action({
           return await handleSettleEscrow(nftId, signature, metadata)
         case 'cancel_escrow':
           return await handleCancelEscrow(nftId, signature, metadata)
+        case 'quick_mint':
+          return await handleQuickMint(signature, metadata)
+        case 'update_nft':
+          return await handleUpdateNFT(nftId, signature, metadata)
       }
     } catch (error) {
       return response.json({
@@ -123,6 +132,8 @@ async function handleBuy(nftId: number | undefined, signature: string, metadata?
     })
     .where('id', '=', Number(nftId))
     .execute()
+
+  await recordPlatformFee('buy', signature, nftId, nft.mint_address, metadata)
 
   return response.json({
     success: true,
@@ -340,6 +351,8 @@ async function handleAcceptOffer(nftId: number | undefined, signature: string, m
       .execute()
   }
 
+  await recordPlatformFee('accept_offer', signature, Number(targetNftId), offer.mint_address, { ...metadata, saleAmount: offer.amount })
+
   return response.json({
     success: true,
     transaction: { signature, status: 'confirmed' },
@@ -430,6 +443,8 @@ async function handleSettleEscrow(nftId: number | undefined, signature: string, 
     .where('id', '=', Number(nftId))
     .execute()
 
+  await recordPlatformFee('settle_escrow', signature, nftId, undefined, metadata)
+
   return response.json({
     success: true,
     transaction: { signature, status: 'confirmed' },
@@ -460,4 +475,95 @@ async function handleCancelEscrow(nftId: number | undefined, signature: string, 
     action: 'cancel_escrow',
     nft: { id: nftId, escrowStatus: null },
   })
+}
+
+async function handleQuickMint(signature: string, metadata?: Record<string, any>) {
+  const mintAddress = metadata?.mintAddress
+  const name = metadata?.name || 'Quick Minted NFT'
+  const ownerWallet = metadata?.ownerWalletAddress
+  const collectionId = metadata?.collectionId
+
+  await db
+    .insertInto('nfts')
+    .values({
+      name,
+      mint_address: mintAddress || null,
+      owner_wallet_address: ownerWallet || null,
+      collection_id: collectionId ? Number(collectionId) : null,
+      metadata_url: metadata?.uri || null,
+      is_for_sale: 0,
+      is_minting: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
+    .execute()
+
+  // Record platform fee if applicable
+  await recordPlatformFee('quick_mint', signature, undefined, mintAddress, metadata)
+
+  return response.json({
+    success: true,
+    transaction: { signature, status: 'confirmed' },
+    action: 'quick_mint',
+    nft: { name, mintAddress, owner: ownerWallet },
+  })
+}
+
+async function handleUpdateNFT(nftId: number | undefined, signature: string, metadata?: Record<string, any>) {
+  if (!nftId) {
+    return response.json({ error: 'nftId is required for update_nft action' }, 400)
+  }
+
+  const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+  if (metadata?.name) updates.name = metadata.name
+  if (metadata?.imageUrl) updates.image_url = metadata.imageUrl
+  if (metadata?.metadataUrl) updates.metadata_url = metadata.metadataUrl
+
+  await db
+    .updateTable('nfts')
+    .set(updates)
+    .where('id', '=', Number(nftId))
+    .execute()
+
+  return response.json({
+    success: true,
+    transaction: { signature, status: 'confirmed' },
+    action: 'update_nft',
+    nft: { id: nftId, ...metadata },
+  })
+}
+
+async function recordPlatformFee(
+  transactionType: string,
+  signature: string,
+  nftId?: number,
+  mintAddress?: string,
+  metadata?: Record<string, any>,
+) {
+  try {
+    const config = tokensConfig as any
+    const feeConfig = config.marketplace?.platformFee
+    if (!feeConfig?.enabled || !feeConfig?.walletAddress) return
+
+    const saleAmount = Number(metadata?.saleAmount || metadata?.price || 0)
+    if (saleAmount <= 0) return
+
+    const bps = feeConfig.basisPoints || 100
+    const feeAmount = Math.floor((saleAmount * bps) / 10000)
+
+    await PlatformFeeService.recordFee({
+      transactionType,
+      transactionSignature: signature,
+      nftId,
+      mintAddress,
+      saleAmount,
+      feeAmount,
+      feeBasisPoints: bps,
+      platformWallet: feeConfig.walletAddress,
+      sellerWallet: metadata?.sellerWalletAddress,
+      buyerWallet: metadata?.buyerWalletAddress,
+    })
+  } catch (error) {
+    console.error('[PlatformFee] Failed to record fee:', error)
+  }
 }

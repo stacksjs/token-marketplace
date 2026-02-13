@@ -161,3 +161,28 @@ route.group({ prefix: '/token', middleware: 'auth' }, () => {
   route.post('/transfer', 'Actions/Token/TransferTokensAction')
   route.get('/{mintAddress}', 'Actions/Token/GetTokenInfoAction')
 })
+
+// Quick Mint
+route.post('/mint/quick', 'Actions/Mint/QuickMintAction')
+
+// NFT metadata update and bulk create
+route.post('/nfts/update', 'Actions/Nft/UpdateNftMetadataAction')
+route.post('/nfts/bulk-create', 'Actions/Nft/BulkCreateNftsAction')
+
+// Wallet authentication
+route.post('/auth/wallet/challenge', 'Actions/Auth/WalletChallengeAction')
+route.post('/auth/wallet/verify', 'Actions/Auth/WalletVerifyAction')
+
+// Admin fee stats
+route.get('/admin/fees', 'Actions/Admin/PlatformFeeStatsAction')
+
+// Multisig routes
+route.group({ prefix: '/multisig' }, () => {
+  route.post('/', 'Actions/Multisig/CreateMultisigAction')
+  route.get('/', 'Actions/Multisig/ListMultisigAction')
+  route.get('/{id}', 'Actions/Multisig/GetMultisigAction')
+  route.post('/propose', 'Actions/Multisig/ProposeTransactionAction')
+  route.post('/sign', 'Actions/Multisig/SignTransactionAction')
+  route.post('/execute', 'Actions/Multisig/ExecuteTransactionAction')
+  route.post('/cancel', 'Actions/Multisig/CancelTransactionAction')
+})
