@@ -10,6 +10,7 @@ import { response, route } from '@stacksjs/router'
 // Basic routes
 route.get('/', () => response.text('Token Marketplace API'))
 route.health() // adds a GET `/health` route
+route.get('/api/info', 'Actions/Api/InfoAction')
 
 // Email subscription endpoint
 route.post('/api/email/subscribe', 'Actions/SubscriberEmailAction')

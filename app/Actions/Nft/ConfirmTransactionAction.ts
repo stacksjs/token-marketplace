@@ -559,8 +559,8 @@ async function recordPlatformFee(
     const saleAmount = Number(metadata?.saleAmount || metadata?.price || 0)
     if (saleAmount <= 0) return
 
-    const bps = feeConfig.basisPoints || 100
-    const feeAmount = Math.floor((saleAmount * bps) / 10000)
+    // Use PlatformFeeService for fee calculation (single source of truth)
+    const { feeAmount } = PlatformFeeService.calculateFee(BigInt(saleAmount))
 
     await PlatformFeeService.recordFee({
       transactionType,
@@ -568,8 +568,8 @@ async function recordPlatformFee(
       nftId,
       mintAddress,
       saleAmount,
-      feeAmount,
-      feeBasisPoints: bps,
+      feeAmount: Number(feeAmount),
+      feeBasisPoints: feeConfig.basisPoints || 100,
       platformWallet: feeConfig.walletAddress,
       sellerWallet: metadata?.sellerWalletAddress,
       buyerWallet: metadata?.buyerWalletAddress,
