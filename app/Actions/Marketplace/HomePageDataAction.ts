@@ -17,23 +17,39 @@ export default new Action({
   method: 'GET',
 
   async handle() {
-    // Fetch all collections and NFTs once
+    // Fetch collections with a reasonable limit (home page only needs a few)
     const allCollections = await db
       .selectFrom('collections')
       .selectAll()
+      .limit(200)
       .execute()
 
-    const allNfts = await db
+    // Use COUNT queries for stats instead of loading all NFTs
+    const totalNftsResult = await db
       .selectFrom('nfts')
-      .selectAll()
+      .select([db.fn.count('id').as('count')])
+      .executeTakeFirst()
+    const totalNfts = Number(totalNftsResult?.count || 0)
+
+    const forSaleCountResult = await db
+      .selectFrom('nfts')
+      .select([db.fn.count('id').as('count')])
+      .where('is_for_sale', '=', 1)
+      .executeTakeFirst()
+    const totalForSale = Number(forSaleCountResult?.count || 0)
+
+    // Get NFT counts per collection in one query
+    const nftCounts = await db
+      .selectFrom('nfts')
+      .select(['collection_id', db.fn.count('id').as('count')])
+      .groupBy('collection_id')
       .execute()
 
-    // Build NFT count per collection
     const nftCountMap: Record<string, number> = {}
-    for (const nft of allNfts) {
-      if (nft.collection_id != null) {
-        const key = String(Math.round(Number(nft.collection_id)))
-        nftCountMap[key] = (nftCountMap[key] || 0) + 1
+    for (const row of nftCounts) {
+      if (row.collection_id != null) {
+        const key = String(Math.round(Number(row.collection_id)))
+        nftCountMap[key] = Number(row.count)
       }
     }
 
@@ -67,15 +83,26 @@ export default new Action({
         .map((c: any) => String(Math.round(Number(c.id)))),
     )
 
-    // Available NFTs: prioritize for-sale, then from minting collections
-    const forSaleNfts = allNfts.filter((n: any) => n.is_for_sale === 1)
-    const mintingNfts = allNfts.filter((n: any) => {
-      if (n.is_for_sale === 1) return false // already in forSaleNfts
-      const colKey = String(Math.round(Number(n.collection_id)))
-      return mintingCollectionIds.has(colKey)
-    })
+    // Available NFTs: prioritize for-sale, then from minting collections (limited query)
+    const forSaleNfts = await db
+      .selectFrom('nfts')
+      .selectAll()
+      .where('is_for_sale', '=', 1)
+      .limit(6)
+      .execute()
 
-    const availableNftsRaw = [...forSaleNfts, ...mintingNfts].slice(0, 6)
+    let availableNftsRaw = forSaleNfts
+    if (forSaleNfts.length < 6 && mintingCollectionIds.size > 0) {
+      const mintingIds = Array.from(mintingCollectionIds).map(Number)
+      const mintingNfts = await db
+        .selectFrom('nfts')
+        .selectAll()
+        .where('is_for_sale', '!=', 1)
+        .where('collection_id', 'in', mintingIds)
+        .limit(6 - forSaleNfts.length)
+        .execute()
+      availableNftsRaw = [...forSaleNfts, ...mintingNfts]
+    }
 
     // Enrich NFTs with collection info
     const availableNfts = availableNftsRaw.map((nft: any) => {
@@ -89,8 +116,8 @@ export default new Action({
 
     const stats = {
       totalCollections: allCollections.length,
-      totalNfts: allNfts.length,
-      totalForSale: forSaleNfts.length,
+      totalNfts,
+      totalForSale,
       totalMinting: mintingCollectionIds.size,
     }
 

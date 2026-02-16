@@ -209,7 +209,13 @@
 
           if (verifyData.token) {
             localStorage.setItem('auth_token', verifyData.token)
+          } else {
+            console.error('Wallet auth failed: no token received')
+            return
           }
+        } else {
+          console.error('Wallet auth failed: no challenge received')
+          return
         }
 
         // Also notify the simple connect endpoint

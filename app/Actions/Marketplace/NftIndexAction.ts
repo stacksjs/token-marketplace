@@ -31,9 +31,10 @@ export default new Action({
       )
     }
 
-    // Search by name
+    // Search by name (escape special LIKE characters)
     if (search) {
-      query = query.where('name', 'like', `%${search}%`)
+      const escaped = search.replace(/[%_\\]/g, '\\$&')
+      query = query.where('name', 'like', `%${escaped}%`)
     }
 
     // Filter by collection

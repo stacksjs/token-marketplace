@@ -3,6 +3,22 @@ import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
 
+// In-memory rate limiter: max 5 challenges per wallet per minute
+const challengeAttempts = new Map<string, number[]>()
+const CHALLENGE_WINDOW_MS = 60_000
+const CHALLENGE_MAX_ATTEMPTS = 5
+
+function isRateLimited(walletAddress: string): boolean {
+  const now = Date.now()
+  const attempts = challengeAttempts.get(walletAddress) || []
+  const recent = attempts.filter(t => now - t < CHALLENGE_WINDOW_MS)
+  challengeAttempts.set(walletAddress, recent)
+  if (recent.length >= CHALLENGE_MAX_ATTEMPTS) return true
+  recent.push(now)
+  challengeAttempts.set(walletAddress, recent)
+  return false
+}
+
 export default new Action({
   name: 'Wallet Challenge',
   description: 'Generate a nonce challenge for wallet-based authentication',
@@ -15,8 +31,15 @@ export default new Action({
       return response.json({ error: 'walletAddress is required' }, 400)
     }
 
-    if (walletAddress.length < 32 || walletAddress.length > 44) {
+    // Validate Solana address: 32-44 chars, base58 characters only
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
+    if (!base58Regex.test(walletAddress)) {
       return response.json({ error: 'Invalid wallet address format' }, 400)
+    }
+
+    // Rate limit: max 5 challenges per wallet per minute
+    if (isRateLimited(walletAddress)) {
+      return response.json({ error: 'Too many requests. Please try again later.' }, 429)
     }
 
     const nonce = crypto.randomUUID()

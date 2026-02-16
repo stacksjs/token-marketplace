@@ -150,7 +150,7 @@ export default {
    * Admin configuration
    */
   admin: {
-    walletAddresses: (envVars.ADMIN_WALLETS || '').split(',').filter(Boolean),
+    walletAddresses: (envVars.ADMIN_WALLETS || '').split(',').map(s => s.trim()).filter(Boolean),
   },
 
   /**

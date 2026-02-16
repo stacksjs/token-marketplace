@@ -26,22 +26,28 @@ export class PlatformFeeService {
     sellerWallet?: string
     buyerWallet?: string
   }): Promise<void> {
-    await db
-      .insertInto('platform_fees')
-      .values({
-        transaction_type: params.transactionType,
-        transaction_signature: params.transactionSignature || null,
-        nft_id: params.nftId || null,
-        mint_address: params.mintAddress || null,
-        sale_amount: params.saleAmount,
-        fee_amount: params.feeAmount,
-        fee_basis_points: params.feeBasisPoints || 100,
-        platform_wallet: params.platformWallet,
-        seller_wallet: params.sellerWallet || null,
-        buyer_wallet: params.buyerWallet || null,
-        created_at: new Date().toISOString(),
-      } as any)
-      .execute()
+    try {
+      await db
+        .insertInto('platform_fees')
+        .values({
+          transaction_type: params.transactionType,
+          transaction_signature: params.transactionSignature || null,
+          nft_id: params.nftId || null,
+          mint_address: params.mintAddress || null,
+          sale_amount: params.saleAmount,
+          fee_amount: params.feeAmount,
+          fee_basis_points: params.feeBasisPoints || 100,
+          platform_wallet: params.platformWallet,
+          seller_wallet: params.sellerWallet || null,
+          buyer_wallet: params.buyerWallet || null,
+          created_at: new Date().toISOString(),
+        } as any)
+        .execute()
+    } catch (error) {
+      console.error('[PlatformFeeService] Failed to record fee:', error instanceof Error ? error.message : error)
+      // Re-throw so callers know the fee recording failed
+      throw error
+    }
   }
 
   static async getTotalFees(): Promise<{ totalFees: number; totalTransactions: number }> {

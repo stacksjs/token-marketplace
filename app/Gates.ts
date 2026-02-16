@@ -31,8 +31,8 @@ export const gates = {
   'access-admin': (user: UserModel | null) => {
     if (!user) return false
     const adminWallets = tokensConfig.admin?.walletAddresses || []
-    if ((user as any).wallet_address && adminWallets.includes((user as any).wallet_address)) return true
-    return user?.email?.endsWith('@stacksjs.org') ?? false
+    if (!adminWallets.length) return false
+    return !!(user as any).wallet_address && adminWallets.includes((user as any).wallet_address)
   },
 
   /**

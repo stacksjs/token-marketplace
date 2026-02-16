@@ -3,6 +3,22 @@ import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
 
+// In-memory rate limiter: max 5 verify attempts per wallet per minute
+const verifyAttempts = new Map<string, number[]>()
+const VERIFY_WINDOW_MS = 60_000
+const VERIFY_MAX_ATTEMPTS = 5
+
+function isVerifyRateLimited(walletAddress: string): boolean {
+  const now = Date.now()
+  const attempts = verifyAttempts.get(walletAddress) || []
+  const recent = attempts.filter(t => now - t < VERIFY_WINDOW_MS)
+  verifyAttempts.set(walletAddress, recent)
+  if (recent.length >= VERIFY_MAX_ATTEMPTS) return true
+  recent.push(now)
+  verifyAttempts.set(walletAddress, recent)
+  return false
+}
+
 export default new Action({
   name: 'Wallet Verify',
   description: 'Verify wallet signature and issue JWT token',
@@ -13,6 +29,11 @@ export default new Action({
 
     if (!walletAddress || !signature || !nonce) {
       return response.json({ error: 'walletAddress, signature, and nonce are required' }, 400)
+    }
+
+    // Rate limit: max 5 verify attempts per wallet per minute
+    if (isVerifyRateLimited(walletAddress)) {
+      return response.json({ error: 'Too many attempts. Please try again later.' }, 429)
     }
 
     try {
@@ -59,12 +80,15 @@ export default new Action({
         sub: user.id,
         wallet: walletAddress,
         iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
+        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
       }
 
       const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/=/g, '')
       const body64 = btoa(JSON.stringify(payload)).replace(/=/g, '')
-      const secret = (typeof Bun !== 'undefined' ? Bun.env : process.env).APP_KEY || 'default-secret'
+      const secret = (typeof Bun !== 'undefined' ? Bun.env : process.env).APP_KEY
+      if (!secret) {
+        return response.json({ error: 'Server misconfiguration: APP_KEY is not set' }, 500)
+      }
       const hasher = new Bun.CryptoHasher('sha256', secret)
       hasher.update(`${header}.${body64}`)
       const sig = Buffer.from(hasher.digest()).toString('base64url')
@@ -90,9 +114,14 @@ export default new Action({
 
 async function verifyWalletSignature(walletAddress: string, signature: string, message: string): Promise<boolean> {
   try {
-    // In mock/dev mode, accept any signature
-    const mockMode = (typeof Bun !== 'undefined' ? Bun.env : process.env).TOKENS_MOCK_MODE
+    // In mock/dev mode, accept any signature (never in production)
+    const env = typeof Bun !== 'undefined' ? Bun.env : process.env
+    const mockMode = env.TOKENS_MOCK_MODE
     if (mockMode === 'true' || mockMode === '1') {
+      if (env.NODE_ENV === 'production') {
+        console.error('[SECURITY] Mock mode is enabled in production! Rejecting signature bypass.')
+        return false
+      }
       return true
     }
 

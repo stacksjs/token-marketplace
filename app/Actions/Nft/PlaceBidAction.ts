@@ -49,41 +49,56 @@ export default new Action({
       }, 400)
     }
 
-    // Check if bid is higher than current highest
     const amountLamports = BigInt(Math.floor(amount * 1e9))
-    if (auction.current_bid && Number(amountLamports) <= auction.current_bid) {
-      return response.json({
-        error: 'Bid must be higher than current highest bid',
-      }, 400)
-    }
 
     try {
       const tokenService = getTokenService()
       const bidResult = await tokenService.placeBid(auctionId, amountLamports)
 
-      // Store bid in database
-      await db
-        .insertInto('bids')
-        .values({
-          uuid: `bid_${Date.now().toString(36)}`,
-          auction_id: auction.id,
-          bidder_wallet_address: bidderWalletAddress,
-          amount: Number(amountLamports),
-          status: 'confirmed',
-          created_at: new Date().toISOString(),
-        })
-        .execute()
+      // Use a transaction to atomically check bid + insert + update
+      const result = await db.transaction().execute(async (trx) => {
+        // Re-read auction inside transaction for atomicity
+        const currentAuction = await trx
+          .selectFrom('auctions')
+          .select(['id', 'current_bid'])
+          .where('uuid', '=', auctionId)
+          .executeTakeFirst()
 
-      // Update auction with highest bid
-      await db
-        .updateTable('auctions')
-        .set({
-          current_bid: Number(amountLamports),
-          highest_bidder_wallet: bidderWalletAddress,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', auction.id)
-        .execute()
+        if (!currentAuction) {
+          throw new Error('Auction not found')
+        }
+
+        // Check if bid is higher than current highest (inside transaction)
+        if (currentAuction.current_bid && Number(amountLamports) <= currentAuction.current_bid) {
+          throw new Error('Bid must be higher than current highest bid')
+        }
+
+        // Store bid in database
+        await trx
+          .insertInto('bids')
+          .values({
+            uuid: `bid_${Date.now().toString(36)}`,
+            auction_id: currentAuction.id,
+            bidder_wallet_address: bidderWalletAddress,
+            amount: Number(amountLamports),
+            status: 'confirmed',
+            created_at: new Date().toISOString(),
+          })
+          .execute()
+
+        // Update auction with highest bid
+        await trx
+          .updateTable('auctions')
+          .set({
+            current_bid: Number(amountLamports),
+            highest_bidder_wallet: bidderWalletAddress,
+            updated_at: new Date().toISOString(),
+          })
+          .where('id', '=', currentAuction.id)
+          .execute()
+
+        return { success: true }
+      })
 
       return response.json({
         success: true,
@@ -96,9 +111,13 @@ export default new Action({
         },
       })
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      if (message === 'Bid must be higher than current highest bid') {
+        return response.json({ error: message }, 400)
+      }
       return response.json({
         error: 'Failed to place bid',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: message,
       }, 500)
     }
   },

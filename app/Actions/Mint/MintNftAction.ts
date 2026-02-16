@@ -81,9 +81,14 @@ export default new Action({
         }
 
         // Check wallet is in allowlist
-        const walletAddresses = presale.wallet_addresses
-          ? JSON.parse(presale.wallet_addresses)
-          : []
+        let walletAddresses: string[] = []
+        try {
+          walletAddresses = presale.wallet_addresses
+            ? JSON.parse(presale.wallet_addresses)
+            : []
+        } catch {
+          return response.json({ error: 'Invalid presale configuration' }, 500)
+        }
 
         if (!walletAddresses.includes(walletAddress)) {
           return response.json({

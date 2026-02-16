@@ -25,6 +25,11 @@ export type {
 let ts: any = null
 let tsNft: any = null
 const mockMode = tokensConfig.mockMode
+const envVarsTS = typeof Bun !== 'undefined' ? Bun.env : process.env
+
+if (mockMode && envVarsTS.NODE_ENV === 'production') {
+  throw new Error('[TokenService] FATAL: TOKENS_MOCK_MODE is enabled in production. This is a security risk. Aborting.')
+}
 
 if (!mockMode) {
   ts = await import('ts-tokens')

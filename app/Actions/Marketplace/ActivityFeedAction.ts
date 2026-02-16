@@ -45,72 +45,77 @@ export default new Action({
       }
     }
 
-    // Fetch recent mints
+    // Fetch recent mints with JOIN to nfts (eliminates N+1)
     try {
-      const mints = await db
+      let mintQuery = db
         .selectFrom('mint_transactions')
-        .selectAll()
-        .where('status', '=', 'confirmed')
-        .orderBy('created_at', 'desc')
+        .leftJoin('nfts', 'nfts.mint_address', 'mint_transactions.mint_address' as any)
+        .select([
+          'mint_transactions.created_at',
+          'mint_transactions.wallet_address',
+          'mint_transactions.amount_paid',
+          'nfts.name as nft_name',
+          'nfts.image_url as nft_image_url',
+          'nfts.collection_id as nft_collection_id',
+        ])
+        .where('mint_transactions.status', '=', 'confirmed')
+        .orderBy('mint_transactions.created_at', 'desc')
         .limit(50)
-        .execute()
+
+      if (collectionId) {
+        mintQuery = mintQuery.where('nfts.collection_id', '=', collectionId)
+      }
+
+      const mints = await mintQuery.execute()
 
       for (const m of mints) {
-        let nftName = 'NFT'
-        let nftImage = ''
-        let nftCollectionId: number | null = null
-        if ((m as any).mint_address) {
-          const nft = await db
-            .selectFrom('nfts')
-            .select(['name', 'image_url', 'collection_id'])
-            .where('mint_address', '=', (m as any).mint_address)
-            .executeTakeFirst()
-          if (nft) {
-            nftName = nft.name
-            nftImage = (nft as any).image_url || ''
-            nftCollectionId = nft.collection_id as number | null
-          }
-        }
-        if (collectionId && nftCollectionId !== collectionId) continue
         events.push({
           type: 'mint',
           timestamp: (m as any).created_at || '',
-          nftName,
-          nftImage,
+          nftName: (m as any).nft_name || 'NFT',
+          nftImage: (m as any).nft_image_url || '',
           price: (m as any).amount_paid || null,
           fromAddress: '',
           toAddress: (m as any).wallet_address || '',
-          collectionId: nftCollectionId,
+          collectionId: (m as any).nft_collection_id as number | null,
         })
       }
     } catch (_) {}
 
-    // Fetch recent offers
+    // Fetch recent offers with JOIN to nfts (eliminates N+1)
     try {
-      const offers = await db
+      let offerQuery = db
         .selectFrom('offers')
-        .selectAll()
-        .orderBy('created_at', 'desc')
+        .leftJoin('nfts', 'nfts.id', 'offers.nft_id')
+        .select([
+          'offers.created_at',
+          'offers.status',
+          'offers.amount',
+          'offers.buyer_wallet_address',
+          'nfts.name as nft_name',
+          'nfts.image_url as nft_image_url',
+          'nfts.collection_id as nft_collection_id',
+          'nfts.owner_wallet_address as nft_owner_wallet',
+        ])
+        .orderBy('offers.created_at', 'desc')
         .limit(50)
-        .execute()
+
+      if (collectionId) {
+        offerQuery = offerQuery.where('nfts.collection_id', '=', collectionId)
+      }
+
+      const offers = await offerQuery.execute()
 
       for (const o of offers) {
-        const nft = await db
-          .selectFrom('nfts')
-          .select(['name', 'image_url', 'collection_id', 'owner_wallet_address'])
-          .where('id', '=', Number((o as any).nft_id))
-          .executeTakeFirst()
-        if (!nft) continue
-        if (collectionId && (nft.collection_id as number) !== collectionId) continue
         events.push({
           type: (o as any).status === 'accepted' ? 'sale' : 'offer',
           timestamp: (o as any).created_at || '',
-          nftName: nft.name,
-          nftImage: (nft as any).image_url || '',
+          nftName: (o as any).nft_name || 'NFT',
+          nftImage: (o as any).nft_image_url || '',
           price: (o as any).amount ? Number((o as any).amount) / 1e9 : null,
           fromAddress: (o as any).buyer_wallet_address || '',
-          toAddress: (nft as any).owner_wallet_address || '',
-          collectionId: nft.collection_id as number | null,
+          toAddress: (o as any).nft_owner_wallet || '',
+          collectionId: (o as any).nft_collection_id as number | null,
         })
       }
     } catch (_) {}

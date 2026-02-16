@@ -574,6 +574,11 @@ const pageTitle = 'Admin | Naked NFTs'
         }
       }
 
+      function escapeHtml(str) {
+        if (!str) return ''
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      }
+
       function adminHeaders() {
         var h = { 'Content-Type': 'application/json' }
         var token = localStorage.getItem('auth_token')
@@ -623,18 +628,18 @@ const pageTitle = 'Admin | Naked NFTs'
             for (var i = 0; i < cols.length; i++) {
               var c = cols[i]
               html += '<tr class="border-b border-gray-100 hover:bg-gray-50">'
-                + '<td class="py-2 px-3 text-gray-5">' + (c.id || '-') + '</td>'
-                + '<td class="py-2 px-3 font-medium text-gray-8">' + (c.name || '-') + '</td>'
-                + '<td class="py-2 px-3 text-gray-5">' + (c.slug || '-') + '</td>'
-                + '<td class="py-2 px-3 text-gray-6">' + (c.nft_count || c.nftCount || 0) + '</td>'
-                + '<td class="py-2 px-3 text-gray-6">' + (c.floor_price || c.floorPrice ? (c.floor_price || c.floorPrice) + ' SOL' : '-') + '</td>'
+                + '<td class="py-2 px-3 text-gray-5">' + escapeHtml(c.id || '-') + '</td>'
+                + '<td class="py-2 px-3 font-medium text-gray-8">' + escapeHtml(c.name || '-') + '</td>'
+                + '<td class="py-2 px-3 text-gray-5">' + escapeHtml(c.slug || '-') + '</td>'
+                + '<td class="py-2 px-3 text-gray-6">' + escapeHtml(c.nft_count || c.nftCount || 0) + '</td>'
+                + '<td class="py-2 px-3 text-gray-6">' + (c.floor_price || c.floorPrice ? escapeHtml(c.floor_price || c.floorPrice) + ' SOL' : '-') + '</td>'
                 + '<td class="py-2 px-3">' + (c.is_minting || c.isMinting ? '<span class="text-emerald-600 font-semibold">Active</span>' : '<span class="text-gray-4">No</span>') + '</td>'
                 + '</tr>'
             }
             html += '</tbody></table></div>'
             el.innerHTML = html
           })
-          .catch(function() { el.innerHTML = '<p class="text-red-500">Failed to load collections</p>' })
+          .catch(function() { el.textContent = 'Failed to load collections' })
       }
 
       window.adminCreateCollection = async function(btn) {
@@ -1027,19 +1032,19 @@ const pageTitle = 'Admin | Naked NFTs'
           if (res.ok && !data.error) {
             var info = data.token || data
             var html = '<div class="bg-gray-50 rounded-lg p-4 text-sm">'
-              + '<p><span class="font-semibold text-gray-7">Name:</span> ' + (info.name || '-') + '</p>'
-              + '<p><span class="font-semibold text-gray-7">Symbol:</span> ' + (info.symbol || '-') + '</p>'
-              + '<p><span class="font-semibold text-gray-7">Decimals:</span> ' + (info.decimals !== undefined ? info.decimals : '-') + '</p>'
-              + '<p><span class="font-semibold text-gray-7">Supply:</span> ' + (info.supply !== undefined ? info.supply : '-') + '</p>'
-              + '<p><span class="font-semibold text-gray-7">Mint:</span> <span class="font-mono text-gray-5">' + (info.mintAddress || mintAddr) + '</span></p>'
-              + (info.uri ? '<p><span class="font-semibold text-gray-7">URI:</span> ' + info.uri + '</p>' : '')
+              + '<p><span class="font-semibold text-gray-7">Name:</span> ' + escapeHtml(info.name || '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Symbol:</span> ' + escapeHtml(info.symbol || '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Decimals:</span> ' + escapeHtml(info.decimals !== undefined ? info.decimals : '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Supply:</span> ' + escapeHtml(info.supply !== undefined ? info.supply : '-') + '</p>'
+              + '<p><span class="font-semibold text-gray-7">Mint:</span> <span class="font-mono text-gray-5">' + escapeHtml(info.mintAddress || mintAddr) + '</span></p>'
+              + (info.uri ? '<p><span class="font-semibold text-gray-7">URI:</span> ' + escapeHtml(info.uri) + '</p>' : '')
               + '</div>'
             if (resultEl) resultEl.innerHTML = html
           } else {
-            if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">' + (data.error || 'Token not found') + '</p>'
+            if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">' + escapeHtml(data.error || 'Token not found') + '</p>'
           }
         } catch (err) {
-          if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">Error: ' + err.message + '</p>'
+          if (resultEl) resultEl.innerHTML = '<p class="text-red-500 text-sm">Error: ' + escapeHtml(err.message) + '</p>'
         }
         btn.disabled = false
         btn.textContent = 'Lookup'
@@ -1173,13 +1178,13 @@ const pageTitle = 'Admin | Naked NFTs'
           for (var a = 0; a < accounts.length; a++) {
             var acc = accounts[a]
             html += '<div class="border border-gray-200 rounded-lg p-4 mb-3">'
-              + '<p class="font-semibold text-gray-8">' + acc.name + ' (' + acc.threshold + '-of-' + acc.totalSigners + ')</p>'
-              + '<p class="text-xs text-gray-5 font-mono">' + (acc.address || '') + '</p>'
+              + '<p class="font-semibold text-gray-8">' + escapeHtml(acc.name) + ' (' + escapeHtml(acc.threshold) + '-of-' + escapeHtml(acc.totalSigners) + ')</p>'
+              + '<p class="text-xs text-gray-5 font-mono">' + escapeHtml(acc.address || '') + '</p>'
               + '</div>'
           }
           pendingEl.innerHTML = html
         } catch (err) {
-          pendingEl.innerHTML = '<p class="text-red-500">Error: ' + err.message + '</p>'
+          pendingEl.innerHTML = '<p class="text-red-500">Error: ' + escapeHtml(err.message) + '</p>'
         }
       }
 

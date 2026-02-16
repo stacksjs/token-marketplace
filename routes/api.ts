@@ -102,8 +102,8 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/activity', 'Actions/Marketplace/ActivityFeedAction')
   route.get('/activity/{collectionSlug}', 'Actions/Marketplace/ActivityFeedAction')
 
-  // Collection stats update (admin)
-  route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction')
+  // Collection stats update (admin - requires authentication)
+  route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction').middleware('auth')
 
   // User profile
   route.get('/profile/{walletAddress}', 'Actions/Marketplace/ProfileAction')
@@ -162,22 +162,22 @@ route.group({ prefix: '/token', middleware: 'auth' }, () => {
   route.get('/{mintAddress}', 'Actions/Token/GetTokenInfoAction')
 })
 
-// Quick Mint
-route.post('/mint/quick', 'Actions/Mint/QuickMintAction')
+// Quick Mint (requires authentication)
+route.post('/mint/quick', 'Actions/Mint/QuickMintAction').middleware('auth')
 
-// NFT metadata update and bulk create
-route.post('/nfts/update', 'Actions/Nft/UpdateNftMetadataAction')
-route.post('/nfts/bulk-create', 'Actions/Nft/BulkCreateNftsAction')
+// NFT metadata update and bulk create (requires authentication)
+route.post('/nfts/update', 'Actions/Nft/UpdateNftMetadataAction').middleware('auth')
+route.post('/nfts/bulk-create', 'Actions/Nft/BulkCreateNftsAction').middleware('auth')
 
-// Wallet authentication
+// Wallet authentication (public - no auth needed)
 route.post('/auth/wallet/challenge', 'Actions/Auth/WalletChallengeAction')
 route.post('/auth/wallet/verify', 'Actions/Auth/WalletVerifyAction')
 
-// Admin fee stats
-route.get('/admin/fees', 'Actions/Admin/PlatformFeeStatsAction')
+// Admin fee stats (requires authentication)
+route.get('/admin/fees', 'Actions/Admin/PlatformFeeStatsAction').middleware('auth')
 
-// Multisig routes
-route.group({ prefix: '/multisig' }, () => {
+// Multisig routes (requires authentication)
+route.group({ prefix: '/multisig', middleware: 'auth' }, () => {
   route.post('/', 'Actions/Multisig/CreateMultisigAction')
   route.get('/', 'Actions/Multisig/ListMultisigAction')
   route.get('/{id}', 'Actions/Multisig/GetMultisigAction')

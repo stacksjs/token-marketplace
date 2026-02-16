@@ -18,7 +18,8 @@ export default new Action({
     let query = db.selectFrom('collections').selectAll()
 
     if (search) {
-      query = query.where('name', 'like', `%${search}%`)
+      const escaped = search.replace(/[%_\\]/g, '\\$&')
+      query = query.where('name', 'like', `%${escaped}%`)
     }
 
     switch (sort) {
