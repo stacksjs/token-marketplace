@@ -119,19 +119,21 @@ async function handleBuy(nftId: number | undefined, signature: string, metadata?
 
   const previousOwner = nft.owner_wallet_address
 
-  await db
-    .updateTable('nfts')
-    .set({
-      owner_wallet_address: buyerWalletAddress,
-      is_for_sale: 0,
-      listing_id: null,
-      delegate_address: null,
-      listed_at: null,
-      listing_price: null,
-      updated_at: new Date().toISOString(),
-    })
-    .where('id', '=', Number(nftId))
-    .execute()
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable('nfts')
+      .set({
+        owner_wallet_address: buyerWalletAddress,
+        is_for_sale: 0,
+        listing_id: null,
+        delegate_address: null,
+        listed_at: null,
+        listing_price: null,
+        updated_at: new Date().toISOString(),
+      })
+      .where('id', '=', Number(nftId))
+      .execute()
+  })
 
   await recordPlatformFee('buy', signature, nftId, nft.mint_address, metadata)
 
@@ -230,70 +232,73 @@ async function handleMint(signature: string, metadata?: Record<string, any>) {
     return response.json({ error: 'metadata.mintTransactionId is required for mint action' }, 400)
   }
 
-  // Update mint transaction to confirmed
-  await db
-    .updateTable('mint_transactions')
-    .set({
-      status: 'confirmed',
-      mint_address: mintAddress || null,
-      transaction_signature: signature,
-      updated_at: new Date().toISOString(),
-    })
-    .where('uuid', '=', mintTransactionId)
-    .execute()
+  // Atomically confirm mint and update candy machine state
+  await db.transaction().execute(async (trx) => {
+    // Update mint transaction to confirmed
+    await trx
+      .updateTable('mint_transactions')
+      .set({
+        status: 'confirmed',
+        mint_address: mintAddress || null,
+        transaction_signature: signature,
+        updated_at: new Date().toISOString(),
+      })
+      .where('uuid', '=', mintTransactionId)
+      .execute()
 
-  // Get the mint transaction to update candy machine
-  const mintTx = await db
-    .selectFrom('mint_transactions')
-    .selectAll()
-    .where('uuid', '=', mintTransactionId)
-    .executeTakeFirst()
-
-  if (mintTx?.candy_machine_id) {
-    const candyMachine = await db
-      .selectFrom('candy_machines')
+    // Get the mint transaction to update candy machine
+    const mintTx = await trx
+      .selectFrom('mint_transactions')
       .selectAll()
-      .where('id', '=', mintTx.candy_machine_id)
+      .where('uuid', '=', mintTransactionId)
       .executeTakeFirst()
 
-    if (candyMachine) {
-      const newRedeemed = (candyMachine.items_redeemed || 0) + 1
-      const itemsRemaining = (candyMachine.items_available || 0) - newRedeemed
+    if (mintTx?.candy_machine_id) {
+      const candyMachine = await trx
+        .selectFrom('candy_machines')
+        .selectAll()
+        .where('id', '=', mintTx.candy_machine_id)
+        .executeTakeFirst()
 
-      await db
-        .updateTable('candy_machines')
-        .set({
-          items_redeemed: newRedeemed,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', candyMachine.id)
-        .execute()
+      if (candyMachine) {
+        const newRedeemed = (candyMachine.items_redeemed || 0) + 1
+        const itemsRemaining = (candyMachine.items_available || 0) - newRedeemed
 
-      // Check if sold out
-      if (itemsRemaining <= 0) {
-        await db
+        await trx
           .updateTable('candy_machines')
           .set({
-            status: 'sold_out',
-            message: 'All items have been minted',
-            status_changed_at: new Date().toISOString(),
+            items_redeemed: newRedeemed,
+            updated_at: new Date().toISOString(),
           })
           .where('id', '=', candyMachine.id)
           .execute()
 
-        if (candyMachine.collection_id) {
-          await db
-            .updateTable('collections')
+        // Check if sold out
+        if (itemsRemaining <= 0) {
+          await trx
+            .updateTable('candy_machines')
             .set({
-              is_minting: 0,
-              updated_at: new Date().toISOString(),
+              status: 'sold_out',
+              message: 'All items have been minted',
+              status_changed_at: new Date().toISOString(),
             })
-            .where('id', '=', candyMachine.collection_id)
+            .where('id', '=', candyMachine.id)
             .execute()
+
+          if (candyMachine.collection_id) {
+            await trx
+              .updateTable('collections')
+              .set({
+                is_minting: 0,
+                updated_at: new Date().toISOString(),
+              })
+              .where('id', '=', candyMachine.collection_id)
+              .execute()
+          }
         }
       }
     }
-  }
+  })
 
   return response.json({
     success: true,
@@ -322,34 +327,36 @@ async function handleAcceptOffer(nftId: number | undefined, signature: string, m
     return response.notFound({ error: 'Offer not found' })
   }
 
-  // Update offer status
-  await db
-    .updateTable('offers')
-    .set({
-      status: 'accepted',
-      transaction_signature: signature,
-      updated_at: new Date().toISOString(),
-    })
-    .where('id', '=', offer.id)
-    .execute()
-
-  // Transfer NFT ownership
   const targetNftId = nftId || offer.nft_id
-  if (targetNftId) {
-    await db
-      .updateTable('nfts')
+
+  // Atomically update offer status and transfer NFT ownership
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable('offers')
       .set({
-        owner_wallet_address: offer.buyer_wallet_address,
-        is_for_sale: 0,
-        listing_id: null,
-        delegate_address: null,
-        listed_at: null,
-        listing_price: null,
+        status: 'accepted',
+        transaction_signature: signature,
         updated_at: new Date().toISOString(),
       })
-      .where('id', '=', Number(targetNftId))
+      .where('id', '=', offer.id)
       .execute()
-  }
+
+    if (targetNftId) {
+      await trx
+        .updateTable('nfts')
+        .set({
+          owner_wallet_address: offer.buyer_wallet_address,
+          is_for_sale: 0,
+          listing_id: null,
+          delegate_address: null,
+          listed_at: null,
+          listing_price: null,
+          updated_at: new Date().toISOString(),
+        })
+        .where('id', '=', Number(targetNftId))
+        .execute()
+    }
+  })
 
   await recordPlatformFee('accept_offer', signature, Number(targetNftId), offer.mint_address, { ...metadata, saleAmount: offer.amount })
 
@@ -426,22 +433,24 @@ async function handleSettleEscrow(nftId: number | undefined, signature: string, 
     return response.json({ error: 'metadata.buyerWalletAddress is required for settle_escrow action' }, 400)
   }
 
-  await db
-    .updateTable('nfts')
-    .set({
-      owner_wallet_address: buyerWalletAddress,
-      escrow_status: 'settled',
-      escrow_id: null,
-      escrow_price: null,
-      is_for_sale: 0,
-      listing_id: null,
-      delegate_address: null,
-      listed_at: null,
-      listing_price: null,
-      updated_at: new Date().toISOString(),
-    })
-    .where('id', '=', Number(nftId))
-    .execute()
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable('nfts')
+      .set({
+        owner_wallet_address: buyerWalletAddress,
+        escrow_status: 'settled',
+        escrow_id: null,
+        escrow_price: null,
+        is_for_sale: 0,
+        listing_id: null,
+        delegate_address: null,
+        listed_at: null,
+        listing_price: null,
+        updated_at: new Date().toISOString(),
+      })
+      .where('id', '=', Number(nftId))
+      .execute()
+  })
 
   await recordPlatformFee('settle_escrow', signature, nftId, undefined, metadata)
 
@@ -483,20 +492,22 @@ async function handleQuickMint(signature: string, metadata?: Record<string, any>
   const ownerWallet = metadata?.ownerWalletAddress
   const collectionId = metadata?.collectionId
 
-  await db
-    .insertInto('nfts')
-    .values({
-      name,
-      mint_address: mintAddress || null,
-      owner_wallet_address: ownerWallet || null,
-      collection_id: collectionId ? Number(collectionId) : null,
-      metadata_url: metadata?.uri || null,
-      is_for_sale: 0,
-      is_minting: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    } as any)
-    .execute()
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .insertInto('nfts')
+      .values({
+        name,
+        mint_address: mintAddress || null,
+        owner_wallet_address: ownerWallet || null,
+        collection_id: collectionId ? Number(collectionId) : null,
+        metadata_url: metadata?.uri || null,
+        is_for_sale: 0,
+        is_minting: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .execute()
+  })
 
   // Record platform fee if applicable
   await recordPlatformFee('quick_mint', signature, undefined, mintAddress, metadata)

@@ -114,9 +114,10 @@ export default new Action({
           }, 400)
         }
 
-        // Apply discount
-        if (presale.discount) {
-          mintPrice = Math.floor(mintPrice * (1 - (presale.discount / 10000)))
+        // Apply discount (discount is in basis points: 500 = 5%, 10000 = 100%)
+        const BASIS_POINTS_MAX = 10000
+        if (presale.discount && presale.discount > 0 && presale.discount <= BASIS_POINTS_MAX) {
+          mintPrice = Math.floor(mintPrice * (1 - (presale.discount / BASIS_POINTS_MAX)))
         }
       }
     }

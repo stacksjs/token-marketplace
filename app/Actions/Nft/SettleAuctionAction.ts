@@ -31,10 +31,22 @@ export default new Action({
       return response.notFound({ error: 'Auction not found' })
     }
 
-    if (auction.status !== 'active' && auction.status !== 'ended') {
+    // Auctions can be settled when 'ended' (time expired) or 'active' (seller ends early)
+    const settlableStatuses = ['active', 'ended']
+    if (!settlableStatuses.includes(auction.status as string)) {
       return response.json({
-        error: `Cannot settle auction with status: ${auction.status}`,
+        error: `Cannot settle auction with status: ${auction.status}. Must be 'active' or 'ended'.`,
       }, 400)
+    }
+
+    // If auction has an end time and it hasn't passed, only allow if status is already 'ended'
+    if (auction.status === 'active' && (auction as any).ends_at) {
+      const endsAt = new Date((auction as any).ends_at)
+      if (endsAt > new Date()) {
+        return response.json({
+          error: 'Auction is still active and has not reached its end time',
+        }, 400)
+      }
     }
 
     if (!auction.highest_bidder_wallet) {
@@ -47,40 +59,43 @@ export default new Action({
       const tokenService = getTokenService()
       const result = await tokenService.settleAuction(auctionId)
 
-      // Update auction
-      await db
-        .updateTable('auctions')
-        .set({
-          status: 'settled',
-          settlement_signature: result.signature,
-          updated_at: new Date().toISOString(),
-        })
-        .where('id', '=', auction.id)
-        .execute()
-
-      // Transfer NFT ownership in database
-      if (auction.nft_id) {
-        await db
-          .updateTable('nfts')
+      // Atomically update auction, transfer NFT, and mark winning bid
+      await db.transaction().execute(async (trx) => {
+        // Update auction
+        await trx
+          .updateTable('auctions')
           .set({
-            owner_wallet_address: auction.highest_bidder_wallet,
-            is_for_sale: 0,
+            status: 'settled',
+            settlement_signature: result.signature,
             updated_at: new Date().toISOString(),
           })
-          .where('id', '=', Number(auction.nft_id))
+          .where('id', '=', auction.id)
           .execute()
-      }
 
-      // Update winning bid status
-      await db
-        .updateTable('bids')
-        .set({
-          status: 'won',
-        })
-        .where('auction_id', '=', auction.id)
-        .where('bidder_wallet_address', '=', auction.highest_bidder_wallet)
-        .where('amount', '=', auction.current_bid)
-        .execute()
+        // Transfer NFT ownership in database
+        if (auction.nft_id) {
+          await trx
+            .updateTable('nfts')
+            .set({
+              owner_wallet_address: auction.highest_bidder_wallet,
+              is_for_sale: 0,
+              updated_at: new Date().toISOString(),
+            })
+            .where('id', '=', Number(auction.nft_id))
+            .execute()
+        }
+
+        // Update winning bid status
+        await trx
+          .updateTable('bids')
+          .set({
+            status: 'won',
+          })
+          .where('auction_id', '=', auction.id)
+          .where('bidder_wallet_address', '=', auction.highest_bidder_wallet)
+          .where('amount', '=', auction.current_bid)
+          .execute()
+      })
 
       return response.json({
         success: true,

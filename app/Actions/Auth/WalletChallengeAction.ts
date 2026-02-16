@@ -47,6 +47,16 @@ export default new Action({
     const message = `Sign this message to verify your wallet ownership for Naked NFTs: ${nonce}`
 
     try {
+      // Periodically clean up expired nonces (non-blocking, ~1% of requests)
+      if (Math.random() < 0.01) {
+        db.updateTable('users')
+          .set({ nonce: null, nonce_expires_at: null } as any)
+          .where('nonce_expires_at' as any, '<', new Date().toISOString())
+          .where('nonce' as any, 'is not', null)
+          .execute()
+          .catch(() => {}) // fire-and-forget
+      }
+
       const existingUser = await db
         .selectFrom('users')
         .selectAll()

@@ -77,7 +77,7 @@ export default new Action({
         await trx
           .insertInto('bids')
           .values({
-            uuid: `bid_${Date.now().toString(36)}`,
+            uuid: crypto.randomUUID(),
             auction_id: currentAuction.id,
             bidder_wallet_address: bidderWalletAddress,
             amount: Number(amountLamports),
