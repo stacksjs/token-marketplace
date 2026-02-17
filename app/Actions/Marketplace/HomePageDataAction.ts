@@ -25,31 +25,16 @@ export default new Action({
       .execute()
 
     // Use COUNT queries for stats instead of loading all NFTs
-    const totalNftsResult = await db
-      .selectFrom('nfts')
-      .select([db.fn.count('id').as('count')])
-      .executeTakeFirst()
-    const totalNfts = Number(totalNftsResult?.count || 0)
+    const totalNfts = await db.selectFrom('nfts').count()
+    const totalForSale = await db.selectFrom('nfts').where('is_for_sale', '=', 1).count()
 
-    const forSaleCountResult = await db
-      .selectFrom('nfts')
-      .select([db.fn.count('id').as('count')])
-      .where('is_for_sale', '=', 1)
-      .executeTakeFirst()
-    const totalForSale = Number(forSaleCountResult?.count || 0)
-
-    // Get NFT counts per collection in one query
-    const nftCounts = await db
-      .selectFrom('nfts')
-      .select(['collection_id', db.fn.count('id').as('count')])
-      .groupBy('collection_id')
-      .execute()
-
+    // Get NFT counts per collection
+    const nftRows = await db.selectFrom('nfts').select(['collection_id']).execute()
     const nftCountMap: Record<string, number> = {}
-    for (const row of nftCounts) {
+    for (const row of nftRows) {
       if (row.collection_id != null) {
         const key = String(Math.round(Number(row.collection_id)))
-        nftCountMap[key] = Number(row.count)
+        nftCountMap[key] = (nftCountMap[key] || 0) + 1
       }
     }
 
@@ -98,7 +83,7 @@ export default new Action({
         .selectFrom('nfts')
         .selectAll()
         .where('is_for_sale', '!=', 1)
-        .where('collection_id', 'in', mintingIds)
+        .where(['collection_id', 'in', mintingIds])
         .limit(6 - forSaleNfts.length)
         .execute()
       availableNftsRaw = [...forSaleNfts, ...mintingNfts]

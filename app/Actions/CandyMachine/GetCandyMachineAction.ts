@@ -41,14 +41,11 @@ export default new Action({
     }
 
     // Get mint transaction stats
-    const mintStats = await db
+    const totalMints = await db
       .selectFrom('mint_transactions')
-      .select([
-        db.fn.count('id').as('totalMints'),
-      ])
       .where('candy_machine_id', '=', Number(candyMachineId))
       .where('status', '=', 'confirmed')
-      .executeTakeFirst()
+      .count()
 
     // Get recent mint transactions
     const recentMints = await db
@@ -76,7 +73,7 @@ export default new Action({
       candyMachine: toCamelCase(candyMachine),
       collection: collection ? toCamelCase(collection) : null,
       stats: {
-        totalMints: Number(mintStats?.totalMints || 0),
+        totalMints,
         itemsRemaining: (candyMachine.items_available || 0) - (candyMachine.items_redeemed || 0),
         percentMinted: candyMachine.items_available
           ? Math.round(((candyMachine.items_redeemed || 0) / candyMachine.items_available) * 100)

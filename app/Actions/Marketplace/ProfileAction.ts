@@ -55,7 +55,7 @@ export default new Action({
         receivedOffers = await db
           .selectFrom('offers')
           .selectAll()
-          .where('nft_id', 'in', ownedIds)
+          .where(['nft_id', 'in', ownedIds])
           .where('status', '=', 'pending')
           .orderBy('created_at', 'desc')
           .execute()

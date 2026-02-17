@@ -118,15 +118,14 @@ export default new Action({
           .execute()
       } else {
         // Check if there are other active presales for this collection
-        const otherActivePresales = await db
+        const otherActiveCount = await db
           .selectFrom('presales')
-          .select([db.fn.count('id').as('count')])
           .where('collection_id', '=', presale.collection_id)
           .where('id', '!=', presale.id)
           .where('is_active', '=', 1)
-          .executeTakeFirst()
+          .count()
 
-        if (Number(otherActivePresales?.count || 0) === 0) {
+        if (otherActiveCount === 0) {
           await db
             .updateTable('collections')
             .set({

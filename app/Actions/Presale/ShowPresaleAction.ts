@@ -75,12 +75,11 @@ export default new Action({
     }
 
     // Count mints used
-    const mintStats = await db
+    const totalMints = await db
       .selectFrom('mint_transactions')
-      .select([db.fn.count('id').as('totalMints')])
       .where('presale_id', '=', presale.id)
-      .where('status', 'in', ['pending', 'processing', 'confirmed'])
-      .executeTakeFirst()
+      .where(['status', 'in', ['pending', 'processing', 'confirmed']])
+      .count()
 
     const presaleData = toCamelCase(presale)
 
@@ -99,7 +98,7 @@ export default new Action({
       },
       collection: collection ? toCamelCase(collection) : null,
       stats: {
-        totalMints: Number(mintStats?.totalMints || 0),
+        totalMints,
         itemsAvailable: candyMachine?.items_available || 0,
         itemsRemaining: candyMachine
           ? (candyMachine.items_available || 0) - (candyMachine.items_redeemed || 0)

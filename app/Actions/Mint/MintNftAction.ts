@@ -97,15 +97,12 @@ export default new Action({
         }
 
         // Check max mints per wallet
-        const existingMints = await db
+        const mintCount = await db
           .selectFrom('mint_transactions')
-          .select([db.fn.count('id').as('count')])
           .where('presale_id', '=', Number(presaleId))
           .where('wallet_address', '=', walletAddress)
-          .where('status', 'in', ['pending', 'processing', 'confirmed'])
-          .executeTakeFirst()
-
-        const mintCount = Number(existingMints?.count || 0)
+          .where(['status', 'in', ['pending', 'processing', 'confirmed']])
+          .count()
         const maxMints = presale.max_mints_per_wallet || 1
 
         if (mintCount >= maxMints) {

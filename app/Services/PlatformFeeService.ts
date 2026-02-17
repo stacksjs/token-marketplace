@@ -51,17 +51,12 @@ export class PlatformFeeService {
   }
 
   static async getTotalFees(): Promise<{ totalFees: number; totalTransactions: number }> {
-    const result = await db
-      .selectFrom('platform_fees' as any)
-      .select([
-        db.fn.sum('fee_amount').as('total_fees'),
-        db.fn.count('id').as('total_transactions'),
-      ])
-      .executeTakeFirst()
+    const totalFees = await db.selectFrom('platform_fees' as any).sum('fee_amount') || 0
+    const totalTransactions = await db.selectFrom('platform_fees' as any).count() || 0
 
     return {
-      totalFees: Number((result as any)?.total_fees || 0),
-      totalTransactions: Number((result as any)?.total_transactions || 0),
+      totalFees: Number(totalFees),
+      totalTransactions: Number(totalTransactions),
     }
   }
 
