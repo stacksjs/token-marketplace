@@ -80,8 +80,9 @@ export default new Action({
       return true
     })
 
-    // Calculate minting stats
-    const itemsAvailable = candyMachine?.items_available || collection.total_amount_of_nfts || 0
+    // Calculate minting stats — use actual NFT count as the source of truth
+    const actualNftCount = await db.selectFrom('nfts').where('collection_id', '=', collection.id).count()
+    const itemsAvailable = actualNftCount || collection.total_amount_of_nfts || candyMachine?.items_available || 0
     const itemsRedeemed = candyMachine?.items_redeemed || 0
     const itemsRemaining = itemsAvailable - itemsRedeemed
     const percentMinted = itemsAvailable > 0 ? Math.round((itemsRedeemed / itemsAvailable) * 100) : 0

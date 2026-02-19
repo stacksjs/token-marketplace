@@ -69,14 +69,21 @@ export default new Action({
       }
     }
 
+    // Use actual NFT count as source of truth for items available
+    const actualNftCount = candyMachine.collection_id
+      ? await db.selectFrom('nfts').where('collection_id', '=', candyMachine.collection_id).count()
+      : 0
+    const itemsAvailable = actualNftCount || candyMachine.items_available || 0
+    const itemsRedeemed = candyMachine.items_redeemed || 0
+
     return response.json({
       candyMachine: toCamelCase(candyMachine),
       collection: collection ? toCamelCase(collection) : null,
       stats: {
         totalMints,
-        itemsRemaining: (candyMachine.items_available || 0) - (candyMachine.items_redeemed || 0),
-        percentMinted: candyMachine.items_available
-          ? Math.round(((candyMachine.items_redeemed || 0) / candyMachine.items_available) * 100)
+        itemsRemaining: itemsAvailable - itemsRedeemed,
+        percentMinted: itemsAvailable > 0
+          ? Math.round((itemsRedeemed / itemsAvailable) * 100)
           : 0,
       },
       recentMints: recentMints.map(toCamelCase),
