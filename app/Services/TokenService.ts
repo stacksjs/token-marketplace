@@ -1101,7 +1101,13 @@ export class TokenService {
   async getBalance(walletAddress: string) {
     if (this.mockMode) {
       await mockDelay(200)
-      const lamports = Math.floor(Math.random() * 10 * 1_000_000_000)
+      // Derive a deterministic balance from the wallet address so the same
+      // wallet always returns the same mock balance across all API calls
+      let hash = 0
+      for (let i = 0; i < walletAddress.length; i++) {
+        hash = ((hash << 5) - hash + walletAddress.charCodeAt(i)) | 0
+      }
+      const lamports = Math.abs(hash % 10_000_000_000) + 500_000_000 // 0.5–10.5 SOL
       return {
         sol: lamports / 1_000_000_000,
         lamports,
