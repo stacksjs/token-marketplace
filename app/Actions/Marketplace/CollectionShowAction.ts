@@ -54,28 +54,43 @@ export default new Action({
       nfts = nfts.filter((n: any) => n.is_for_sale === 1 || n.is_for_sale === true)
     }
     if (minPrice !== null) {
-      nfts = nfts.filter((n: any) => n.listing_price && Number(n.listing_price) >= minPrice * 1e9)
+      nfts = nfts.filter((n: any) => {
+        const p = n.listing_price ? Number(n.listing_price) / 1e9 : Number(n.price || 0)
+        return p >= minPrice
+      })
     }
     if (maxPrice !== null) {
-      nfts = nfts.filter((n: any) => n.listing_price && Number(n.listing_price) <= maxPrice * 1e9)
+      nfts = nfts.filter((n: any) => {
+        const p = n.listing_price ? Number(n.listing_price) / 1e9 : Number(n.price || 0)
+        return p > 0 && p <= maxPrice
+      })
     }
     if (rarity) {
       nfts = nfts.filter((n: any) => (n.rarity || '').toLowerCase() === rarity.toLowerCase())
     }
 
+    // Helper: get price in SOL for sorting
+    function getNftPrice(n: any): number {
+      if (n.listing_price) return Number(n.listing_price) / 1e9
+      return Number(n.price || 0)
+    }
+
     // Sort
     switch (sort) {
       case 'price_asc':
-        nfts.sort((a: any, b: any) => (Number(a.listing_price) || 0) - (Number(b.listing_price) || 0))
+        nfts.sort((a: any, b: any) => getNftPrice(a) - getNftPrice(b))
         break
       case 'price_desc':
-        nfts.sort((a: any, b: any) => (Number(b.listing_price) || 0) - (Number(a.listing_price) || 0))
+        nfts.sort((a: any, b: any) => getNftPrice(b) - getNftPrice(a))
         break
       case 'rarity': {
         const rarityOrder = ['Legendary', 'Epic', 'Rare', 'Uncommon', 'Common']
         nfts.sort((a: any, b: any) => rarityOrder.indexOf(a.rarity || 'Common') - rarityOrder.indexOf(b.rarity || 'Common'))
         break
       }
+      case 'name':
+        nfts.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+        break
       case 'recent':
       default:
         nfts.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
