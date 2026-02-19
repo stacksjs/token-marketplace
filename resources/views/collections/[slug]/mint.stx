@@ -154,11 +154,11 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
             <!-- Progress Bar -->
             <div class="mb-8">
               <div class="flex justify-between text-sm text-gray-5 mb-2">
-                <span>{{ mintData.stats.itemsRedeemed }} / {{ mintData.stats.itemsAvailable }} minted</span>
-                <span>{{ mintData.stats.percentMinted }}%</span>
+                <span class="mint-progress-text">{{ mintData.stats.itemsRedeemed }} / {{ mintData.stats.itemsAvailable }} minted</span>
+                <span class="mint-progress-pct">{{ mintData.stats.percentMinted }}%</span>
               </div>
               <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div class="progress-bar h-full bg-gradient-to-r from-pink-8 to-purple-600 rounded-full" style="width: {{ mintData.stats.percentMinted }}%"></div>
+                <div class="mint-progress-bar h-full bg-gradient-to-r from-pink-8 to-purple-600 rounded-full" style="width: {{ mintData.stats.percentMinted }}%"></div>
               </div>
             </div>
 
@@ -197,6 +197,8 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
               data-presale-id="{{ mintData.activePresales?.[0]?.id || '' }}"
               data-can-mint="{{ mintData.canMint ? 'true' : 'false' }}"
               data-mint-status="{{ mintData.mintStatus }}"
+              data-items-redeemed="{{ mintData.stats.itemsRedeemed }}"
+              data-items-available="{{ mintData.stats.itemsAvailable }}"
             >
               <!-- Not Connected State -->
               <div>
@@ -272,7 +274,7 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
             <div class="mt-8 pt-6 border-t border-gray-200">
               <div class="flex items-center justify-between text-sm text-gray-5">
                 <span>Items remaining</span>
-                <span class="text-gray-8 font-semibold">{{ mintData.stats.itemsRemaining }}</span>
+                <span class="mint-items-remaining text-gray-8 font-semibold">{{ mintData.stats.itemsRemaining }}</span>
               </div>
               @if(mintData.candyMachine)
                 <div class="flex items-center justify-between text-sm text-gray-5 mt-2">
@@ -335,6 +337,8 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
         var presaleId = _configEl && _configEl.dataset.presaleId ? Number(_configEl.dataset.presaleId) : null
         var canMintFlag = _configEl ? _configEl.dataset.canMint === 'true' : false
         var mintStatusVal = _configEl ? (_configEl.dataset.mintStatus || '') : ''
+        var itemsRedeemed = _configEl ? Number(_configEl.dataset.itemsRedeemed) || 0 : 0
+        var itemsAvailable = _configEl ? Number(_configEl.dataset.itemsAvailable) || 0 : 0
 
         // State
         var mintQty = 1
@@ -383,6 +387,30 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
             totalEl: totalRow ? totalRow.children[1] : null,
             mintBtn: mintBtn,
             explorerLink: explorerLink
+          }
+        }
+
+        function updateMintProgress() {
+          var pct = itemsAvailable > 0 ? Math.round((itemsRedeemed / itemsAvailable) * 100) : 0
+          var remaining = Math.max(0, itemsAvailable - itemsRedeemed)
+          var textEl = _configEl ? _configEl.parentNode.getElementsByClassName('mint-progress-text')[0] : null
+          var pctEl = _configEl ? _configEl.parentNode.getElementsByClassName('mint-progress-pct')[0] : null
+          var barEl = _configEl ? _configEl.parentNode.getElementsByClassName('mint-progress-bar')[0] : null
+          var remEl = _configEl ? _configEl.parentNode.getElementsByClassName('mint-items-remaining')[0] : null
+          if (textEl) textEl.textContent = itemsRedeemed + ' / ' + itemsAvailable + ' minted'
+          if (pctEl) pctEl.textContent = pct + '%'
+          if (barEl) barEl.style.width = pct + '%'
+          if (remEl) remEl.textContent = remaining
+        }
+
+        function updateBalance(costSol) {
+          if (walletBalance !== null) {
+            walletBalance = Math.max(0, walletBalance - costSol)
+            var els = getMintEls()
+            if (els.balEl) els.balEl.textContent = walletBalance.toFixed(4) + ' SOL'
+            // Also update header balance
+            var headerBal = _configEl ? _configEl.ownerDocument.getElementsByClassName('wallet-balance')[0] : null
+            if (headerBal) headerBal.textContent = walletBalance.toFixed(2) + ' SOL'
           }
         }
 
@@ -522,6 +550,12 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
                 els.explorerLink.href = 'https://explorer.solana.com/address/' + mintAddr + '?cluster=devnet'
                 els.explorerLink.textContent = mintAddr.slice(0, 8) + '...' + mintAddr.slice(-8)
               }
+              // Update balance and progress after successful mint
+              var totalCostSol = mintPriceSol * mintQty
+              updateBalance(totalCostSol)
+              itemsRedeemed += mintQty
+              updateMintProgress()
+              updateMintBtn()
               showMintState(2)
               if (window.Toast) Toast.success('NFT minted successfully!')
             } else {
@@ -543,6 +577,9 @@ const pageTitle = `Mint ${mintData?.collection?.name || 'NFT'} | Naked NFTs`
           if (els.qtyEl) els.qtyEl.textContent = '1'
           updateTotal()
           showMintState(1)
+          // Use existing client-side balance (already deducted after mint)
+          // rather than re-fetching from API which would overwrite it
+          updateMintBtn()
         }
 
         // Initialize
