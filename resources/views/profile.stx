@@ -192,15 +192,37 @@ const pageTitle = 'My Profile | Naked NFTs'
           if (profileData.sentOffers && profileData.sentOffers.length > 0) {
             html += '<h3 class="text-lg font-semibold text-gray-8 mb-3">Sent Offers</h3><div class="space-y-2 mb-8">'
             profileData.sentOffers.forEach(function(o) {
-              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL &middot; ' + o.status + '</p></div></div>'
+              var sol = (Number(o.amount) / 1e9).toFixed(4)
+              var nftName = o.nft_name || ('NFT #' + o.nft_id)
+              var imgSrc = o.nft_image_url || '/assets/images/anonymouse.png'
+              var statusClass = o.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : o.status === 'rejected' || o.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+              var badge = '<span class="text-xs font-medium px-2 py-1 rounded-full ' + statusClass + '">' + o.status + '</span>'
+              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm">'
+                + '<div class="flex items-center space-x-3">'
+                + '<img src="' + imgSrc + '" alt="' + nftName + '" class="h-10 w-10 rounded-lg object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
+                + '<div><p class="font-medium text-gray-8">' + nftName + '</p><p class="text-sm text-gray-5">' + sol + ' SOL</p></div>'
+                + '</div>'
+                + badge
+                + '</div>'
             })
             html += '</div>'
           }
           if (profileData.receivedOffers && profileData.receivedOffers.length > 0) {
             html += '<h3 class="text-lg font-semibold text-gray-8 mb-3">Received Offers</h3><div class="space-y-2">'
             profileData.receivedOffers.forEach(function(o) {
-              var addr = o.bidder_address || ''
-              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm"><div><p class="font-medium text-gray-8">NFT #' + o.nft_id + '</p><p class="text-sm text-gray-5">' + Number(o.amount).toFixed(4) + ' SOL from ' + addr.slice(0,4) + '...' + addr.slice(-4) + '</p></div><button onclick="profileAcceptOffer(\'' + o.uuid + '\', this)" class="bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 px-4 rounded transition">Accept</button></div>'
+              var addr = o.buyer_wallet_address || ''
+              var sol = (Number(o.amount) / 1e9).toFixed(4)
+              var nftName = o.nft_name || ('NFT #' + o.nft_id)
+              var imgSrc = o.nft_image_url || '/assets/images/anonymouse.png'
+              var statusClass = o.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : o.status === 'rejected' || o.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+              var badge = '<span class="text-xs font-medium px-2 py-1 rounded-full ' + statusClass + '">' + o.status + '</span>'
+              html += '<div class="bg-white rounded-lg p-4 flex items-center justify-between shadow-sm">'
+                + '<div class="flex items-center space-x-3">'
+                + '<img src="' + imgSrc + '" alt="' + nftName + '" class="h-10 w-10 rounded-lg object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
+                + '<div><p class="font-medium text-gray-8">' + nftName + '</p><p class="text-sm text-gray-5">' + sol + ' SOL from ' + addr.slice(0,4) + '...' + addr.slice(-4) + '</p></div>'
+                + '</div>'
+                + '<div class="flex items-center space-x-2">' + badge + '<button onclick="profileAcceptOffer(\'' + o.uuid + '\', this)" class="bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 px-4 rounded transition">Accept</button></div>'
+                + '</div>'
             })
             html += '</div>'
           }
