@@ -1,5 +1,21 @@
 import { db } from '@stacksjs/database'
 
+// Generate a deterministic mock Solana-style address from a seed string
+function mockAddress(seed: string): string {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  }
+  const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  let addr = ''
+  let n = Math.abs(hash)
+  for (let i = 0; i < 44; i++) {
+    addr += chars[(n + i * 7) % chars.length]
+    n = ((n << 3) + i) | 0
+  }
+  return addr
+}
+
 export async function seed() {
   // Insert collections
   await db.insertInto('collections')
@@ -66,6 +82,8 @@ export async function seed() {
         collection_id: azuki?.id,
         name: 'Azuki #1234',
         token_id: '1234',
+        mint_address: mockAddress('azuki-1234'),
+        owner_wallet_address: mockAddress('owner-azuki-1234'),
         description: 'Azuki starts with a collection of 10,000 avatars.',
         image_url: 'https://i.seadn.io/gae/H8jOCJuQokNqGBpkBN5wk1oZwO7LM8bNnrHCaekV2nKjnCqw6UB5oaH8XyNeBDj6bA_n1mjejzhFQUP3O1NfjFLHr3FOaeHcTOOT?auto=format&w=384',
         price: 12.5,
@@ -78,6 +96,8 @@ export async function seed() {
         collection_id: azuki?.id,
         name: 'Azuki #5678',
         token_id: '5678',
+        mint_address: mockAddress('azuki-5678'),
+        owner_wallet_address: mockAddress('owner-azuki-5678'),
         description: 'Azuki starts with a collection of 10,000 avatars.',
         image_url: 'https://i.seadn.io/gcs/files/9a1a2c6d9a1a2c6d9a1a2c6d9a1a2c6d.png?auto=format&w=384',
         price: 8.2,
@@ -91,6 +111,8 @@ export async function seed() {
         collection_id: doodles?.id,
         name: 'Doodle #2345',
         token_id: '2345',
+        mint_address: mockAddress('doodles-2345'),
+        owner_wallet_address: mockAddress('owner-doodles-2345'),
         description: 'A hand-drawn Doodle.',
         image_url: 'https://i.seadn.io/gae/7B0qai02OdHA8P_EOVK672qUliyjQdQDGNrACxs7WnTgZAkJa_wWURnIFKeOh5VTf8cfTqW3wQpozGedaC9mteKphEOtztls02RlWQ?auto=format&w=384',
         price: 5.8,
@@ -104,6 +126,8 @@ export async function seed() {
         collection_id: bayc?.id,
         name: 'Bored Ape #9999',
         token_id: '9999',
+        mint_address: mockAddress('bayc-9999'),
+        owner_wallet_address: mockAddress('owner-bayc-9999'),
         description: 'A bored ape.',
         image_url: 'https://i.seadn.io/gae/Ju9CkWtV-1Okvf45wo8UctR-M9He2PjILP0oOvxE89AyiPPGtrR3gysu1Zgy0hjd2xKIgjJJtWIc0ybj4Vd7wv8t3pxDGHoJBzDB?auto=format&w=384',
         price: 85.0,
@@ -117,6 +141,8 @@ export async function seed() {
         collection_id: pudgy?.id,
         name: 'Pudgy #1111',
         token_id: '1111',
+        mint_address: mockAddress('pudgy-1111'),
+        owner_wallet_address: mockAddress('owner-pudgy-1111'),
         description: 'A pudgy penguin.',
         image_url: 'https://i.seadn.io/gae/yNi-XdGxsgQCPpqSio4G31ygAV6wURdIdInWRcFIl46UjUQ1eV7BEndGe8L661OoG-clRi7EgInLX4LPu9Jfw4fq0bnVYHqg7RFi?auto=format&w=384',
         price: 0.1,
@@ -130,6 +156,8 @@ export async function seed() {
         collection_id: pudgy?.id,
         name: 'Pudgy #2222',
         token_id: '2222',
+        mint_address: mockAddress('pudgy-2222'),
+        owner_wallet_address: mockAddress('owner-pudgy-2222'),
         description: 'A pudgy penguin.',
         image_url: 'https://i.seadn.io/gcs/files/pudgy2222.png?auto=format&w=384',
         price: 0.1,
@@ -141,6 +169,23 @@ export async function seed() {
       }
     ])
     .execute()
+
+  // Backfill: ensure all NFTs have a mint_address (for mock mode)
+  const nftsWithoutMint = await db.selectFrom('nfts').selectAll().whereNull('mint_address').execute()
+  for (const nft of nftsWithoutMint) {
+    const seed = `nft-${nft.id}-${nft.token_id || nft.name}`
+    await db.updateTable('nfts')
+      .set({
+        mint_address: mockAddress(seed),
+        owner_wallet_address: nft.owner_wallet_address || mockAddress(`owner-${seed}`),
+      })
+      .where('id', '=', nft.id)
+      .execute()
+  }
+
+  if (nftsWithoutMint.length > 0) {
+    console.log(`Backfilled ${nftsWithoutMint.length} NFTs with mock mint addresses`)
+  }
 
   console.log('Marketplace seed complete!')
 }
