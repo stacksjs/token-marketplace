@@ -49,24 +49,24 @@
         <div class="hidden items-center md:flex">
           <div class="shrink-0">
             <button
-              ref="connectBtn"
-              @click="handleConnect"
+              data-wallet-connect
+              onclick="connectWallet(this)"
               type="button"
               class="inline-flex items-center justify-center rounded-md border border-transparent bg-pink-8 px-4 py-2 text-base font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-pink-9 focus:outline-none focus:ring-2 focus:ring-pink-700 focus:ring-offset-2"
             >
               Connect Wallet
             </button>
-            <div ref="connectedPanel" class="flex items-center space-x-3" style="display:none">
+            <div data-wallet-panel class="flex items-center space-x-3" style="display:none">
               <a href="/profile" class="rounded-md px-3 py-2 font-bold text-gray-100 transition duration-150 ease-in-out hover:text-pink-8 focus:bg-pink-custom-2 focus:outline-none text-sm">
                 My NFTs
               </a>
               <div class="flex items-center space-x-2 bg-gray-8 rounded-md px-3 py-2">
                 <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-                <span ref="walletAddr" class="text-sm font-medium text-gray-100"></span>
-                <span ref="walletBalance" class="text-sm font-medium text-emerald-400" style="display:none"></span>
+                <span data-wallet-addr class="text-sm font-medium text-gray-100"></span>
+                <span data-wallet-balance class="text-sm font-medium text-emerald-400" style="display:none"></span>
               </div>
               <button
-                @click="handleDisconnect"
+                onclick="disconnectWallet()"
                 type="button"
                 class="text-sm text-gray-5 hover:text-white transition duration-150"
               >
@@ -78,7 +78,7 @@
 
         <!-- Mobile menu button -->
         <div class="flex items-center md:hidden">
-          <button @click="toggleMobileMenu" type="button" class="text-gray-100 hover:text-pink-8 transition">
+          <button onclick="toggleMobileMenu()" type="button" class="text-gray-100 hover:text-pink-8 transition">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -88,7 +88,7 @@
     </div>
 
     <!-- Mobile menu -->
-    <div ref="mobileMenu" style="display:none" class="md:hidden border-t border-gray-7">
+    <div data-mobile-menu style="display:none" class="md:hidden border-t border-gray-7">
       <div class="px-4 py-4 space-y-2">
         @foreach(navLinks as link)
           @if(link.active)
@@ -101,7 +101,7 @@
         @endforeach
         <div class="pt-4 border-t border-gray-7">
           <button
-            @click="handleConnect"
+            onclick="connectWallet()"
             type="button"
             class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold px-4 py-2 rounded-md transition text-sm"
           >
@@ -114,150 +114,152 @@
 </header>
 
 <script client>
-  var walletAddr = useLocalStorage('wallet_addr', '')
-  var authToken = useLocalStorage('auth_token', '')
-  var menuOpen = state(false)
+  {
+    var API_URL = window.API_BASE || 'http://localhost:3008'
 
-  var connectBtn = useRef('connectBtn')
-  var connectedPanel = useRef('connectedPanel')
-  var walletAddrEl = useRef('walletAddr')
-  var walletBalanceEl = useRef('walletBalance')
-  var mobileMenu = useRef('mobileMenu')
-
-  var API_URL = window.API_BASE || 'http://localhost:3008'
-
-  function getWalletProvider() {
-    if (window.phantom?.solana) return window.phantom.solana
-    if (window.solana?.isPhantom) return window.solana
-    if (window.solflare) return window.solflare
-    if (window.backpack) return window.backpack
-    if (window.coinbaseSolana) return window.coinbaseSolana
-    if (window.trustwallet?.solana) return window.trustwallet.solana
-    if (window.exodus?.solana) return window.exodus.solana
-    if (window.braveSolana) return window.braveSolana
-    if (window.glowSolana) return window.glowSolana
-    if (window.solana) return window.solana
-    return null
-  }
-
-  function showConnected(addr) {
-    var short = addr.slice(0, 4) + '...' + addr.slice(-4)
-    if (connectBtn.current) connectBtn.current.style.display = 'none'
-    if (connectedPanel.current) {
-      connectedPanel.current.style.display = 'flex'
+    function getWalletProvider() {
+      if (window.phantom?.solana) return window.phantom.solana
+      if (window.solana?.isPhantom) return window.solana
+      if (window.solflare) return window.solflare
+      if (window.backpack) return window.backpack
+      if (window.coinbaseSolana) return window.coinbaseSolana
+      if (window.trustwallet?.solana) return window.trustwallet.solana
+      if (window.exodus?.solana) return window.exodus.solana
+      if (window.braveSolana) return window.braveSolana
+      if (window.glowSolana) return window.glowSolana
+      if (window.solana) return window.solana
+      return null
     }
-    if (walletAddrEl.current) walletAddrEl.current.textContent = short
-    fetchBalance(addr)
-  }
 
-  function fetchBalance(addr) {
-    var balEl = walletBalanceEl.current
-    if (!balEl) return
-    fetch(API_URL + '/wallet/balance/' + addr)
-      .then(function(res) { return res.json() })
-      .then(function(data) {
-        if (data.balance !== undefined) {
-          balEl.textContent = Number(data.balance).toFixed(2) + ' SOL'
-          balEl.style.display = ''
-        }
-      })
-      .catch(function() {})
-  }
-
-  function showDisconnected() {
-    if (connectBtn.current) connectBtn.current.style.display = ''
-    if (connectedPanel.current) connectedPanel.current.style.display = 'none'
-    walletAddr.set('')
-    authToken.set('')
-  }
-
-  async function handleConnect() {
-    var provider = getWalletProvider()
-    if (!provider) {
-      window.open('https://phantom.app/', '_blank')
-      return
+    function getConnectBtn() {
+      return document.querySelector('[data-wallet-connect]')
     }
-    try {
-      var resp = await provider.connect()
-      var addr = resp.publicKey.toString()
 
-      // Step 1: Get challenge nonce
-      var challengeRes = await fetch(API_URL + '/auth/wallet/challenge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: addr }),
-      })
-      var challengeData = await challengeRes.json()
+    function getPanel() {
+      return document.querySelector('[data-wallet-panel]')
+    }
 
-      if (challengeData.nonce && challengeData.message) {
-        // Step 2: Sign the message
-        var encodedMessage = new TextEncoder().encode(challengeData.message)
-        var signResult = await provider.signMessage(encodedMessage, 'utf8')
-        var sigBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(signResult.signature)))
+    function showHeaderConnected(addr) {
+      var short = addr.slice(0, 4) + '...' + addr.slice(-4)
+      var btn = getConnectBtn()
+      var panel = getPanel()
+      if (btn) btn.style.display = 'none'
+      if (panel) {
+        panel.style.display = 'flex'
+        var addrEl = panel.querySelector('[data-wallet-addr]')
+        if (addrEl) addrEl.textContent = short
+      }
+      localStorage.setItem('wallet_addr', addr)
+      fetchHeaderBalance(addr)
+    }
 
-        // Step 3: Verify signature and get JWT
-        var verifyRes = await fetch(API_URL + '/auth/wallet/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletAddress: addr,
-            signature: sigBase64,
-            nonce: challengeData.nonce,
-          }),
+    function fetchHeaderBalance(addr) {
+      var panel = getPanel()
+      if (!panel) return
+      var balEl = panel.querySelector('[data-wallet-balance]')
+      if (!balEl) return
+      fetch(API_URL + '/wallet/balance/' + addr)
+        .then(function(res) { return res.json() })
+        .then(function(data) {
+          if (data.balance !== undefined) {
+            balEl.textContent = Number(data.balance).toFixed(2) + ' SOL'
+            balEl.style.display = ''
+          }
         })
-        var verifyData = await verifyRes.json()
+        .catch(function() {})
+    }
 
-        if (verifyData.token) {
-          authToken.set(verifyData.token)
-        } else {
-          console.error('Wallet auth failed: no token received')
-          return
-        }
-      } else {
-        console.error('Wallet auth failed: no challenge received')
+    function showHeaderDisconnected() {
+      var btn = getConnectBtn()
+      var panel = getPanel()
+      if (btn) btn.style.display = ''
+      if (panel) panel.style.display = 'none'
+      localStorage.removeItem('wallet_addr')
+      localStorage.removeItem('auth_token')
+    }
+
+    window.connectWallet = async function() {
+      var provider = getWalletProvider()
+      if (!provider) {
+        window.open('https://phantom.app/', '_blank')
         return
       }
+      try {
+        var resp = await provider.connect()
+        var addr = resp.publicKey.toString()
 
-      // Also notify the simple connect endpoint
-      await fetch(API_URL + '/wallet/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: addr }),
-      })
+        // Step 1: Get challenge nonce
+        var challengeRes = await fetch(API_URL + '/auth/wallet/challenge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: addr }),
+        })
+        var challengeData = await challengeRes.json()
 
-      walletAddr.set(addr)
-      showConnected(addr)
-    } catch (err) {
-      console.error('Wallet connect failed:', err)
+        if (challengeData.nonce && challengeData.message) {
+          // Step 2: Sign the message
+          var encodedMessage = new TextEncoder().encode(challengeData.message)
+          var signResult = await provider.signMessage(encodedMessage, 'utf8')
+          var sigBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(signResult.signature)))
+
+          // Step 3: Verify signature and get JWT
+          var verifyRes = await fetch(API_URL + '/auth/wallet/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress: addr,
+              signature: sigBase64,
+              nonce: challengeData.nonce,
+            }),
+          })
+          var verifyData = await verifyRes.json()
+
+          if (verifyData.token) {
+            localStorage.setItem('auth_token', verifyData.token)
+          } else {
+            console.error('Wallet auth failed: no token received')
+            return
+          }
+        } else {
+          console.error('Wallet auth failed: no challenge received')
+          return
+        }
+
+        // Also notify the simple connect endpoint
+        await fetch(API_URL + '/wallet/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: addr }),
+        })
+
+        showHeaderConnected(addr)
+      } catch (err) {
+        console.error('Wallet connect failed:', err)
+      }
+    }
+
+    window.disconnectWallet = async function() {
+      try {
+        await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
+      } catch (_) {}
+      showHeaderDisconnected()
+    }
+
+    window.toggleMobileMenu = function() {
+      var menu = document.querySelector('[data-mobile-menu]')
+      if (menu) {
+        menu.style.display = menu.style.display === 'none' ? '' : 'none'
+      }
+    }
+
+    // On page load: restore wallet state and silently reconnect Phantom
+    var _savedAddr = localStorage.getItem('wallet_addr')
+    if (_savedAddr) {
+      showHeaderConnected(_savedAddr)
+      var _provider = getWalletProvider()
+      if (_provider) {
+        try { _provider.connect({ onlyIfTrusted: true }) } catch (_) {}
+      }
     }
   }
-
-  async function handleDisconnect() {
-    try {
-      await fetch(API_URL + '/wallet/disconnect', { method: 'POST' })
-    } catch (_) {}
-    var provider = getWalletProvider()
-    if (provider) { try { await provider.disconnect() } catch (_) {} }
-    showDisconnected()
-  }
-
-  function toggleMobileMenu() {
-    var el = mobileMenu.current
-    if (el) {
-      menuOpen.set(!menuOpen())
-      el.style.display = menuOpen() ? '' : 'none'
-    }
-  }
-
-  // Expose for other components that may need wallet functions
-  window.connectWallet = handleConnect
-  window.disconnectWallet = handleDisconnect
-
-  // On mount: restore wallet state from localStorage
-  onMount(function() {
-    var saved = walletAddr()
-    if (saved) {
-      showConnected(saved)
-    }
-  })
 </script>
