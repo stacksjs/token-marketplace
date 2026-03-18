@@ -218,17 +218,17 @@
 
 ### 7.1 Collection Page Redesign
 
-- [ ] Redesign `collections/[slug].stx` with Tensor-style layout:
-  - [ ] Collection banner image (full-width, 200px height)
-  - [ ] Collection avatar overlapping the banner
-  - [ ] Stats row: floor price, listed count, total volume, owners, best offer, 24h change
-  - [ ] Tab navigation: Items, Activity, Analytics
-  - [ ] Verified badge for verified collections
-  - [ ] Social links row (Twitter, Discord, website)
+- [x] Redesign `collections/[slug].stx` with Tensor-style layout:
+  - [x] Collection banner image (full-width, 200px height)
+  - [x] Collection avatar overlapping the banner
+  - [x] Stats row: floor price, listed count, total volume, owners, best offer, 24h change
+  - [x] Tab navigation: Items, Activity, Analytics
+  - [x] Verified badge for verified collections
+  - [x] Social links row (Twitter, Discord, website)
 
 ### 7.2 NFT Grid
 
-- [ ] Build `NFTCard` component:
+- [x] Build `NFTCard` component:
 
   ```ts
   // Card displays:
@@ -241,22 +241,22 @@
   // - Quick-action buttons (Buy / Make Offer)
   ```
 
-- [ ] Implement grid layout (4 columns desktop, 2 columns tablet, 1 column mobile)
-- [ ] Add list view toggle (compact table with columns: image, name, rarity, price, last sale, owner)
-- [ ] Infinite scroll with cursor-based pagination
-- [ ] Loading skeleton cards while fetching
+- [x] Implement grid layout (4 columns desktop, 2 columns tablet, 1 column mobile)
+- [x] Add list view toggle (compact table with columns: image, name, rarity, price, last sale, owner)
+- [x] Infinite scroll with cursor-based pagination
+- [x] Loading skeleton cards while fetching
 
 ### 7.3 Real-Time Stats
 
-- [ ] Implement stats bar auto-refresh (poll every 30s or WebSocket)
-- [ ] Floor price with 24h delta (green/red arrow)
-- [ ] Listed count / total supply ratio
-- [ ] Total volume in SOL with USD equivalent
-- [ ] Unique owners count
+- [x] Implement stats bar auto-refresh (poll every 30s or WebSocket)
+- [x] Floor price with 24h delta (green/red arrow)
+- [x] Listed count / total supply ratio
+- [x] Total volume in SOL with USD equivalent
+- [x] Unique owners count
 
 ### 7.4 API Endpoints
 
-- [ ] Add `GET /marketplace/collections/{slug}/nfts` with query params:
+- [x] Add `GET /marketplace/collections/{slug}/nfts` with query params:
 
   ```ts
   // Query params:
@@ -268,8 +268,8 @@
   // ?cursor=<last_id>&limit=50
   ```
 
-- [ ] Add `GET /marketplace/collections/{slug}/stats` for real-time stats
-- [ ] Add `GET /marketplace/collections/{slug}/attributes` for trait aggregations:
+- [x] Add `GET /marketplace/collections/{slug}/stats` for real-time stats
+- [x] Add `GET /marketplace/collections/{slug}/attributes` for trait aggregations:
 
   ```ts
   // Response:
@@ -285,23 +285,23 @@
 
 ### 8.1 NFT Detail View
 
-- [ ] Create `nfts/[id].stx` detail page
-- [ ] Full-size NFT artwork with click-to-zoom modal
-- [ ] NFT name, collection link, and token address (copyable)
-- [ ] Current owner with link to profile
-- [ ] Rarity rank badge (#42 / 10,000)
+- [x] Create `nfts/[id].stx` detail page
+- [x] Full-size NFT artwork with click-to-zoom modal
+- [x] NFT name, collection link, and token address (copyable)
+- [x] Current owner with link to profile
+- [x] Rarity rank badge (#42 / 10,000)
 
 ### 8.2 Price & Actions Section
 
-- [ ] If listed: show price + "Buy Now" button + fee breakdown tooltip
-- [ ] If unlisted: show "Make Offer" button
-- [ ] If owned by viewer: show "List for Sale" / "Transfer" / "Burn" buttons
+- [x] If listed: show price + "Buy Now" button + fee breakdown tooltip
+- [x] If unlisted: show "Make Offer" button
+- [x] If owned by viewer: show "List for Sale" / "Transfer" / "Burn" buttons
 - [ ] Price history chart (line graph of past sales over time)
-- [ ] Last sale price + date
+- [x] Last sale price + date
 
 ### 8.3 Attributes Panel
 
-- [ ] Grid of trait cards, each showing:
+- [x] Grid of trait cards, each showing:
 
   ```ts
   // Trait type: "Background"
@@ -312,36 +312,36 @@
 
 ### 8.4 Offers Tab
 
-- [ ] Table of active offers: offerer address, amount, expiry, status
-- [ ] Accept / reject buttons (if owner)
-- [ ] Cancel button (if offerer)
-- [ ] Sort by amount (highest first)
+- [x] Table of active offers: offerer address, amount, expiry, status
+- [x] Accept / reject buttons (if owner)
+- [x] Cancel button (if offerer)
+- [x] Sort by amount (highest first)
 
 ### 8.5 Activity Tab
 
-- [ ] Timeline of events: minted, listed, sold, transferred, delisted, offer made/accepted
-- [ ] Each entry: event type icon, from/to addresses, price, timestamp, tx link
+- [x] Timeline of events: minted, listed, sold, transferred, delisted, offer made/accepted
+- [x] Each entry: event type icon, from/to addresses, price, timestamp, tx link
 
 ### 8.6 More From Collection
 
-- [ ] Horizontal scrollable row of 8-10 NFTs from the same collection
-- [ ] "View All" link to collection page
+- [x] Horizontal scrollable row of 8-10 NFTs from the same collection
+- [x] "View All" link to collection page
 
 ### 8.7 API Endpoints
 
-- [ ] Add `GET /marketplace/nfts/{id}/history`:
+- [x] Add `GET /marketplace/nfts/{id}/history`:
 
   ```ts
   // Returns: [{ type: 'sale', from, to, price, timestamp, txSignature }, ...]
   ```
 
-- [ ] Add `GET /marketplace/nfts/{id}/offers`:
+- [x] Add `GET /marketplace/nfts/{id}/offers`:
 
   ```ts
   // Returns: [{ offerer, amount, expiresAt, status, createdAt }, ...]
   ```
 
-- [ ] Add `GET /marketplace/nfts/{id}/traits`:
+- [x] Add `GET /marketplace/nfts/{id}/traits`:
 
   ```ts
   // Returns: [{ type, value, rarityPct, floorPrice, count }, ...]
@@ -355,18 +355,18 @@
 
 ### 9.1 Listing Flow
 
-- [ ] "List for Sale" modal:
-  - [ ] Price input (SOL) with USD estimate
-  - [ ] Fee breakdown: royalties (5%) + platform fee (1%) + you receive
-  - [ ] Optional expiry date picker
-  - [ ] "List" button → wallet signature → confirmation toast
-- [ ] Batch listing: select multiple owned NFTs → set price for each → list all in one flow
+- [x] "List for Sale" modal:
+  - [x] Price input (SOL) with USD estimate
+  - [x] Fee breakdown: royalties (5%) + platform fee (1%) + you receive
+  - [x] Optional expiry date picker
+  - [x] "List" button → wallet signature → confirmation toast
+- [x] Batch listing: select multiple owned NFTs → set price for each → list all in one flow
 - [ ] Edit listing price without delisting (update delegate price)
 - [ ] Auto-delist on transfer (revoke delegate in transfer action)
 
 ### 9.2 Buying Flow
 
-- [ ] One-click "Buy Now" with transaction preview:
+- [x] One-click "Buy Now" with transaction preview:
 
   ```ts
   // Preview shows:
@@ -377,17 +377,17 @@
   // Your balance:    4.23 SOL ✓
   ```
 
-- [ ] Insufficient balance warning with current wallet balance
-- [ ] Cart / multi-buy: add multiple listed NFTs → batch purchase in one transaction
-- [ ] Use `ts-tokens/batch` for multi-buy with address lookup tables
+- [x] Insufficient balance warning with current wallet balance
+- [x] Cart / multi-buy: add multiple listed NFTs → batch purchase in one transaction
+- [x] Use `ts-tokens/batch` for multi-buy with address lookup tables
 
 ### 9.3 Offer Flow
 
-- [ ] "Make Offer" modal:
-  - [ ] Offer amount input (SOL)
-  - [ ] Expiry selector (1 day, 3 days, 7 days, 30 days, custom)
-  - [ ] Funds are escrowed on offer creation
-- [ ] Collection-wide offers:
+- [x] "Make Offer" modal:
+  - [x] Offer amount input (SOL)
+  - [x] Expiry selector (1 day, 3 days, 7 days, 30 days, custom)
+  - [x] Funds are escrowed on offer creation
+- [x] Collection-wide offers:
 
   ```ts
   // Offer on ANY NFT in a collection matching criteria
@@ -399,38 +399,38 @@
   })
   ```
 
-- [ ] Counter-offer support (reject with suggested price)
+- [x] Counter-offer support (reject with suggested price)
 - [ ] Auto-expire offers via background job
 
 ### 9.4 Transaction Feedback
 
-- [ ] Transaction status toast component:
-  - [ ] Pending: spinner + "Waiting for wallet signature..."
-  - [ ] Submitted: spinner + "Confirming transaction..."
-  - [ ] Confirmed: checkmark + "Transaction confirmed" + explorer link
-  - [ ] Failed: error icon + reason + "Retry" button
-- [ ] Transaction retry on transient failures (blockhash expired, etc.)
-- [ ] Recent transactions drawer (accessible from header icon)
-- [ ] Persist recent tx history in localStorage
+- [x] Transaction status toast component:
+  - [x] Pending: spinner + "Waiting for wallet signature..."
+  - [x] Submitted: spinner + "Confirming transaction..."
+  - [x] Confirmed: checkmark + "Transaction confirmed" + explorer link
+  - [x] Failed: error icon + reason + "Retry" button
+- [x] Transaction retry on transient failures (blockhash expired, etc.)
+- [x] Recent transactions drawer (accessible from header icon)
+- [x] Persist recent tx history in localStorage
 
 ### 9.5 API Endpoints
 
-- [ ] `POST /marketplace/nfts/batch-list` — batch listing:
+- [x] `POST /marketplace/nfts/batch-list` — batch listing:
 
   ```ts
   // Body: { items: [{ mint, price }], seller }
   // Returns: { transaction: '<base64>' } (unsigned, for wallet signing)
   ```
 
-- [ ] `POST /marketplace/nfts/batch-buy` — batch purchase:
+- [x] `POST /marketplace/nfts/batch-buy` — batch purchase:
 
   ```ts
   // Body: { mints: ['ABC...', 'DEF...'], buyer }
   // Returns: { transaction: '<base64>', totalCost, fees }
   ```
 
-- [ ] `POST /marketplace/offers/collection` — collection-wide offer
-- [ ] `POST /marketplace/offers/counter` — counter-offer
+- [x] `POST /marketplace/offers/collection` — collection-wide offer
+- [x] `POST /marketplace/offers/counter` — counter-offer
 
 ---
 
@@ -440,38 +440,38 @@
 
 ### 10.1 English Auctions
 
-- [ ] Create auction modal:
-  - [ ] Starting price input
-  - [ ] Reserve price (optional, auction fails if not met)
-  - [ ] Duration selector (1h, 6h, 12h, 24h, 3d, 7d)
-  - [ ] Minimum bid increment setting
-- [ ] Live auction page:
-  - [ ] Current highest bid + bidder
-  - [ ] Countdown timer (h:m:s)
-  - [ ] Bid history table (bidder, amount, time)
-  - [ ] "Place Bid" button with minimum amount pre-filled
+- [x] Create auction modal:
+  - [x] Starting price input
+  - [x] Reserve price (optional, auction fails if not met)
+  - [x] Duration selector (1h, 6h, 12h, 24h, 3d, 7d)
+  - [x] Minimum bid increment setting
+- [x] Live auction page:
+  - [x] Current highest bid + bidder
+  - [x] Countdown timer (h:m:s)
+  - [x] Bid history table (bidder, amount, time)
+  - [x] "Place Bid" button with minimum amount pre-filled
 - [ ] Auto-settle via background job when auction ends
 - [ ] Anti-sniping: extend by 5 minutes if bid placed in last 5 minutes
 
 ### 10.2 Dutch Auctions
 
-- [ ] Create Dutch auction modal:
-  - [ ] Starting price (high)
-  - [ ] Ending price (floor)
-  - [ ] Duration
-  - [ ] Price decay curve (linear or exponential)
-- [ ] Live page:
-  - [ ] Current price (decreasing in real-time)
-  - [ ] Price chart showing decay curve
-  - [ ] "Buy at Current Price" button
-- [ ] Instant settlement on buy using `buyDutchAuction()` from `ts-tokens`
+- [x] Create Dutch auction modal:
+  - [x] Starting price (high)
+  - [x] Ending price (floor)
+  - [x] Duration
+  - [x] Price decay curve (linear or exponential)
+- [x] Live page:
+  - [x] Current price (decreasing in real-time)
+  - [x] Price chart showing decay curve
+  - [x] "Buy at Current Price" button
+- [x] Instant settlement on buy using `buyDutchAuction()` from `ts-tokens`
 
 ### 10.3 Auction Queries
 
-- [ ] `GET /marketplace/auctions/active` — all active auctions (paginated)
-- [ ] `GET /marketplace/auctions/{id}` — auction detail with bid history
-- [ ] `GET /marketplace/auctions/{id}/bids` — paginated bids
-- [ ] `GET /marketplace/auctions/ended` — recently ended auctions (results)
+- [x] `GET /marketplace/auctions/active` — all active auctions (paginated)
+- [x] `GET /marketplace/auctions/{id}` — auction detail with bid history
+- [x] `GET /marketplace/auctions/{id}/bids` — paginated bids
+- [x] `GET /marketplace/auctions/ended` — recently ended auctions (results)
 
 ### 10.4 Database
 
@@ -489,8 +489,8 @@
 
 ### 11.1 Activity Feed Page
 
-- [ ] Create `activity.stx` global activity page
-- [ ] Real-time event stream: sales, listings, delistings, offers, transfers, auction bids
+- [x] Create `activity.stx` global activity page
+- [x] Real-time event stream: sales, listings, delistings, offers, transfers, auction bids
 
   ```ts
   // Event shape:
@@ -506,8 +506,8 @@
   }
   ```
 
-- [ ] Filter by event type (checkboxes)
-- [ ] Filter by collection (dropdown)
+- [x] Filter by event type (checkboxes)
+- [x] Filter by collection (dropdown)
 - [ ] Infinite scroll with real-time prepend for new events
 
 ### 11.2 Collection Activity Tab
@@ -517,19 +517,19 @@
 
 ### 11.3 Analytics Dashboard
 
-- [ ] Create analytics section on collection page (Analytics tab):
-  - [ ] Floor price chart (line, 24h / 7d / 30d / all-time toggles)
-  - [ ] Volume chart (bar chart, daily volume in SOL)
+- [x] Create analytics section on collection page (Analytics tab):
+  - [x] Floor price chart (line, 24h / 7d / 30d / all-time toggles)
+  - [x] Volume chart (bar chart, daily volume in SOL)
   - [ ] Listings count chart (line, how many listed over time)
   - [ ] Average sale price trend (line)
   - [ ] Sales count per day (bar)
 
 ### 11.4 Holder Analytics
 
-- [ ] Holder distribution pie chart (top 10 holders + "others")
-- [ ] Top holders leaderboard (wallet, count, % of supply)
+- [x] Holder distribution pie chart (top 10 holders + "others")
+- [x] Top holders leaderboard (wallet, count, % of supply)
 - [ ] Unique owners count over time
-- [ ] Concentration metrics (% held by top 1%, top 10%)
+- [x] Concentration metrics (% held by top 1%, top 10%)
 
 ### 11.5 Volume & Sales Stats
 
@@ -566,14 +566,14 @@
   ```
 
 - [ ] `GET /marketplace/collections/{slug}/activity` — collection-scoped feed
-- [ ] `GET /marketplace/collections/{slug}/analytics` — charts data:
+- [x] `GET /marketplace/collections/{slug}/analytics` — charts data:
 
   ```ts
   // ?period=24h|7d|30d|all
   // Returns: { floorHistory: [...], volumeHistory: [...], salesHistory: [...] }
   ```
 
-- [ ] `GET /marketplace/collections/{slug}/holders` — holder stats:
+- [x] `GET /marketplace/collections/{slug}/holders` — holder stats:
 
   ```ts
   // Returns: { totalOwners, topHolders: [...], distribution: [...] }
@@ -587,32 +587,32 @@
 
 ### 12.1 Profile Page Redesign
 
-- [ ] Redesign `profile.stx` with tabs:
-  - [ ] **Owned** — grid of NFTs owned by wallet (using `getNFTsByOwner()`)
-  - [ ] **Listed** — currently listed NFTs with prices
-  - [ ] **Offers Made** — outgoing offers (pending, accepted, expired)
-  - [ ] **Offers Received** — incoming offers on owned NFTs
-  - [ ] **Activity** — wallet transaction history
-- [ ] Profile header: wallet address (truncated + copy), SOL balance, portfolio value
-- [ ] View any wallet via `/profile/{walletAddress}`
+- [x] Redesign `profile.stx` with tabs:
+  - [x] **Owned** — grid of NFTs owned by wallet (using `getNFTsByOwner()`)
+  - [x] **Listed** — currently listed NFTs with prices
+  - [x] **Offers Made** — outgoing offers (pending, accepted, expired)
+  - [x] **Offers Received** — incoming offers on owned NFTs
+  - [x] **Activity** — wallet transaction history
+- [x] Profile header: wallet address (truncated + copy), SOL balance, portfolio value
+- [x] View any wallet via `/profile/{walletAddress}`
 
 ### 12.2 Portfolio Value
 
-- [ ] Portfolio value estimation:
+- [x] Portfolio value estimation:
 
   ```ts
   // portfolioValue = sum(ownedNFTs.map(nft => collectionFloorPrice))
   // Display: "Estimated Value: 45.2 SOL (~$6,780)"
   ```
 
-- [ ] Unrealized P&L per NFT:
+- [x] Unrealized P&L per NFT:
 
   ```ts
   // pnl = currentFloorPrice - purchasePrice
   // Display: "+0.5 SOL (+33%)" in green, or "-0.2 SOL (-10%)" in red
   ```
 
-- [ ] Total portfolio P&L summary
+- [x] Total portfolio P&L summary
 
 ### 12.3 Quick Actions
 
@@ -628,20 +628,20 @@
 
 ### 12.5 API Endpoints
 
-- [ ] `GET /marketplace/profile/{wallet}/portfolio`:
+- [x] `GET /marketplace/profile/{wallet}/portfolio`:
 
   ```ts
   // Returns: { ownedCount, listedCount, estimatedValue, totalPnl,
   //            nfts: [{ mint, name, image, collection, floorPrice, purchasePrice, pnl }] }
   ```
 
-- [ ] `GET /marketplace/profile/{wallet}/offers`:
+- [x] `GET /marketplace/profile/{wallet}/offers`:
 
   ```ts
   // Returns: { made: [...], received: [...] }
   ```
 
-- [ ] `GET /marketplace/profile/{wallet}/activity`:
+- [x] `GET /marketplace/profile/{wallet}/activity`:
 
   ```ts
   // Returns: [{ type, nft, price, timestamp, txSignature }]
@@ -655,18 +655,18 @@
 
 ### 13.1 Attribute Filter Sidebar
 
-- [ ] Collapsible trait filter panel (left sidebar on desktop, drawer on mobile):
-  - [ ] Trait type headers (Background, Hat, Eyes, etc.)
-  - [ ] Trait value checkboxes with counts: `Purple (342)`, `Blue (1,205)`
-  - [ ] Multi-select within a trait type (OR logic)
-  - [ ] Multi-trait filtering (AND logic across types)
-  - [ ] "Clear All" button
+- [x] Collapsible trait filter panel (left sidebar on desktop, drawer on mobile):
+  - [x] Trait type headers (Background, Hat, Eyes, etc.)
+  - [x] Trait value checkboxes with counts: `Purple (342)`, `Blue (1,205)`
+  - [x] Multi-select within a trait type (OR logic)
+  - [x] Multi-trait filtering (AND logic across types)
+  - [x] "Clear All" button
 
 ### 13.2 Status & Price Filters
 
-- [ ] Listing status toggle: All / Listed / Unlisted / Has Offers / In Auction
-- [ ] Price range slider (min/max SOL)
-- [ ] Rarity level filter: Common / Uncommon / Rare / Legendary (checkboxes)
+- [x] Listing status toggle: All / Listed / Unlisted / Has Offers / In Auction
+- [x] Price range slider (min/max SOL)
+- [x] Rarity level filter: Common / Uncommon / Rare / Legendary (checkboxes)
 - [ ] Owner filter: owned by me (if wallet connected)
 
 ### 13.3 Sorting
@@ -683,25 +683,25 @@
 
 ### 13.4 Search
 
-- [ ] Search bar: search by NFT name or token ID
-- [ ] Autocomplete suggestions as you type
-- [ ] Global search in header: search across collections, NFTs, and wallets
+- [x] Search bar: search by NFT name or token ID
+- [x] Autocomplete suggestions as you type
+- [x] Global search in header: search across collections, NFTs, and wallets
 
 ### 13.5 URL State
 
-- [ ] Persist all filter/sort state in URL query params:
+- [x] Persist all filter/sort state in URL query params:
 
   ```
   /collections/hoodies?status=listed&minPrice=1&maxPrice=5
     &rarity=rare,legendary&traits[Hat]=Crown&sort=price_asc&q=arnold
   ```
 
-- [ ] Shareable filtered URLs
-- [ ] Back/forward browser navigation updates filters
+- [x] Shareable filtered URLs
+- [x] Back/forward browser navigation updates filters
 
 ### 13.6 Performance
 
-- [ ] Debounced filter application (300ms)
+- [x] Debounced filter application (300ms)
 - [ ] Optimistic UI: show loading state in grid, keep filters interactive
 - [ ] Cache attribute counts per collection (invalidate on new listing/sale)
 
@@ -754,30 +754,30 @@
 
 ### 14.3 Staking Page
 
-- [ ] Create `staking.stx` page:
-  - [ ] Available staking pools list (pool name, APY, total staked, lock period)
-  - [ ] "Stake" button per owned NFT (opens confirmation modal)
-  - [ ] "Unstake" button per staked NFT (with lock period countdown)
-  - [ ] Pending rewards display with "Claim" button
+- [x] Create `staking.stx` page:
+  - [x] Available staking pools list (pool name, APY, total staked, lock period)
+  - [x] "Stake" button per owned NFT (opens confirmation modal)
+  - [x] "Unstake" button per staked NFT (with lock period countdown)
+  - [x] Pending rewards display with "Claim" button
   - [ ] Staking history table
 - [ ] Show staked badge on NFT cards across the marketplace
 
 ### 14.4 Staking Actions
 
-- [ ] Create `CreateStakingPoolAction`
-- [ ] Create `StakeNFTAction`
-- [ ] Create `UnstakeNFTAction`
-- [ ] Create `ClaimStakingRewardsAction`
-- [ ] Create `GetStakingPoolAction`
+- [x] Create `CreateStakingPoolAction`
+- [x] Create `StakeNFTAction`
+- [x] Create `UnstakeNFTAction`
+- [x] Create `ClaimStakingRewardsAction`
+- [x] Create `GetStakingPoolAction`
 
 ### 14.5 API Endpoints
 
-- [ ] `POST /staking/pool` — create staking pool (admin)
-- [ ] `POST /staking/stake` — stake NFT
-- [ ] `POST /staking/unstake` — unstake NFT
-- [ ] `POST /staking/claim` — claim rewards
-- [ ] `GET /staking/pools` — list pools (with user's stake info if wallet connected)
-- [ ] `GET /staking/pool/{id}` — pool detail
+- [x] `POST /staking/pool` — create staking pool (admin)
+- [x] `POST /staking/stake` — stake NFT
+- [x] `POST /staking/unstake` — unstake NFT
+- [x] `POST /staking/claim` — claim rewards
+- [x] `GET /staking/pools` — list pools (with user's stake info if wallet connected)
+- [x] `GET /staking/pool/{id}` — pool detail
 - [ ] `GET /staking/my-stakes` — user's active stakes + pending rewards
 
 ---
@@ -834,23 +834,23 @@
 
 ### 15.3 Governance Page
 
-- [ ] Create `governance.stx` page:
-  - [ ] Active proposals list with voting progress bars
-  - [ ] Past proposals with results
-  - [ ] "Create Proposal" button (with minimum holding requirement)
-  - [ ] Vote modal: select option → sign with wallet → confirmation
-  - [ ] Treasury balance display
-  - [ ] Treasury transaction history
+- [x] Create `governance.stx` page:
+  - [x] Active proposals list with voting progress bars
+  - [x] Past proposals with results
+  - [x] "Create Proposal" button (with minimum holding requirement)
+  - [x] Vote modal: select option → sign with wallet → confirmation
+  - [x] Treasury balance display
+  - [x] Treasury transaction history
 
 ### 15.4 API Endpoints
 
-- [ ] `POST /governance/dao` — create DAO (admin)
-- [ ] `POST /governance/proposals` — create proposal
-- [ ] `GET /governance/proposals` — list proposals (active/past)
-- [ ] `GET /governance/proposals/{id}` — proposal detail with vote tallies
-- [ ] `POST /governance/vote` — cast vote
-- [ ] `POST /governance/execute` — execute passed proposal
-- [ ] `GET /governance/treasury` — treasury overview
+- [x] `POST /governance/dao` — create DAO (admin)
+- [x] `POST /governance/proposals` — create proposal
+- [x] `GET /governance/proposals` — list proposals (active/past)
+- [x] `GET /governance/proposals/{id}` — proposal detail with vote tallies
+- [x] `POST /governance/vote` — cast vote
+- [x] `POST /governance/execute` — execute passed proposal
+- [x] `GET /governance/treasury` — treasury overview
 
 ---
 
@@ -860,7 +860,7 @@
 
 ### 16.1 Jupiter Swap Widget
 
-- [ ] Embed Jupiter swap integration using `ts-tokens/defi`:
+- [x] Embed Jupiter swap integration using `ts-tokens/defi`:
 
   ```ts
   // Get quote
@@ -911,16 +911,16 @@
   })
   ```
 
-- [ ] Serve `actions.json` manifest at `/.well-known/actions.json`
-- [ ] Blink-compatible endpoints for social sharing (Twitter, Discord unfurls)
+- [x] Serve `actions.json` manifest at `/.well-known/actions.json`
+- [x] Blink-compatible endpoints for social sharing (Twitter, Discord unfurls)
 
 ### 16.5 API Endpoints
 
-- [ ] `GET /defi/swap/quote` — Jupiter swap quote
-- [ ] `POST /defi/swap/execute` — execute swap
-- [ ] `POST /actions/mint` — Blink-compatible mint endpoint
-- [ ] `POST /actions/buy` — Blink-compatible buy endpoint
-- [ ] `GET /.well-known/actions.json` — actions manifest
+- [x] `GET /defi/swap/quote` — Jupiter swap quote
+- [x] `POST /defi/swap/execute` — execute swap
+- [x] `POST /actions/mint` — Blink-compatible mint endpoint
+- [x] `POST /actions/buy` — Blink-compatible buy endpoint
+- [x] `GET /.well-known/actions.json` — actions manifest
 
 ---
 
@@ -930,7 +930,7 @@
 
 ### 17.1 Cross-Listing
 
-- [ ] Integrate cross-marketplace listing using `ts-tokens/marketplace`:
+- [x] Integrate cross-marketplace listing using `ts-tokens/marketplace`:
 
   ```ts
   await tokenService.crossListNFT({
@@ -940,13 +940,13 @@
   })
   ```
 
-- [ ] Cancel all cross-listings in one action using `cancelCrossListings()`
+- [x] Cancel all cross-listings in one action using `cancelCrossListings()`
 - [ ] Show listing source badges on NFT cards (e.g., "Listed on Tensor", "Listed on Magic Eden")
 
 ### 17.2 Aggregated Listings
 
-- [ ] Fetch external listings for collection NFTs
-- [ ] Display best price across all marketplaces using `getBestPrice()`:
+- [x] Fetch external listings for collection NFTs
+- [x] Display best price across all marketplaces using `getBestPrice()`:
 
   ```ts
   // Shows: "Best price: 1.2 SOL on Tensor" vs "1.5 SOL on Hoodies"
@@ -956,9 +956,9 @@
 
 ### 17.3 API Endpoints
 
-- [ ] `POST /marketplace/nfts/cross-list` — list across marketplaces
-- [ ] `DELETE /marketplace/nfts/cross-list` — cancel cross-listings
-- [ ] `GET /marketplace/nfts/{id}/listings` — aggregated listings from all marketplaces
+- [x] `POST /marketplace/nfts/cross-list` — list across marketplaces
+- [x] `DELETE /marketplace/nfts/cross-list` — cancel cross-listings
+- [x] `GET /marketplace/nfts/{id}/listings` — aggregated listings from all marketplaces
 
 ---
 
@@ -968,7 +968,7 @@
 
 ### 18.1 Transaction Security
 
-- [ ] Transaction simulation before execution using `simulateTransaction()` from `ts-tokens/debug`:
+- [x] Transaction simulation before execution using `simulateTransaction()` from `ts-tokens/debug`:
 
   ```ts
   const simulation = await tokenService.simulateTransaction(tx)
@@ -984,9 +984,9 @@
 
 ### 18.2 Royalty Enforcement
 
-- [ ] Royalty bypass detection using `detectRoyaltyBypass()` from `ts-tokens/marketplace`
-- [ ] Verify royalty payment on every sale using `verifyRoyaltyPayment()`
-- [ ] Generate compliance reports using `generateComplianceReport()`:
+- [x] Royalty bypass detection using `detectRoyaltyBypass()` from `ts-tokens/marketplace`
+- [x] Verify royalty payment on every sale using `verifyRoyaltyPayment()`
+- [x] Generate compliance reports using `generateComplianceReport()`:
 
   ```ts
   const report = await tokenService.generateComplianceReport({
@@ -998,11 +998,11 @@
 
 ### 18.3 Input Validation & Rate Limiting
 
-- [ ] Wallet address validation on all inputs
-- [ ] Rate limiting on sensitive endpoints:
-  - [ ] Minting: 3 per wallet per minute
-  - [ ] Offers: 10 per wallet per minute
-  - [ ] Listings: 20 per wallet per minute
+- [x] Wallet address validation on all inputs
+- [x] Rate limiting on sensitive endpoints:
+  - [x] Minting: 3 per wallet per minute
+  - [x] Offers: 10 per wallet per minute
+  - [x] Listings: 20 per wallet per minute
 - [ ] CSRF protection on all POST endpoints
 - [ ] Request body size limits (prevent oversized payloads)
 
@@ -1010,7 +1010,7 @@
 
 - [ ] Phishing detection on wallet interactions using `ts-tokens/security`
 - [ ] Flag suspicious accounts (new wallets making large offers)
-- [ ] Admin audit log for all privileged actions:
+- [x] Admin audit log for all privileged actions:
 
   ```ts
   // Log: { admin, action, target, params, timestamp, ipAddress }
@@ -1030,14 +1030,14 @@
 
 ### 19.1 RPC Optimization
 
-- [ ] Batch RPC calls using address lookup tables (`ts-tokens/batch`):
+- [x] Batch RPC calls using address lookup tables (`ts-tokens/batch`):
 
   ```ts
   // Instead of 50 individual getAccountInfo calls:
   const accounts = await tokenService.batchGetAccounts(mints)
   ```
 
-- [ ] RPC failover configuration (primary + fallback endpoints):
+- [x] RPC failover configuration (primary + fallback endpoints):
 
   ```ts
   rpc: {
@@ -1047,15 +1047,15 @@
   }
   ```
 
-- [ ] Request deduplication (don't fetch same account twice in parallel)
+- [x] Request deduplication (don't fetch same account twice in parallel)
 
 ### 19.2 Caching
 
-- [ ] Metadata caching layer with TTL:
-  - [ ] NFT metadata: cache 1 hour (immutable after mint)
-  - [ ] Collection stats: cache 30 seconds
-  - [ ] Listings: cache 10 seconds
-  - [ ] Floor price: cache 15 seconds
+- [x] Metadata caching layer with TTL:
+  - [x] NFT metadata: cache 1 hour (immutable after mint)
+  - [x] Collection stats: cache 30 seconds
+  - [x] Listings: cache 10 seconds
+  - [x] Floor price: cache 15 seconds
 - [ ] Image CDN / optimization for NFT thumbnails:
   - [ ] Generate thumbnail sizes: 200px, 400px, 800px
   - [ ] WebP conversion
@@ -1108,18 +1108,18 @@
 
 ### 20.2 Mobile Wallet Integration
 
-- [ ] Mobile wallet deep linking using `ts-tokens/wallets`:
-  - [ ] Phantom mobile: `phantom://` deep links
-  - [ ] Solflare mobile: `solflare://` deep links
-  - [ ] Generic Solana Mobile wallet adapter
+- [x] Mobile wallet deep linking using `ts-tokens/wallets`:
+  - [x] Phantom mobile: `phantom://` deep links
+  - [x] Solflare mobile: `solflare://` deep links
+  - [x] Generic Solana Mobile wallet adapter
 - [ ] QR code for desktop-to-mobile wallet connection
 
 ### 20.3 Touch Interactions
 
 - [ ] Swipe-to-dismiss modals
-- [ ] Pull-to-refresh on collection pages
-- [ ] Long-press NFT card for quick actions (list, transfer, offer)
-- [ ] Haptic feedback on transaction confirmation (where supported)
+- [x] Pull-to-refresh on collection pages
+- [x] Long-press NFT card for quick actions (list, transfer, offer)
+- [x] Haptic feedback on transaction confirmation (where supported)
 
 ### 20.4 Performance
 
@@ -1142,7 +1142,7 @@
   - [ ] Transaction failed → specific reason + retry button
   - [ ] NFT already sold → "This NFT was just purchased" with redirect
   - [ ] Network error → "Connection lost. Retrying..." with auto-retry
-- [ ] Error boundary pages: 404, 500, wallet disconnected
+- [x] Error boundary pages: 404, 500, wallet disconnected
 - [ ] Sentry-style error tracking for production
 
 ### 21.2 Empty States
@@ -1155,7 +1155,7 @@
 
 ### 21.3 Dark Mode
 
-- [ ] Dark mode theme with CSS variables:
+- [x] Dark mode theme with CSS variables:
 
   ```css
   :root {
@@ -1170,19 +1170,19 @@
   }
   ```
 
-- [ ] Theme toggle in header (sun/moon icon)
-- [ ] Persist preference in localStorage
-- [ ] Respect `prefers-color-scheme` system setting
+- [x] Theme toggle in header (sun/moon icon)
+- [x] Persist preference in localStorage
+- [x] Respect `prefers-color-scheme` system setting
 
 ### 21.4 SEO & Social
 
-- [ ] Meta tags for all pages (title, description, canonical URL)
-- [ ] Open Graph images:
-  - [ ] Collection pages: collection banner + name + stats
-  - [ ] NFT pages: NFT image + name + price
+- [x] Meta tags for all pages (title, description, canonical URL)
+- [x] Open Graph images:
+  - [x] Collection pages: collection banner + name + stats
+  - [x] NFT pages: NFT image + name + price
   - [ ] Auto-generated OG images via serverless function
-- [ ] Twitter Card meta tags
-- [ ] Structured data (JSON-LD) for NFT listings
+- [x] Twitter Card meta tags
+- [x] Structured data (JSON-LD) for NFT listings
 - [ ] Sitemap generation for collections and popular NFTs
 
 ### 21.5 Onboarding
@@ -1192,8 +1192,8 @@
   2. Click collection → browse NFTs (no wallet required)
   3. Click "Buy" → prompt to connect wallet
   4. Wallet connected → complete purchase
-- [ ] Tooltip hints on first visit ("Click to filter by traits", "Sort by price here")
-- [ ] "What is an NFT?" help modal for new users
+- [x] Tooltip hints on first visit ("Click to filter by traits", "Sort by price here")
+- [x] "What is an NFT?" help modal for new users
 
 ### 21.6 Branding & Assets
 
