@@ -161,8 +161,11 @@ route.group({ prefix: '/marketplace' }, () => {
   route.post('/offers/collection', 'Actions/Marketplace/CollectionOfferAction')
   route.post('/offers/counter', 'Actions/Marketplace/CounterOfferAction')
 
-  // User profile
+  // User profile (Phase 12)
   route.get('/profile/{walletAddress}', 'Actions/Marketplace/ProfileAction')
+  route.get('/profile/{wallet}/portfolio', 'Actions/Marketplace/ProfilePortfolioAction')
+  route.get('/profile/{wallet}/offers', 'Actions/Marketplace/ProfileOffersAction')
+  route.get('/profile/{wallet}/activity', 'Actions/Marketplace/ProfileActivityAction')
 })
 
 // Candy Machine routes (admin - requires authentication)

@@ -39,6 +39,25 @@ const pageTitle = 'My Profile | Naked NFTs'
               Disconnect
             </button>
           </div>
+          <!-- Portfolio Stats -->
+          <div id="portfolio-stats" class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4" style="display:none">
+            <div class="bg-gray-1 rounded-lg p-3">
+              <div class="text-xs text-gray-4 mb-1">Owned</div>
+              <div class="text-lg font-bold text-gray-9" id="stat-owned">0</div>
+            </div>
+            <div class="bg-gray-1 rounded-lg p-3">
+              <div class="text-xs text-gray-4 mb-1">Listed</div>
+              <div class="text-lg font-bold text-gray-9" id="stat-listed">0</div>
+            </div>
+            <div class="bg-gray-1 rounded-lg p-3">
+              <div class="text-xs text-gray-4 mb-1">Est. Value</div>
+              <div class="text-lg font-bold text-gray-9" id="stat-value">— SOL</div>
+            </div>
+            <div class="bg-gray-1 rounded-lg p-3">
+              <div class="text-xs text-gray-4 mb-1">Total P&amp;L</div>
+              <div class="text-lg font-bold" id="stat-pnl">—</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -359,6 +378,27 @@ const pageTitle = 'My Profile | Naked NFTs'
           if (els && els.loadingEl) els.loadingEl.style.display = 'none'
           renderTabContent()
         }
+        // Fetch portfolio data in parallel
+        try {
+          var portfolioRes = await fetch(PROFILE_API + '/marketplace/profile/' + address + '/portfolio')
+          if (portfolioRes.ok) {
+            var portfolio = await portfolioRes.json()
+            var statsEl = document.getElementById('portfolio-stats')
+            if (statsEl) statsEl.style.display = ''
+            var ownedEl = document.getElementById('stat-owned')
+            var listedEl = document.getElementById('stat-listed')
+            var valueEl = document.getElementById('stat-value')
+            var pnlEl = document.getElementById('stat-pnl')
+            if (ownedEl) ownedEl.textContent = portfolio.ownedCount || 0
+            if (listedEl) listedEl.textContent = portfolio.listedCount || 0
+            if (valueEl) valueEl.textContent = (portfolio.estimatedValue || 0).toFixed(2) + ' SOL'
+            if (pnlEl) {
+              var pnl = portfolio.totalPnl || 0
+              pnlEl.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + ' SOL'
+              pnlEl.className = 'text-lg font-bold ' + (pnl >= 0 ? 'text-green-6' : 'text-red-6')
+            }
+          }
+        } catch (_) {}
       }
 
       // Check if wallet already connected on page load
