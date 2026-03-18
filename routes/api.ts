@@ -171,6 +171,12 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/profile/{wallet}/activity', 'Actions/Marketplace/ProfileActivityAction')
 })
 
+// DeFi routes (Phase 16)
+route.get('/defi/swap/quote', 'Actions/DeFi/SwapQuoteAction')
+route.post('/defi/swap/execute', 'Actions/DeFi/ExecuteSwapAction')
+route.post('/actions/mint', 'Actions/DeFi/MintBlinkAction')
+route.post('/actions/buy', 'Actions/DeFi/BuyBlinkAction')
+
 // Governance routes (Phase 15)
 route.group({ prefix: '/governance' }, () => {
   route.post('/dao', 'Actions/Governance/CreateDAOAction')
