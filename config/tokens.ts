@@ -147,6 +147,15 @@ export default {
   },
 
   /**
+   * Helius DAS API (free tier: 1M credits/month)
+   * Sign up at https://dev.helius.xyz
+   */
+  helius: {
+    apiKey: envVars.HELIUS_API_KEY || '',
+    cluster: (envVars.SOLANA_NETWORK === 'mainnet-beta' ? 'mainnet-beta' : 'devnet') as 'mainnet-beta' | 'devnet',
+  },
+
+  /**
    * Admin configuration
    */
   admin: {

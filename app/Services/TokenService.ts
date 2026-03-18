@@ -33,7 +33,13 @@ if (mockMode && envVarsTS.NODE_ENV === 'production') {
 
 if (!mockMode) {
   ts = await import('ts-tokens')
-  tsNft = await import('ts-tokens/nft')
+  try {
+    tsNft = await import('ts-tokens/nft')
+  }
+  catch {
+    console.warn('[TokenService] ts-tokens/nft subpath not available — candy machine features disabled')
+    tsNft = ts // fallback: use main export (has createNFT, updateNFTMetadata, etc.)
+  }
   ts.setConfig(getTsTokensConfig() as any)
   console.log('[TokenService] Connected to Solana', tokensConfig.network)
 }
@@ -279,7 +285,7 @@ export class TokenService {
       }
     }
 
-    return ts!.createCollection(config as any)
+    return ts!.createCollection(config as any, getTsTokensConfig() as any)
   }
 
   async createNFT(config: {
@@ -303,7 +309,7 @@ export class TokenService {
       }
     }
 
-    return ts!.createNFT(config as any)
+    return ts!.createNFT(config as any, getTsTokensConfig() as any)
   }
 
   async getNFTData(mintAddress: string) {
@@ -357,6 +363,194 @@ export class TokenService {
 
     const nfts = await ts!.getNFTsByCollection(collectionMint)
     return nfts.map((nft: any) => nft.mint)
+  }
+
+  async getNFTsByCreator(creatorAddress: string): Promise<string[]> {
+    if (this.mockMode) {
+      await mockDelay(400)
+      return Array.from({ length: 8 }, () => generateMockAddress())
+    }
+
+    const nfts = await ts!.getNFTsByCreator(creatorAddress)
+    return nfts.map((nft: any) => nft.mint)
+  }
+
+  async getCollectionInfo(collectionMint: string): Promise<{ metadata: any, size: number } | null> {
+    if (this.mockMode) {
+      await mockDelay(300)
+      return {
+        metadata: {
+          mint: collectionMint,
+          name: `Mock Collection #${Math.floor(Math.random() * 1000)}`,
+          symbol: 'MOCK',
+          uri: 'https://arweave.net/mock-collection-uri',
+        },
+        size: Math.floor(Math.random() * 100) + 10,
+      }
+    }
+
+    return ts!.getCollectionInfo(collectionMint)
+  }
+
+  /**
+   * Search for NFT collections using Helius DAS API.
+   * Falls back to basic RPC search if Helius is not configured.
+   */
+  async searchCollections(options: {
+    creatorWallet?: string
+    limit?: number
+  } = {}): Promise<Array<{
+    mintAddress: string
+    name: string
+    symbol: string
+    description: string
+    imageUrl: string
+    size: number
+    creators: Array<{ address: string; verified: boolean; share: number }>
+  }>> {
+    if (this.mockMode) {
+      await mockDelay(500)
+      return Array.from({ length: 3 }, (_, i) => ({
+        mintAddress: generateMockAddress(),
+        name: `Mock Collection #${i + 1}`,
+        symbol: 'MOCK',
+        description: `A mock collection for development (#${i + 1})`,
+        imageUrl: 'https://arweave.net/mock-image',
+        size: Math.floor(Math.random() * 500) + 10,
+        creators: [{ address: generateMockAddress(), verified: true, share: 100 }],
+      }))
+    }
+
+    const heliusApiKey = tokensConfig.helius?.apiKey
+    if (!heliusApiKey) {
+      throw new Error('Helius API key is required for collection search. Set HELIUS_API_KEY in your environment.')
+    }
+
+    const { createHeliusClient } = await import('ts-tokens/indexer')
+    const helius = createHeliusClient(heliusApiKey, tokensConfig.helius.cluster || 'devnet')
+    const limit = options.limit || 50
+
+    let assets: any[] = []
+
+    if (options.creatorWallet) {
+      // Search by creator
+      const result = await helius.getAssetsByCreator(options.creatorWallet, {
+        onlyVerified: true,
+        limit,
+      })
+      assets = result.items || []
+    } else {
+      // General search for NFT collections
+      const result = await helius.searchAssets({
+        compressed: false,
+        limit,
+        sortBy: { sortBy: 'recent_action', sortDirection: 'desc' },
+      })
+      assets = result.items || []
+    }
+
+    // Group by collection and identify collection parents
+    const collectionMints = new Set<string>()
+    const collectionAssets = new Map<string, any>()
+
+    for (const asset of assets) {
+      // Check if this asset IS a collection (other assets reference it)
+      // Collection NFTs typically have grouping entries
+      const grouping = asset.grouping || []
+      for (const g of grouping) {
+        if (g.group_key === 'collection') {
+          collectionMints.add(g.group_value)
+        }
+      }
+    }
+
+    // Fetch details for each discovered collection mint
+    const collections: Array<{
+      mintAddress: string
+      name: string
+      symbol: string
+      description: string
+      imageUrl: string
+      size: number
+      creators: Array<{ address: string; verified: boolean; share: number }>
+    }> = []
+
+    for (const mint of collectionMints) {
+      try {
+        const collectionAsset = await helius.getAsset(mint)
+        const collectionNfts = await helius.getAssetsByGroup('collection', mint, { limit: 1 })
+
+        collections.push({
+          mintAddress: mint,
+          name: collectionAsset.content?.metadata?.name || 'Unknown',
+          symbol: collectionAsset.content?.metadata?.symbol || '',
+          description: collectionAsset.content?.metadata?.description || '',
+          imageUrl: collectionAsset.content?.links?.image || '',
+          size: collectionNfts.total || 0,
+          creators: collectionAsset.creators || [],
+        })
+      } catch {
+        // Skip collections that fail to fetch
+      }
+    }
+
+    return collections
+  }
+
+  /**
+   * Fetch all NFTs in a collection using Helius DAS API (paginated, richer data).
+   */
+  async getCollectionNFTsViaHelius(collectionMint: string, options: {
+    page?: number
+    limit?: number
+  } = {}): Promise<{
+    items: Array<{
+      mintAddress: string
+      name: string
+      description: string
+      imageUrl: string
+      owner: string
+      attributes: Array<{ trait_type: string; value: string | number }>
+    }>
+    total: number
+    page: number
+  }> {
+    if (this.mockMode) {
+      await mockDelay(400)
+      const items = Array.from({ length: 5 }, (_, i) => ({
+        mintAddress: generateMockAddress(),
+        name: `Mock NFT #${i + 1}`,
+        description: 'A mock NFT',
+        imageUrl: 'https://arweave.net/mock-nft',
+        owner: generateMockAddress(),
+        attributes: [{ trait_type: 'Background', value: 'Blue' }],
+      }))
+      return { items, total: 5, page: 1 }
+    }
+
+    const heliusApiKey = tokensConfig.helius?.apiKey
+    if (!heliusApiKey) {
+      throw new Error('Helius API key is required. Set HELIUS_API_KEY in your environment.')
+    }
+
+    const { createHeliusClient } = await import('ts-tokens/indexer')
+    const helius = createHeliusClient(heliusApiKey, tokensConfig.helius.cluster || 'devnet')
+
+    const result = await helius.getAssetsByGroup('collection', collectionMint, {
+      page: options.page || 1,
+      limit: options.limit || 50,
+    })
+
+    const items = (result.items || []).map((asset: any) => ({
+      mintAddress: asset.id,
+      name: asset.content?.metadata?.name || '',
+      description: asset.content?.metadata?.description || '',
+      imageUrl: asset.content?.links?.image || '',
+      owner: asset.ownership?.owner || '',
+      attributes: asset.content?.metadata?.attributes || [],
+    }))
+
+    return { items, total: result.total || 0, page: result.page || 1 }
   }
 
   async transferNFT(mintAddress: string, toAddress: string) {

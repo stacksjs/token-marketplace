@@ -1,0 +1,12 @@
+{
+  "name": "Devnet Test Collection",
+  "symbol": "DTC",
+  "description": "Testing NFT collection creation on devnet",
+  "image": "",
+  "external_url": "",
+  "seller_fee_basis_points": 500,
+  "properties": {
+    "category": "image",
+    "creators": []
+  }
+}

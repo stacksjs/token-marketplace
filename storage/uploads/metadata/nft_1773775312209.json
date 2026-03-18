@@ -1,0 +1,15 @@
+{
+  "name": "Devnet NFT #2",
+  "symbol": "DEVN",
+  "description": "Second NFT in the test collection",
+  "image": "",
+  "seller_fee_basis_points": 500,
+  "properties": {
+    "category": "image",
+    "creators": []
+  },
+  "collection": {
+    "name": "Devnet Test Collection",
+    "family": "Devnet Test Collection"
+  }
+}

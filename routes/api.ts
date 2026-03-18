@@ -1,5 +1,8 @@
 import { response, route } from '@stacksjs/router'
 
+// Skip auth for admin marketplace routes on devnet (for local testing)
+const isDevnet = (typeof Bun !== 'undefined' ? Bun.env : process.env).SOLANA_NETWORK === 'devnet'
+
 /**
  * This file is the entry point for your application's API routes.
  * The routes defined here are automatically registered.
@@ -102,6 +105,22 @@ route.group({ prefix: '/marketplace' }, () => {
   // Activity feed
   route.get('/activity', 'Actions/Marketplace/ActivityFeedAction')
   route.get('/activity/{collectionSlug}', 'Actions/Marketplace/ActivityFeedAction')
+
+  // Create collection on-chain (auth skipped on devnet for local testing)
+  if (isDevnet) {
+    route.post('/collections/create', 'Actions/Marketplace/CreateCollectionAction')
+    route.post('/collections/sync', 'Actions/Marketplace/SyncCollectionAction')
+    route.post('/collections/sync/batch', 'Actions/Marketplace/SyncCollectionsBatchAction')
+    route.post('/collections/discover', 'Actions/Marketplace/DiscoverCollectionsAction')
+    route.post('/nfts/mint-to-collection', 'Actions/Marketplace/MintNftToCollectionAction')
+  }
+  else {
+    route.post('/collections/create', 'Actions/Marketplace/CreateCollectionAction').middleware('auth')
+    route.post('/collections/sync', 'Actions/Marketplace/SyncCollectionAction').middleware('auth')
+    route.post('/collections/sync/batch', 'Actions/Marketplace/SyncCollectionsBatchAction').middleware('auth')
+    route.post('/collections/discover', 'Actions/Marketplace/DiscoverCollectionsAction').middleware('auth')
+    route.post('/nfts/mint-to-collection', 'Actions/Marketplace/MintNftToCollectionAction').middleware('auth')
+  }
 
   // Collection stats update (admin - requires authentication)
   route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction').middleware('auth')
