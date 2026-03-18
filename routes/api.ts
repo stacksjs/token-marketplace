@@ -143,6 +143,11 @@ route.group({ prefix: '/marketplace' }, () => {
   // Collection stats update (admin - requires authentication)
   route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction').middleware('auth')
 
+  // Cross-marketplace (Phase 17)
+  route.post('/nfts/cross-list', 'Actions/Marketplace/CrossListAction')
+  route.delete('/nfts/cross-list', 'Actions/Marketplace/CancelCrossListAction')
+  route.get('/nfts/{id}/listings', 'Actions/Marketplace/AggregatedListingsAction')
+
   // Search (Phase 13)
   route.get('/search', 'Actions/Marketplace/SearchAction')
 
