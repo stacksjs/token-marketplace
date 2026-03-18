@@ -112,6 +112,9 @@ route.group({ prefix: '/marketplace' }, () => {
   // NFTs
   route.get('/nfts', 'Actions/Marketplace/NftIndexAction')
   route.get('/nfts/{id}', 'Actions/Marketplace/NftShowAction')
+  route.get('/nfts/{id}/history', 'Actions/Marketplace/NftHistoryAction')
+  route.get('/nfts/{id}/offers', 'Actions/Marketplace/NftOffersAction')
+  route.get('/nfts/{id}/traits', 'Actions/Marketplace/NftTraitsAction')
 
   // Rarity data
   route.get('/rarity', 'Actions/Marketplace/RarityIndexAction')

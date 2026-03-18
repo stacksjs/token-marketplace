@@ -1,0 +1,682 @@
+<script server>
+const API_URL = process.env.API_URL || 'http://localhost:3008'
+const nftId = id || ''
+let nft = null
+let collection = null
+let traits = []
+let totalInCollection = 0
+let offers = []
+let history = []
+let moreFromCollection = []
+let error = null
+
+try {
+  // Fetch NFT details
+  const res = await fetch(`${API_URL}/marketplace/nfts/${nftId}`)
+  if (res.ok) {
+    const data = await res.json()
+    nft = data.nft
+  } else {
+    error = 'NFT not found'
+  }
+} catch (err) {
+  console.error('Failed to fetch NFT:', err)
+  error = 'Failed to load NFT'
+}
+
+if (nft) {
+  // Fetch traits, offers, history, and more from collection in parallel
+  const [traitsRes, offersRes, historyRes, collectionNftsRes] = await Promise.all([
+    fetch(`${API_URL}/marketplace/nfts/${nftId}/traits`).catch(() => null),
+    fetch(`${API_URL}/marketplace/nfts/${nftId}/offers`).catch(() => null),
+    fetch(`${API_URL}/marketplace/nfts/${nftId}/history`).catch(() => null),
+    nft.collection_slug
+      ? fetch(`${API_URL}/marketplace/collections/${nft.collection_slug}/nfts?limit=12`).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  if (traitsRes?.ok) {
+    const td = await traitsRes.json()
+    traits = td.traits || []
+    totalInCollection = td.totalInCollection || 0
+  }
+  if (offersRes?.ok) {
+    const od = await offersRes.json()
+    offers = od.offers || []
+  }
+  if (historyRes?.ok) {
+    const hd = await historyRes.json()
+    history = hd.history || []
+  }
+  if (collectionNftsRes?.ok) {
+    const cd = await collectionNftsRes.json()
+    moreFromCollection = (cd.data || []).filter(n => n.id !== nft.id).slice(0, 10)
+  }
+}
+
+const pageTitle = nft ? `${nft.name} | Naked NFTs` : 'NFT Not Found'
+
+function formatAddress(addr) {
+  if (!addr) return '—'
+  return addr.slice(0, 4) + '...' + addr.slice(-4)
+}
+
+function formatSol(lamports) {
+  if (!lamports) return '—'
+  const sol = typeof lamports === 'number' && lamports > 1000 ? lamports / 1e9 : lamports
+  return sol.toFixed(2) + ' SOL'
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = now - then
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return formatDate(dateStr)
+}
+
+const rarityClass = {
+  legendary: 'rarity-legendary',
+  epic: 'rarity-epic',
+  rare: 'rarity-rare',
+  uncommon: 'rarity-uncommon',
+  common: 'rarity-common',
+}
+</script>
+
+<style>
+  .rarity-legendary { background: #fef3c7; color: #92400e; }
+  .rarity-epic { background: #ede9fe; color: #6d28d9; }
+  .rarity-rare { background: #dbeafe; color: #1d4ed8; }
+  .rarity-uncommon { background: #d1fae5; color: #065f46; }
+  .rarity-common { background: #f3f4f6; color: #6b7280; }
+
+  .zoom-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    cursor: zoom-out;
+  }
+  .zoom-overlay.active { display: flex; }
+  .zoom-overlay img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+
+  .tab-active { border-bottom: 2px solid #E50570; color: #1E2321; font-weight: 600; }
+  .tab-inactive { border-bottom: 2px solid transparent; color: #9ca3af; }
+  .tab-inactive:hover { color: #6b7280; border-color: #e5e7eb; }
+
+  .trait-card { transition: transform 0.15s, box-shadow 0.15s; }
+  .trait-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+  .trait-bar { height: 4px; border-radius: 2px; background: #e5e7eb; overflow: hidden; }
+  .trait-bar-fill { height: 100%; border-radius: 2px; background: #E50570; transition: width 0.5s ease; }
+
+  .event-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .event-sale { background: #d1fae5; color: #065f46; }
+  .event-list { background: #dbeafe; color: #1d4ed8; }
+  .event-transfer { background: #fef3c7; color: #92400e; }
+  .event-offer { background: #ede9fe; color: #6d28d9; }
+  .event-mint { background: #fce7f3; color: #be185d; }
+  .event-delist { background: #fee2e2; color: #991b1b; }
+
+  .more-scroll { overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .more-scroll::-webkit-scrollbar { height: 6px; }
+  .more-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  .more-card { scroll-snap-align: start; flex-shrink: 0; width: 180px; }
+
+  .copy-btn { cursor: pointer; opacity: 0.5; transition: opacity 0.15s; }
+  .copy-btn:hover { opacity: 1; }
+  .copy-toast { position: fixed; bottom: 24px; right: 24px; background: #1E2321; color: white; padding: 8px 16px; border-radius: 8px; font-size: 14px; z-index: 100; display: none; }
+  .copy-toast.show { display: block; animation: fadeInOut 2s ease; }
+  @keyframes fadeInOut { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+</style>
+
+@layout('default')
+@section('title', pageTitle)
+@section('content')
+  @if(error)
+    <div class="min-h-screen flex items-center justify-center">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold text-gray-8 mb-4">{{ error }}</h1>
+        <a href="/collections" class="text-pink-8 hover:text-pink-9">Browse collections</a>
+      </div>
+    </div>
+  @else
+    <!-- Zoom overlay -->
+    <div id="zoom-overlay" class="zoom-overlay" onclick="this.classList.remove('active')">
+      <img id="zoom-img" src="" alt="Zoomed NFT" />
+    </div>
+
+    <!-- Copy toast -->
+    <div id="copy-toast" class="copy-toast">Copied!</div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Breadcrumb -->
+      <nav class="flex items-center text-sm text-gray-5 mb-6 space-x-2">
+        <a href="/" class="hover:text-gray-7">Home</a>
+        <span>/</span>
+        @if(nft.collection_slug)
+          <a href="/collections/{{ nft.collection_slug }}" class="hover:text-gray-7">{{ nft.collection_name || 'Collection' }}</a>
+          <span>/</span>
+        @endif
+        <span class="text-gray-8 font-medium">{{ nft.name }}</span>
+      </nav>
+
+      <!-- Main layout: Image + Details -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <!-- Left: Artwork -->
+        <div>
+          <div
+            class="relative rounded-xl overflow-hidden bg-gray-1 border border-gray-2 cursor-zoom-in"
+            onclick="document.getElementById('zoom-img').src=this.querySelector('img').src;document.getElementById('zoom-overlay').classList.add('active')"
+          >
+            <img
+              src="{{ nft.image_url || '/assets/images/anonymouse.png' }}"
+              alt="{{ nft.name }}"
+              class="w-full aspect-square object-cover"
+              onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+            />
+            @if(nft.rarity)
+              <span class="absolute top-3 right-3 px-2 py-1 rounded-md text-xs font-semibold {{ rarityClass[nft.rarity?.toLowerCase()] || 'rarity-common' }}">
+                {{ nft.rarity }}
+              </span>
+            @endif
+          </div>
+
+          @if(nft.description)
+            <div class="mt-4 p-4 bg-gray-1 rounded-lg border border-gray-2">
+              <h3 class="text-sm font-semibold text-gray-7 mb-1">Description</h3>
+              <p class="text-sm text-gray-6 leading-relaxed">{{ nft.description }}</p>
+            </div>
+          @endif
+        </div>
+
+        <!-- Right: Details + Actions -->
+        <div>
+          <!-- NFT Name & Collection -->
+          <div class="mb-4">
+            @if(nft.collection_slug)
+              <a href="/collections/{{ nft.collection_slug }}" class="text-sm font-medium text-pink-7 hover:text-pink-8">
+                {{ nft.collection_name }}
+              </a>
+            @endif
+            <h1 class="text-3xl font-bold text-gray-9 mt-1">{{ nft.name }}</h1>
+
+            <div class="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-5">
+              <!-- Rarity Rank -->
+              @if(nft.rarity_rank)
+                <span class="font-medium text-gray-7">
+                  Rank #{{ nft.rarity_rank }}
+                  @if(totalInCollection)
+                    <span class="text-gray-4">/ {{ totalInCollection }}</span>
+                  @endif
+                </span>
+              @endif
+
+              <!-- Token Address -->
+              @if(nft.mint_address)
+                <span class="flex items-center gap-1">
+                  <span class="text-gray-4">Token:</span>
+                  <code class="text-xs bg-gray-1 px-1.5 py-0.5 rounded">{{ formatAddress(nft.mint_address) }}</code>
+                  <span class="copy-btn" onclick="copyToClipboard('{{ nft.mint_address }}')" title="Copy address">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/></svg>
+                  </span>
+                </span>
+              @endif
+
+              <!-- Owner -->
+              @if(nft.owner_wallet_address)
+                <span class="flex items-center gap-1">
+                  <span class="text-gray-4">Owner:</span>
+                  <a href="/profile/{{ nft.owner_wallet_address }}" class="text-pink-7 hover:text-pink-8 font-mono text-xs">
+                    {{ formatAddress(nft.owner_wallet_address) }}
+                  </a>
+                </span>
+              @endif
+            </div>
+          </div>
+
+          <!-- Price & Actions Card -->
+          <div class="bg-white border border-gray-2 rounded-xl p-6 mb-6 shadow-sm">
+            @if(nft.is_for_sale || nft.listing_price)
+              <!-- Listed: Show price + Buy -->
+              <div class="mb-1 text-sm text-gray-5">Current Price</div>
+              <div class="flex items-baseline gap-2 mb-4">
+                <span class="text-3xl font-bold text-gray-9">{{ formatSol(nft.listing_price || nft.price) }}</span>
+              </div>
+
+              <div class="flex gap-3 mb-4">
+                <button
+                  class="flex-1 bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 px-6 rounded-lg transition"
+                  onclick="openBuyModal()"
+                >
+                  Buy Now
+                </button>
+                <button
+                  class="px-6 py-3 border border-gray-3 rounded-lg text-gray-7 font-medium hover:bg-gray-1 transition"
+                  onclick="openOfferModal()"
+                >
+                  Make Offer
+                </button>
+              </div>
+
+              <!-- Fee breakdown tooltip -->
+              <div class="text-xs text-gray-4">
+                <span class="cursor-help border-b border-dotted border-gray-3" title="Platform fee: 1% · Creator royalty: 5% · You pay the listed price">
+                  Fee breakdown ⓘ
+                </span>
+              </div>
+            @elseif(nft.auction)
+              <!-- Auction active -->
+              <div class="mb-1 text-sm text-gray-5">Active Auction</div>
+              <div class="flex items-baseline gap-2 mb-4">
+                <span class="text-3xl font-bold text-gray-9">{{ formatSol(nft.auction.current_bid || nft.auction.start_price) }}</span>
+                <span class="text-sm text-gray-4">current bid</span>
+              </div>
+              <button
+                class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 px-6 rounded-lg transition mb-2"
+                onclick="openBidModal()"
+              >
+                Place Bid
+              </button>
+              <div class="text-xs text-gray-4 text-center">
+                Ends {{ formatDate(nft.auction.end_time) }}
+              </div>
+            @else
+              <!-- Not listed -->
+              <div class="mb-4 text-gray-5 text-sm">This NFT is not currently listed for sale.</div>
+              <div class="flex gap-3">
+                <button
+                  class="flex-1 bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 px-6 rounded-lg transition"
+                  onclick="openOfferModal()"
+                >
+                  Make Offer
+                </button>
+              </div>
+            @endif
+
+            <!-- Owner actions (shown via JS if wallet matches) -->
+            <div id="owner-actions" class="hidden mt-4 pt-4 border-t border-gray-2">
+              <div class="text-xs text-gray-4 mb-2 uppercase tracking-wide">Owner Actions</div>
+              <div class="flex gap-2">
+                <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg border border-gray-3 hover:bg-gray-1 transition" onclick="openListModal()">List for Sale</button>
+                <button class="flex-1 py-2 px-3 text-sm font-medium rounded-lg border border-gray-3 hover:bg-gray-1 transition" onclick="openTransferModal()">Transfer</button>
+                <button class="py-2 px-3 text-sm font-medium rounded-lg border border-red-2 text-red-6 hover:bg-red-1 transition" onclick="openBurnModal()">Burn</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Last Sale -->
+          @if(history.length > 0)
+            <div class="text-sm text-gray-5 mb-6">
+              Last sale: <span class="font-medium text-gray-7">{{ formatSol(history[0]?.price) }}</span>
+              <span class="text-gray-4">· {{ formatDate(history[0]?.timestamp) }}</span>
+            </div>
+          @endif
+
+          <!-- Tabs: Traits | Offers | Activity -->
+          <div class="border-b border-gray-2 mb-4">
+            <nav class="flex space-x-6" id="detail-tabs">
+              <button class="tab-active py-2 text-sm" onclick="switchTab('traits')">
+                Attributes
+                <span class="ml-1 text-xs text-gray-4">{{ traits.length }}</span>
+              </button>
+              <button class="tab-inactive py-2 text-sm" onclick="switchTab('offers')">
+                Offers
+                <span class="ml-1 text-xs text-gray-4">{{ offers.length }}</span>
+              </button>
+              <button class="tab-inactive py-2 text-sm" onclick="switchTab('activity')">
+                Activity
+                <span class="ml-1 text-xs text-gray-4">{{ history.length }}</span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- Traits Panel -->
+          <div id="panel-traits">
+            @if(traits.length > 0)
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                @foreach(traits as trait)
+                  <div class="trait-card bg-gray-1 border border-gray-2 rounded-lg p-3">
+                    <div class="text-xs text-gray-4 uppercase tracking-wide mb-0.5">{{ trait.type }}</div>
+                    <div class="text-sm font-semibold text-gray-8 mb-1">{{ trait.value }}</div>
+                    <div class="trait-bar mb-1">
+                      <div class="trait-bar-fill" style="width: {{ trait.rarityPct || 0 }}%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-4">
+                      <span>{{ trait.rarityPct }}% have this</span>
+                      @if(trait.floorPrice)
+                        <span>Floor: {{ trait.floorPrice.toFixed(2) }} SOL</span>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @else
+              <p class="text-sm text-gray-4 py-4">No attributes data available.</p>
+            @endif
+          </div>
+
+          <!-- Offers Panel -->
+          <div id="panel-offers" class="hidden">
+            @if(offers.length > 0)
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-left text-gray-4 border-b border-gray-2">
+                      <th class="pb-2 font-medium">From</th>
+                      <th class="pb-2 font-medium">Amount</th>
+                      <th class="pb-2 font-medium">Expires</th>
+                      <th class="pb-2 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @foreach(offers as offer)
+                      <tr class="border-b border-gray-1">
+                        <td class="py-3">
+                          <a href="/profile/{{ offer.offerer }}" class="text-pink-7 hover:text-pink-8 font-mono text-xs">{{ formatAddress(offer.offerer) }}</a>
+                        </td>
+                        <td class="py-3 font-medium text-gray-8">{{ offer.amount.toFixed(2) }} SOL</td>
+                        <td class="py-3 text-gray-5">{{ offer.expiresAt ? formatDate(offer.expiresAt) : 'No expiry' }}</td>
+                        <td class="py-3">
+                          <button class="offer-accept-btn hidden text-xs px-3 py-1 bg-green-6 text-white rounded hover:bg-green-7 transition" data-offer-id="{{ offer.id }}">Accept</button>
+                          <button class="offer-cancel-btn hidden text-xs px-3 py-1 border border-gray-3 rounded hover:bg-gray-1 transition" data-offer-id="{{ offer.id }}">Cancel</button>
+                        </td>
+                      </tr>
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+            @else
+              <p class="text-sm text-gray-4 py-4">No active offers.</p>
+            @endif
+          </div>
+
+          <!-- Activity Panel -->
+          <div id="panel-activity" class="hidden">
+            @if(history.length > 0)
+              <div class="space-y-3">
+                @foreach(history as event)
+                  <div class="flex items-center gap-3">
+                    <div class="event-icon event-{{ event.type || 'transfer' }}">
+                      @if(event.type === 'sale')
+                        💰
+                      @elseif(event.type === 'list')
+                        📋
+                      @elseif(event.type === 'mint')
+                        ✨
+                      @elseif(event.type === 'offer')
+                        🤝
+                      @elseif(event.type === 'delist')
+                        ❌
+                      @else
+                        ↗️
+                      @endif
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-gray-8 capitalize">{{ event.type || 'Transfer' }}</div>
+                      <div class="text-xs text-gray-4">
+                        @if(event.from)
+                          <a href="/profile/{{ event.from }}" class="hover:text-pink-7">{{ formatAddress(event.from) }}</a>
+                        @endif
+                        @if(event.from && event.to)
+                          →
+                        @endif
+                        @if(event.to)
+                          <a href="/profile/{{ event.to }}" class="hover:text-pink-7">{{ formatAddress(event.to) }}</a>
+                        @endif
+                      </div>
+                    </div>
+                    @if(event.price)
+                      <div class="text-sm font-semibold text-gray-8">{{ event.price.toFixed(2) }} SOL</div>
+                    @endif
+                    <div class="text-xs text-gray-4 whitespace-nowrap">
+                      {{ timeAgo(event.timestamp) }}
+                      @if(event.txSignature)
+                        <a href="https://solscan.io/tx/{{ event.txSignature }}" target="_blank" class="ml-1 text-pink-6 hover:text-pink-7">↗</a>
+                      @endif
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @else
+              <p class="text-sm text-gray-4 py-4">No activity recorded yet.</p>
+            @endif
+          </div>
+        </div>
+      </div>
+
+      <!-- More From Collection -->
+      @if(moreFromCollection.length > 0)
+        <div class="mb-12">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-9">More from this collection</h2>
+            @if(nft.collection_slug)
+              <a href="/collections/{{ nft.collection_slug }}" class="text-sm text-pink-7 hover:text-pink-8 font-medium">View All →</a>
+            @endif
+          </div>
+          <div class="more-scroll flex gap-4 pb-2">
+            @foreach(moreFromCollection as item)
+              <a href="/nfts/{{ item.id }}" class="more-card bg-white border border-gray-2 rounded-xl overflow-hidden hover:shadow-md transition group">
+                <div class="aspect-square bg-gray-1 overflow-hidden">
+                  <img
+                    src="{{ item.image_url || '/assets/images/anonymouse.png' }}"
+                    alt="{{ item.name }}"
+                    class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+                  />
+                </div>
+                <div class="p-3">
+                  <div class="text-sm font-medium text-gray-8 truncate">{{ item.name }}</div>
+                  @if(item.listing_price || item.price)
+                    <div class="text-xs font-semibold text-gray-6 mt-1">{{ formatSol(item.listing_price || item.price) }}</div>
+                  @endif
+                </div>
+              </a>
+            @endforeach
+          </div>
+        </div>
+      @endif
+    </div>
+
+    <!-- Buy Modal -->
+    <div id="buy-modal" class="fixed inset-0 z-40 hidden">
+      <div class="absolute inset-0 bg-black/50" onclick="closeBuyModal()"></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+          <button class="absolute top-4 right-4 text-gray-4 hover:text-gray-6" onclick="closeBuyModal()">✕</button>
+          <h3 class="text-xl font-bold text-gray-9 mb-4">Buy NFT</h3>
+          <div class="flex items-center gap-4 mb-4">
+            <img src="{{ nft.image_url || '/assets/images/anonymouse.png' }}" class="w-16 h-16 rounded-lg object-cover" />
+            <div>
+              <div class="font-semibold text-gray-8">{{ nft.name }}</div>
+              <div class="text-2xl font-bold text-gray-9">{{ formatSol(nft.listing_price || nft.price) }}</div>
+            </div>
+          </div>
+          <div class="bg-gray-1 rounded-lg p-3 mb-4 text-sm space-y-1">
+            <div class="flex justify-between text-gray-5"><span>Item price</span><span>{{ formatSol(nft.listing_price || nft.price) }}</span></div>
+            <div class="flex justify-between text-gray-5"><span>Creator royalty (5%)</span><span class="text-gray-4">included</span></div>
+            <div class="flex justify-between text-gray-5"><span>Platform fee (1%)</span><span class="text-gray-4">included</span></div>
+            <div class="flex justify-between font-semibold text-gray-8 pt-1 border-t border-gray-2"><span>Total</span><span>{{ formatSol(nft.listing_price || nft.price) }}</span></div>
+          </div>
+          <button id="confirm-buy-btn" class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 rounded-lg transition" onclick="confirmBuy()">
+            Confirm Purchase
+          </button>
+          <div id="buy-status" class="mt-3 text-sm text-center hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offer Modal -->
+    <div id="offer-modal" class="fixed inset-0 z-40 hidden">
+      <div class="absolute inset-0 bg-black/50" onclick="closeOfferModal()"></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+          <button class="absolute top-4 right-4 text-gray-4 hover:text-gray-6" onclick="closeOfferModal()">✕</button>
+          <h3 class="text-xl font-bold text-gray-9 mb-4">Make an Offer</h3>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-7 mb-1">Offer Amount (SOL)</label>
+            <input id="offer-amount" type="number" step="0.01" min="0" placeholder="0.00" class="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-gray-8 focus:ring-2 focus:ring-pink-5 focus:border-pink-5 outline-none" />
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-7 mb-1">Expiry (optional)</label>
+            <select id="offer-expiry" class="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-gray-7 outline-none">
+              <option value="">No expiry</option>
+              <option value="1">1 day</option>
+              <option value="3">3 days</option>
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </div>
+          <button class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 rounded-lg transition" onclick="submitOffer()">
+            Submit Offer
+          </button>
+          <div id="offer-status" class="mt-3 text-sm text-center hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Tab switching
+      function switchTab(tab) {
+        const tabs = document.querySelectorAll('#detail-tabs button')
+        const panels = ['traits', 'offers', 'activity']
+
+        tabs.forEach((t, i) => {
+          if (panels[i] === tab) {
+            t.className = 'tab-active py-2 text-sm'
+          } else {
+            t.className = 'tab-inactive py-2 text-sm'
+          }
+        })
+
+        panels.forEach(p => {
+          const el = document.getElementById('panel-' + p)
+          if (el) el.classList.toggle('hidden', p !== tab)
+        })
+      }
+
+      // Copy to clipboard
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+          const toast = document.getElementById('copy-toast')
+          toast.classList.add('show')
+          setTimeout(() => toast.classList.remove('show'), 2000)
+        })
+      }
+
+      // Buy modal
+      function openBuyModal() { document.getElementById('buy-modal').classList.remove('hidden') }
+      function closeBuyModal() { document.getElementById('buy-modal').classList.add('hidden') }
+
+      async function confirmBuy() {
+        const btn = document.getElementById('confirm-buy-btn')
+        const status = document.getElementById('buy-status')
+        btn.disabled = true
+        btn.textContent = 'Processing...'
+        status.classList.remove('hidden')
+        status.textContent = 'Preparing transaction...'
+        status.className = 'mt-3 text-sm text-center text-gray-5'
+
+        try {
+          const res = await fetch('/nfts/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nftId: {{ nft.id }} }),
+          })
+          const data = await res.json()
+          if (data.transaction) {
+            status.textContent = 'Please approve the transaction in your wallet...'
+            // Wallet signing would happen here
+          } else {
+            status.textContent = data.error || 'Failed to create transaction'
+            status.className = 'mt-3 text-sm text-center text-red-6'
+          }
+        } catch (err) {
+          status.textContent = 'Network error. Please try again.'
+          status.className = 'mt-3 text-sm text-center text-red-6'
+        } finally {
+          btn.disabled = false
+          btn.textContent = 'Confirm Purchase'
+        }
+      }
+
+      // Offer modal
+      function openOfferModal() { document.getElementById('offer-modal').classList.remove('hidden') }
+      function closeOfferModal() { document.getElementById('offer-modal').classList.add('hidden') }
+
+      async function submitOffer() {
+        const amount = document.getElementById('offer-amount').value
+        const expiryDays = document.getElementById('offer-expiry').value
+        const status = document.getElementById('offer-status')
+
+        if (!amount || Number(amount) <= 0) {
+          status.classList.remove('hidden')
+          status.textContent = 'Please enter a valid amount'
+          status.className = 'mt-3 text-sm text-center text-red-6'
+          return
+        }
+
+        status.classList.remove('hidden')
+        status.textContent = 'Submitting offer...'
+        status.className = 'mt-3 text-sm text-center text-gray-5'
+
+        try {
+          const body = { nftId: {{ nft.id }}, amount: Number(amount) }
+          if (expiryDays) {
+            const expiry = new Date()
+            expiry.setDate(expiry.getDate() + Number(expiryDays))
+            body.expiryAt = expiry.toISOString()
+          }
+
+          const res = await fetch('/nfts/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+          const data = await res.json()
+          if (data.transaction || data.success) {
+            status.textContent = 'Offer submitted! Please approve in your wallet.'
+            status.className = 'mt-3 text-sm text-center text-green-6'
+          } else {
+            status.textContent = data.error || 'Failed to submit offer'
+            status.className = 'mt-3 text-sm text-center text-red-6'
+          }
+        } catch (err) {
+          status.textContent = 'Network error. Please try again.'
+          status.className = 'mt-3 text-sm text-center text-red-6'
+        }
+      }
+
+      // Placeholder owner action modals
+      function openListModal() { alert('List for Sale flow - connect wallet first') }
+      function openTransferModal() { alert('Transfer flow - connect wallet first') }
+      function openBurnModal() { if (confirm('Are you sure you want to burn this NFT? This is irreversible.')) alert('Burn flow - connect wallet first') }
+      function openBidModal() { alert('Place Bid flow - connect wallet first') }
+
+      // Show owner actions if wallet matches
+      document.addEventListener('DOMContentLoaded', () => {
+        const ownerAddr = '{{ nft.owner_wallet_address || "" }}'
+        if (ownerAddr && window.connectedWallet === ownerAddr) {
+          document.getElementById('owner-actions')?.classList.remove('hidden')
+          // Show accept buttons on offers
+          document.querySelectorAll('.offer-accept-btn').forEach(b => b.classList.remove('hidden'))
+        }
+        // Show cancel buttons if offerer matches
+        // This would need the offerer addresses to be checked against connectedWallet
+      })
+    </script>
+  @endif
+@endsection
