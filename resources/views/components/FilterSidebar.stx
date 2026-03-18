@@ -1,0 +1,225 @@
+<style>
+  .filter-panel { transition: transform 0.3s ease, opacity 0.3s ease; }
+  .filter-section { border-bottom: 1px solid #f3f4f6; }
+  .filter-section:last-child { border-bottom: none; }
+  .filter-toggle { cursor: pointer; user-select: none; }
+  .filter-toggle svg { transition: transform 0.2s; }
+  .filter-toggle.collapsed svg { transform: rotate(-90deg); }
+  .trait-checkbox { cursor: pointer; }
+  .trait-checkbox:hover { background: #f9fafb; }
+  .price-slider { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: #e5e7eb; outline: none; }
+  .price-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #E50570; cursor: pointer; }
+  .active-filter-tag { display: inline-flex; align-items: center; gap: 4px; background: #fdf2f8; color: #E50570; border: 1px solid #fce7f3; border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .active-filter-tag button { background: none; border: none; cursor: pointer; color: #E50570; font-size: 14px; padding: 0; }
+
+  /* Mobile drawer */
+  @media (max-width: 768px) {
+    .filter-panel-desktop { display: none; }
+    .filter-drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 40; display: none; }
+    .filter-drawer-overlay.active { display: block; }
+    .filter-drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 300px; max-width: 85vw; background: white; z-index: 41; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; }
+    .filter-drawer.active { transform: translateX(0); }
+  }
+  @media (min-width: 769px) {
+    .filter-mobile-toggle { display: none; }
+    .filter-drawer-overlay { display: none !important; }
+    .filter-drawer { display: none !important; }
+  }
+</style>
+
+<!-- Mobile filter toggle -->
+<button class="filter-mobile-toggle flex items-center gap-2 px-3 py-2 border border-gray-3 rounded-lg text-sm text-gray-7 hover:bg-gray-1 mb-4" onclick="openFilterDrawer()">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+  Filters
+</button>
+
+<!-- Active filters display -->
+<div id="active-filters" class="flex flex-wrap gap-2 mb-4" style="display:none"></div>
+
+<!-- Mobile drawer overlay -->
+<div id="filter-drawer-overlay" class="filter-drawer-overlay" onclick="closeFilterDrawer()"></div>
+<div id="filter-drawer" class="filter-drawer p-4">
+  <div class="flex items-center justify-between mb-4">
+    <span class="font-semibold text-gray-8">Filters</span>
+    <button class="text-gray-4 hover:text-gray-6" onclick="closeFilterDrawer()">✕</button>
+  </div>
+  <div id="filter-content-mobile"></div>
+</div>
+
+<!-- Desktop sidebar content (rendered by JS) -->
+<div id="filter-content-desktop" class="filter-panel-desktop"></div>
+
+<script>
+  window.FilterSidebar = {
+    attributes: {},
+    selectedTraits: {},
+    status: 'all',
+    minPrice: null,
+    maxPrice: null,
+    rarity: [],
+    searchQuery: '',
+    _debounceTimer: null,
+
+    init(attributes, collectionSlug) {
+      this.attributes = attributes || {}
+      this.collectionSlug = collectionSlug
+      this._restoreFromUrl()
+      this._render()
+      this._renderActiveFilters()
+    },
+
+    _restoreFromUrl() {
+      const params = new URLSearchParams(window.location.search)
+      this.status = params.get('status') || 'all'
+      this.minPrice = params.get('minPrice') ? Number(params.get('minPrice')) : null
+      this.maxPrice = params.get('maxPrice') ? Number(params.get('maxPrice')) : null
+      this.rarity = params.get('rarity') ? params.get('rarity').split(',') : []
+      this.searchQuery = params.get('q') || ''
+      const traitsParam = params.get('traits')
+      if (traitsParam) {
+        try { this.selectedTraits = JSON.parse(traitsParam) } catch {}
+      }
+    },
+
+    _updateUrl() {
+      const params = new URLSearchParams()
+      if (this.status !== 'all') params.set('status', this.status)
+      if (this.minPrice !== null) params.set('minPrice', this.minPrice)
+      if (this.maxPrice !== null) params.set('maxPrice', this.maxPrice)
+      if (this.rarity.length > 0) params.set('rarity', this.rarity.join(','))
+      if (this.searchQuery) params.set('q', this.searchQuery)
+      if (Object.keys(this.selectedTraits).length > 0) params.set('traits', JSON.stringify(this.selectedTraits))
+
+      const sort = new URLSearchParams(window.location.search).get('sort')
+      if (sort) params.set('sort', sort)
+
+      const qs = params.toString()
+      const newUrl = window.location.pathname + (qs ? '?' + qs : '')
+      window.history.replaceState(null, '', newUrl)
+    },
+
+    _applyFilters() {
+      clearTimeout(this._debounceTimer)
+      this._debounceTimer = setTimeout(() => {
+        this._updateUrl()
+        this._renderActiveFilters()
+        if (typeof window.onFiltersChanged === 'function') {
+          window.onFiltersChanged({
+            status: this.status,
+            minPrice: this.minPrice,
+            maxPrice: this.maxPrice,
+            rarity: this.rarity.join(','),
+            traits: JSON.stringify(this.selectedTraits),
+            q: this.searchQuery,
+          })
+        }
+      }, 300)
+    },
+
+    setStatus(s) { this.status = s; this._applyFilters(); this._render() },
+    setMinPrice(v) { this.minPrice = v ? Number(v) : null; this._applyFilters() },
+    setMaxPrice(v) { this.maxPrice = v ? Number(v) : null; this._applyFilters() },
+    toggleRarity(level) {
+      const idx = this.rarity.indexOf(level)
+      if (idx >= 0) this.rarity.splice(idx, 1)
+      else this.rarity.push(level)
+      this._applyFilters(); this._render()
+    },
+    toggleTrait(type, value) {
+      if (this.selectedTraits[type] === value) delete this.selectedTraits[type]
+      else this.selectedTraits[type] = value
+      this._applyFilters(); this._render()
+    },
+    setSearch(q) { this.searchQuery = q; this._applyFilters() },
+    clearAll() {
+      this.status = 'all'; this.minPrice = null; this.maxPrice = null
+      this.rarity = []; this.selectedTraits = {}; this.searchQuery = ''
+      this._applyFilters(); this._render()
+    },
+
+    _renderActiveFilters() {
+      const el = document.getElementById('active-filters')
+      if (!el) return
+      const tags = []
+      if (this.status !== 'all') tags.push({ label: this.status, clear: () => this.setStatus('all') })
+      if (this.minPrice !== null) tags.push({ label: `Min: ${this.minPrice} SOL`, clear: () => this.setMinPrice(null) })
+      if (this.maxPrice !== null) tags.push({ label: `Max: ${this.maxPrice} SOL`, clear: () => this.setMaxPrice(null) })
+      this.rarity.forEach(r => tags.push({ label: r, clear: () => this.toggleRarity(r) }))
+      Object.entries(this.selectedTraits).forEach(([k, v]) => tags.push({ label: `${k}: ${v}`, clear: () => this.toggleTrait(k, v) }))
+      if (this.searchQuery) tags.push({ label: `"${this.searchQuery}"`, clear: () => this.setSearch('') })
+
+      if (tags.length === 0) { el.style.display = 'none'; return }
+      el.style.display = 'flex'
+      el.innerHTML = tags.map((t, i) =>
+        `<span class="active-filter-tag">${t.label}<button onclick="FilterSidebar._clearTag(${i})">×</button></span>`
+      ).join('') + '<button class="text-xs text-pink-7 hover:text-pink-8 ml-2" onclick="FilterSidebar.clearAll()">Clear All</button>'
+      this._clearTagFns = tags.map(t => t.clear)
+    },
+
+    _clearTagFns: [],
+    _clearTag(i) { if (this._clearTagFns[i]) this._clearTagFns[i]() },
+
+    _render() {
+      const html = this._renderHTML()
+      const desktop = document.getElementById('filter-content-desktop')
+      const mobile = document.getElementById('filter-content-mobile')
+      if (desktop) desktop.innerHTML = html
+      if (mobile) mobile.innerHTML = html
+    },
+
+    _renderHTML() {
+      let html = ''
+
+      // Search
+      html += `<div class="filter-section pb-3 mb-3"><input type="text" placeholder="Search by name or ID..." value="${this.searchQuery}" oninput="FilterSidebar.setSearch(this.value)" class="w-full border border-gray-3 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-pink-5" /></div>`
+
+      // Status
+      html += '<div class="filter-section pb-3 mb-3"><div class="text-xs font-semibold text-gray-4 uppercase tracking-wide mb-2">Status</div><div class="flex flex-wrap gap-1.5">'
+      const statuses = ['all', 'listed', 'unlisted']
+      statuses.forEach(s => {
+        const active = this.status === s
+        html += `<button onclick="FilterSidebar.setStatus('${s}')" class="text-xs px-3 py-1 rounded-full border ${active ? 'bg-gray-9 text-white border-gray-9' : 'border-gray-2 text-gray-6 hover:bg-gray-1'} capitalize">${s}</button>`
+      })
+      html += '</div></div>'
+
+      // Price range
+      html += `<div class="filter-section pb-3 mb-3"><div class="text-xs font-semibold text-gray-4 uppercase tracking-wide mb-2">Price (SOL)</div><div class="flex gap-2"><input type="number" step="0.01" min="0" placeholder="Min" value="${this.minPrice || ''}" onchange="FilterSidebar.setMinPrice(this.value)" class="w-full border border-gray-3 rounded-lg px-2 py-1.5 text-sm outline-none" /><input type="number" step="0.01" min="0" placeholder="Max" value="${this.maxPrice || ''}" onchange="FilterSidebar.setMaxPrice(this.value)" class="w-full border border-gray-3 rounded-lg px-2 py-1.5 text-sm outline-none" /></div></div>`
+
+      // Rarity
+      html += '<div class="filter-section pb-3 mb-3"><div class="text-xs font-semibold text-gray-4 uppercase tracking-wide mb-2">Rarity</div><div class="space-y-1">'
+      const rarities = ['legendary', 'epic', 'rare', 'uncommon', 'common']
+      rarities.forEach(r => {
+        const checked = this.rarity.includes(r)
+        html += `<label class="trait-checkbox flex items-center gap-2 px-2 py-1 rounded text-sm"><input type="checkbox" ${checked ? 'checked' : ''} onchange="FilterSidebar.toggleRarity('${r}')" class="rounded border-gray-3" /><span class="capitalize">${r}</span></label>`
+      })
+      html += '</div></div>'
+
+      // Trait filters
+      const traitTypes = Object.keys(this.attributes)
+      if (traitTypes.length > 0) {
+        traitTypes.forEach(type => {
+          const values = this.attributes[type]
+          html += `<div class="filter-section pb-3 mb-3"><div class="filter-toggle flex items-center justify-between" onclick="this.classList.toggle('collapsed');this.nextElementSibling.style.display=this.classList.contains('collapsed')?'none':''"><div class="text-xs font-semibold text-gray-4 uppercase tracking-wide">${type}</div><svg class="w-4 h-4 text-gray-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div><div class="mt-2 space-y-0.5 max-h-48 overflow-y-auto">`
+          const sortedValues = Object.entries(values).sort((a, b) => (b[1] as number) - (a[1] as number))
+          sortedValues.forEach(([value, count]) => {
+            const selected = this.selectedTraits[type] === value
+            html += `<label class="trait-checkbox flex items-center justify-between px-2 py-1 rounded text-sm ${selected ? 'bg-pink-1' : ''}"><span class="flex items-center gap-2"><input type="radio" name="trait_${type}" ${selected ? 'checked' : ''} onchange="FilterSidebar.toggleTrait('${type}','${value.replace(/'/g, "\\'")}')" class="rounded-full border-gray-3" /><span>${value}</span></span><span class="text-xs text-gray-4">${count}</span></label>`
+          })
+          html += '</div></div>'
+        })
+      }
+
+      return html
+    }
+  }
+
+  function openFilterDrawer() {
+    document.getElementById('filter-drawer-overlay').classList.add('active')
+    document.getElementById('filter-drawer').classList.add('active')
+  }
+
+  function closeFilterDrawer() {
+    document.getElementById('filter-drawer-overlay').classList.remove('active')
+    document.getElementById('filter-drawer').classList.remove('active')
+  }
+</script>

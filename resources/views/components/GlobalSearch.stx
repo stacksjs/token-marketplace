@@ -1,0 +1,105 @@
+<style>
+  .search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; }
+  .search-overlay.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 15vh; }
+  .search-modal { background: white; border-radius: 16px; width: 560px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden; }
+  .search-input-wrap { padding: 16px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 12px; }
+  .search-input-wrap input { flex: 1; border: none; outline: none; font-size: 16px; color: #1E2321; }
+  .search-input-wrap input::placeholder { color: #9ca3af; }
+  .search-results { max-height: 50vh; overflow-y: auto; }
+  .search-group-title { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px 4px; }
+  .search-result { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background 0.1s; }
+  .search-result:hover { background: #f9fafb; }
+  .search-result img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+  .search-result .name { font-size: 14px; font-weight: 500; color: #1E2321; }
+  .search-result .meta { font-size: 12px; color: #9ca3af; }
+  .search-empty { padding: 32px 16px; text-align: center; color: #9ca3af; font-size: 14px; }
+  .search-kbd { font-size: 11px; background: #f3f4f6; color: #6b7280; padding: 2px 6px; border-radius: 4px; border: 1px solid #e5e7eb; }
+</style>
+
+<div id="global-search-overlay" class="search-overlay" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="search-modal">
+    <div class="search-input-wrap">
+      <svg class="w-5 h-5 text-gray-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="global-search-input" type="text" placeholder="Search collections, NFTs, wallets..." autocomplete="off" oninput="handleGlobalSearch(this.value)" />
+      <span class="search-kbd">ESC</span>
+    </div>
+    <div id="global-search-results" class="search-results">
+      <div class="search-empty">Type to search...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let _searchDebounce = null
+
+  function openGlobalSearch() {
+    document.getElementById('global-search-overlay').classList.add('active')
+    document.getElementById('global-search-input').focus()
+  }
+
+  function closeGlobalSearch() {
+    document.getElementById('global-search-overlay').classList.remove('active')
+    document.getElementById('global-search-input').value = ''
+    document.getElementById('global-search-results').innerHTML = '<div class="search-empty">Type to search...</div>'
+  }
+
+  // Keyboard shortcut: Cmd/Ctrl + K
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      openGlobalSearch()
+    }
+    if (e.key === 'Escape') closeGlobalSearch()
+  })
+
+  function handleGlobalSearch(query) {
+    clearTimeout(_searchDebounce)
+    if (!query || query.length < 2) {
+      document.getElementById('global-search-results').innerHTML = '<div class="search-empty">Type to search...</div>'
+      return
+    }
+    _searchDebounce = setTimeout(async () => {
+      const API_URL = window.API_BASE || 'http://localhost:3008'
+      try {
+        const res = await fetch(`${API_URL}/marketplace/search?q=${encodeURIComponent(query)}&limit=8`)
+        if (!res.ok) return
+        const data = await res.json()
+        renderSearchResults(data)
+      } catch {}
+    }, 200)
+  }
+
+  function renderSearchResults(data) {
+    const el = document.getElementById('global-search-results')
+    let html = ''
+
+    if (data.collections && data.collections.length > 0) {
+      html += '<div class="search-group-title">Collections</div>'
+      data.collections.forEach(c => {
+        html += `<a href="/collections/${c.slug}" class="search-result" onclick="closeGlobalSearch()"><img src="${c.image || '/assets/images/anonymouse.png'}" onerror="this.src='/assets/images/anonymouse.png'" /><div><div class="name">${c.name}</div></div></a>`
+      })
+    }
+
+    if (data.nfts && data.nfts.length > 0) {
+      html += '<div class="search-group-title">NFTs</div>'
+      data.nfts.forEach(n => {
+        const price = n.price ? `${n.price.toFixed(2)} SOL` : ''
+        html += `<a href="/nfts/${n.id}" class="search-result" onclick="closeGlobalSearch()"><img src="${n.image || '/assets/images/anonymouse.png'}" onerror="this.src='/assets/images/anonymouse.png'" /><div><div class="name">${n.name}</div>${price ? `<div class="meta">${price}</div>` : ''}</div></a>`
+      })
+    }
+
+    if (data.wallets && data.wallets.length > 0) {
+      html += '<div class="search-group-title">Wallets</div>'
+      data.wallets.forEach(w => {
+        const short = w.address.slice(0, 6) + '...' + w.address.slice(-4)
+        html += `<a href="/profile/${w.address}" class="search-result" onclick="closeGlobalSearch()"><div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-4 to-purple-4 flex items-center justify-center text-white text-xs font-bold">${w.address.slice(0, 2)}</div><div><div class="name">${short}</div><div class="meta">${w.ownedCount} NFTs</div></div></a>`
+      })
+    }
+
+    if (!html) {
+      html = '<div class="search-empty">No results found</div>'
+    }
+
+    el.innerHTML = html
+  }
+</script>
