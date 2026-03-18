@@ -1,0 +1,215 @@
+<script server>
+const API_URL = process.env.API_URL || 'http://localhost:3008'
+let pools = []
+let error = null
+
+try {
+  const res = await fetch(`${API_URL}/staking/pools?limit=50`)
+  if (res.ok) {
+    const data = await res.json()
+    pools = data.data || []
+  }
+} catch (err) {
+  console.error('Failed to fetch staking pools:', err)
+  error = 'Failed to load staking pools'
+}
+</script>
+
+@layout('default')
+@section('title', 'Staking | Naked NFTs')
+@section('content')
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-9">NFT Staking</h1>
+      <p class="text-gray-5 mt-1">Stake your NFTs to earn rewards</p>
+    </div>
+
+    @if(error)
+      <div class="text-center py-12 text-gray-5">{{ error }}</div>
+    @elseif(pools.length === 0)
+      <div class="text-center py-20">
+        <div class="text-6xl mb-4">🔒</div>
+        <h2 class="text-xl font-semibold text-gray-7 mb-2">No staking pools available</h2>
+        <p class="text-gray-5">Staking pools will appear here when created</p>
+      </div>
+    @else
+      <!-- Staking Pools Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        @foreach(pools as pool)
+          <div class="bg-white border border-gray-2 rounded-xl overflow-hidden hover:shadow-md transition">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="font-bold text-gray-9">{{ pool.collection?.name || 'Staking Pool' }}</h3>
+                  <span class="text-xs px-2 py-0.5 rounded-full {{ pool.status === 'active' ? 'bg-green-1 text-green-7' : 'bg-gray-1 text-gray-5' }}">
+                    {{ pool.status }}
+                  </span>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-gray-4">Reward Rate</div>
+                  <div class="text-lg font-bold text-pink-7">{{ pool.reward_rate }} / day</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-gray-1 rounded-lg p-2.5 text-center">
+                  <div class="text-xs text-gray-4">Staked</div>
+                  <div class="font-bold text-gray-8">{{ pool.total_staked || 0 }}</div>
+                </div>
+                <div class="bg-gray-1 rounded-lg p-2.5 text-center">
+                  <div class="text-xs text-gray-4">Lock Period</div>
+                  <div class="font-bold text-gray-8">{{ pool.lock_period_seconds ? Math.floor(pool.lock_period_seconds / 86400) + 'd' : 'None' }}</div>
+                </div>
+                <div class="bg-gray-1 rounded-lg p-2.5 text-center">
+                  <div class="text-xs text-gray-4">Distributed</div>
+                  <div class="font-bold text-gray-8">{{ pool.total_rewards_distributed || 0 }}</div>
+                </div>
+              </div>
+
+              <!-- User stake info (loaded via JS) -->
+              <div class="stake-user-info hidden" data-pool-id="{{ pool.id }}">
+                <div class="border-t border-gray-2 pt-3 mt-3">
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-gray-5">Your Stakes</span>
+                    <span class="font-semibold text-gray-8 user-stake-count">0</span>
+                  </div>
+                  <div class="flex justify-between text-sm mb-3">
+                    <span class="text-gray-5">Pending Rewards</span>
+                    <span class="font-semibold text-green-6 user-pending-rewards">0</span>
+                  </div>
+                  <button
+                    class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-2.5 rounded-lg transition text-sm claim-rewards-btn"
+                    onclick="claimRewards({{ pool.id }})"
+                  >
+                    Claim Rewards
+                  </button>
+                </div>
+              </div>
+
+              @if(pool.status === 'active')
+                <button
+                  class="w-full mt-3 border border-pink-7 text-pink-7 hover:bg-pink-1 font-semibold py-2.5 rounded-lg transition text-sm"
+                  onclick="openStakeModal({{ pool.id }}, '{{ pool.collection?.name || 'Pool' }}')"
+                >
+                  Stake NFT
+                </button>
+              @endif
+            </div>
+          </div>
+        @endforeach
+      </div>
+    @endif
+  </div>
+
+  <!-- Stake Modal -->
+  <div id="stake-modal" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeStakeModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+        <button class="absolute top-4 right-4 text-gray-4 hover:text-gray-6" onclick="closeStakeModal()">✕</button>
+        <h3 class="text-xl font-bold text-gray-9 mb-4">Stake NFT</h3>
+        <p class="text-sm text-gray-5 mb-4" id="stake-pool-name"></p>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-7 mb-1">NFT Mint Address</label>
+          <input id="stake-nft-mint" type="text" placeholder="Enter NFT mint address" class="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-gray-8 outline-none focus:ring-2 focus:ring-pink-5" />
+        </div>
+        <button class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 rounded-lg transition" onclick="submitStake()">
+          Confirm Stake
+        </button>
+        <div id="stake-status" class="mt-3 text-sm text-center hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let _stakePoolId = null
+
+    function openStakeModal(poolId, poolName) {
+      _stakePoolId = poolId
+      document.getElementById('stake-pool-name').textContent = 'Staking to: ' + poolName
+      document.getElementById('stake-modal').classList.remove('hidden')
+    }
+
+    function closeStakeModal() {
+      document.getElementById('stake-modal').classList.add('hidden')
+    }
+
+    async function submitStake() {
+      const mint = document.getElementById('stake-nft-mint').value.trim()
+      const status = document.getElementById('stake-status')
+      if (!mint) { status.classList.remove('hidden'); status.textContent = 'Enter a mint address'; status.className = 'mt-3 text-sm text-center text-red-6'; return }
+
+      const wallet = window.connectedWallet || localStorage.getItem('wallet_addr')
+      if (!wallet) { status.classList.remove('hidden'); status.textContent = 'Connect wallet first'; status.className = 'mt-3 text-sm text-center text-red-6'; return }
+
+      status.classList.remove('hidden')
+      status.textContent = 'Staking...'
+      status.className = 'mt-3 text-sm text-center text-gray-5'
+
+      const API = window.API_BASE || 'http://localhost:3008'
+      try {
+        const res = await fetch(API + '/staking/stake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poolId: _stakePoolId, nftMint: mint, stakerWallet: wallet })
+        })
+        const data = await res.json()
+        if (data.success) {
+          status.textContent = 'NFT staked successfully!'
+          status.className = 'mt-3 text-sm text-center text-green-6'
+          setTimeout(() => location.reload(), 1500)
+        } else {
+          status.textContent = data.error || 'Staking failed'
+          status.className = 'mt-3 text-sm text-center text-red-6'
+        }
+      } catch {
+        status.textContent = 'Network error'
+        status.className = 'mt-3 text-sm text-center text-red-6'
+      }
+    }
+
+    async function claimRewards(poolId) {
+      const wallet = window.connectedWallet || localStorage.getItem('wallet_addr')
+      if (!wallet) { alert('Connect wallet first'); return }
+
+      const API = window.API_BASE || 'http://localhost:3008'
+      try {
+        const res = await fetch(API + '/staking/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poolId, stakerWallet: wallet })
+        })
+        const data = await res.json()
+        if (data.success) {
+          alert('Claimed ' + data.rewards + ' rewards!')
+          location.reload()
+        } else {
+          alert(data.error || 'Claim failed')
+        }
+      } catch {
+        alert('Network error')
+      }
+    }
+
+    // Load user stake info on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+      const wallet = window.connectedWallet || localStorage.getItem('wallet_addr')
+      if (!wallet) return
+
+      const API = window.API_BASE || 'http://localhost:3008'
+      document.querySelectorAll('.stake-user-info').forEach(async el => {
+        const poolId = el.dataset.poolId
+        try {
+          const res = await fetch(API + '/staking/pool/' + poolId + '?wallet=' + wallet)
+          if (!res.ok) return
+          const data = await res.json()
+          if (data.userStakes && data.userStakes.length > 0) {
+            el.classList.remove('hidden')
+            el.querySelector('.user-stake-count').textContent = data.userStakes.length
+            el.querySelector('.user-pending-rewards').textContent = data.pendingRewards.toFixed(4)
+          }
+        } catch {}
+      })
+    })
+  </script>
+@endsection

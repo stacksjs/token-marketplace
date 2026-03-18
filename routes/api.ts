@@ -171,6 +171,16 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/profile/{wallet}/activity', 'Actions/Marketplace/ProfileActivityAction')
 })
 
+// Staking routes (Phase 14)
+route.group({ prefix: '/staking' }, () => {
+  route.get('/pools', 'Actions/Staking/GetStakingPoolAction')
+  route.get('/pool/{id}', 'Actions/Staking/GetStakingPoolAction')
+  route.post('/pool', 'Actions/Staking/CreateStakingPoolAction')
+  route.post('/stake', 'Actions/Staking/StakeNFTAction')
+  route.post('/unstake', 'Actions/Staking/UnstakeNFTAction')
+  route.post('/claim', 'Actions/Staking/ClaimStakingRewardsAction')
+})
+
 // Candy Machine routes (admin - requires authentication)
 route.group({ prefix: '/candy-machine', middleware: 'auth' }, () => {
   route.post('/', 'Actions/CandyMachine/CreateCandyMachineAction')
