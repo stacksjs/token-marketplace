@@ -143,6 +143,10 @@ route.group({ prefix: '/marketplace' }, () => {
   // Collection stats update (admin - requires authentication)
   route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction').middleware('auth')
 
+  // Analytics & Holders (Phase 11)
+  route.get('/collections/{slug}/analytics', 'Actions/Marketplace/CollectionAnalyticsAction')
+  route.get('/collections/{slug}/holders', 'Actions/Marketplace/CollectionHoldersAction')
+
   // Auctions (Phase 10)
   route.get('/auctions/active', 'Actions/Marketplace/ActiveAuctionsAction')
   route.get('/auctions/ended', 'Actions/Marketplace/EndedAuctionsAction')

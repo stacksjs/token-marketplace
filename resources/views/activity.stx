@@ -1,0 +1,225 @@
+<script server>
+const API_URL = process.env.API_URL || 'http://localhost:3008'
+let events = []
+let collections = []
+let error = null
+
+try {
+  const [eventsRes, collectionsRes] = await Promise.all([
+    fetch(`${API_URL}/marketplace/activity?limit=50`),
+    fetch(`${API_URL}/marketplace/collections?limit=100`),
+  ])
+  if (eventsRes.ok) {
+    const data = await eventsRes.json()
+    events = data.data || data.events || []
+  }
+  if (collectionsRes.ok) {
+    const data = await collectionsRes.json()
+    collections = data.data || data.collections || []
+  }
+} catch (err) {
+  console.error('Failed to fetch activity:', err)
+  error = 'Failed to load activity feed'
+}
+
+function formatAddress(addr) {
+  if (!addr) return '—'
+  return addr.slice(0, 4) + '...' + addr.slice(-4)
+}
+
+function formatSol(val) {
+  if (!val) return ''
+  const sol = typeof val === 'number' && val > 1000 ? val / 1e9 : val
+  return sol.toFixed(2) + ' SOL'
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+const eventIcons = {
+  sale: '💰', listing: '📋', delisting: '❌', offer: '🤝',
+  transfer: '↗️', bid: '🔨', auction_settled: '🏆', mint: '✨',
+}
+
+const eventColors = {
+  sale: 'bg-green-1 text-green-7', listing: 'bg-blue-1 text-blue-7',
+  delisting: 'bg-red-1 text-red-7', offer: 'bg-purple-1 text-purple-7',
+  transfer: 'bg-yellow-1 text-yellow-8', bid: 'bg-orange-1 text-orange-7',
+  auction_settled: 'bg-pink-1 text-pink-7', mint: 'bg-pink-1 text-pink-7',
+}
+</script>
+
+<style>
+  .event-row { transition: background 0.15s; }
+  .event-row:hover { background: #f9fafb; }
+  .filter-chip { cursor: pointer; transition: all 0.15s; }
+  .filter-chip.active { background: #1E2321; color: white; }
+  .filter-chip:not(.active):hover { background: #f3f4f6; }
+</style>
+
+@layout('default')
+@section('title', 'Activity | Naked NFTs')
+@section('content')
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold text-gray-9 mb-2">Activity</h1>
+    <p class="text-gray-5 mb-6">Real-time marketplace events across all collections</p>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <div class="flex flex-wrap gap-2">
+        <button class="filter-chip active text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('all', this)">All</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('sale', this)">Sales</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('listing', this)">Listings</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('offer', this)">Offers</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('transfer', this)">Transfers</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('bid', this)">Bids</button>
+        <button class="filter-chip text-sm px-3 py-1.5 rounded-full border border-gray-2" onclick="toggleFilter('mint', this)">Mints</button>
+      </div>
+
+      @if(collections.length > 0)
+        <select id="collection-filter" class="ml-auto border border-gray-3 rounded-lg px-3 py-1.5 text-sm text-gray-7 outline-none" onchange="filterByCollection(this.value)">
+          <option value="">All Collections</option>
+          @foreach(collections as c)
+            <option value="{{ c.slug }}">{{ c.name }}</option>
+          @endforeach
+        </select>
+      @endif
+    </div>
+
+    <!-- Activity Table -->
+    @if(error)
+      <div class="text-center py-12 text-gray-5">{{ error }}</div>
+    @elseif(events.length === 0)
+      <div class="text-center py-20">
+        <div class="text-5xl mb-4">📭</div>
+        <h2 class="text-lg font-semibold text-gray-7 mb-1">No activity yet</h2>
+        <p class="text-gray-5">Marketplace events will appear here</p>
+      </div>
+    @else
+      <div class="bg-white border border-gray-2 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-2 text-left text-gray-4">
+              <th class="px-4 py-3 font-medium">Event</th>
+              <th class="px-4 py-3 font-medium">NFT</th>
+              <th class="px-4 py-3 font-medium hidden sm:table-cell">Collection</th>
+              <th class="px-4 py-3 font-medium">Price</th>
+              <th class="px-4 py-3 font-medium hidden md:table-cell">From</th>
+              <th class="px-4 py-3 font-medium hidden md:table-cell">To</th>
+              <th class="px-4 py-3 font-medium text-right">Time</th>
+            </tr>
+          </thead>
+          <tbody id="activity-body">
+            @foreach(events as event)
+              <tr class="event-row border-b border-gray-1" data-type="{{ event.type }}">
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full {{ eventColors[event.type] || 'bg-gray-1 text-gray-6' }}">
+                    <span>{{ eventIcons[event.type] || '•' }}</span>
+                    <span class="capitalize">{{ event.type }}</span>
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    @if(event.nft?.image || event.image_url)
+                      <img src="{{ event.nft?.image || event.image_url }}" class="w-8 h-8 rounded object-cover" />
+                    @endif
+                    <span class="font-medium text-gray-8 truncate max-w-[120px]">{{ event.nft?.name || event.name || '—' }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 hidden sm:table-cell">
+                  @if(event.collection?.slug)
+                    <a href="/collections/{{ event.collection.slug }}" class="text-pink-7 hover:text-pink-8">{{ event.collection.name }}</a>
+                  @else
+                    <span class="text-gray-4">—</span>
+                  @endif
+                </td>
+                <td class="px-4 py-3 font-semibold text-gray-8">{{ event.price ? formatSol(event.price) : '—' }}</td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                  @if(event.from)
+                    <a href="/profile/{{ event.from }}" class="font-mono text-xs text-gray-5 hover:text-pink-7">{{ formatAddress(event.from) }}</a>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                  @if(event.to)
+                    <a href="/profile/{{ event.to }}" class="font-mono text-xs text-gray-5 hover:text-pink-7">{{ formatAddress(event.to) }}</a>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td class="px-4 py-3 text-right text-gray-4 whitespace-nowrap">
+                  {{ timeAgo(event.timestamp || event.created_at) }}
+                  @if(event.txSignature)
+                    <a href="https://solscan.io/tx/{{ event.txSignature }}" target="_blank" class="ml-1 text-pink-6 hover:text-pink-7">↗</a>
+                  @endif
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-center mt-6">
+        <button id="load-more-btn" class="px-6 py-2 border border-gray-3 rounded-lg text-sm text-gray-6 hover:bg-gray-1 transition" onclick="loadMore()">
+          Load More
+        </button>
+      </div>
+    @endif
+  </div>
+
+  <script>
+    let activeFilters = new Set(['all'])
+    let currentCursor = null
+
+    function toggleFilter(type, btn) {
+      if (type === 'all') {
+        activeFilters = new Set(['all'])
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'))
+        btn.classList.add('active')
+      } else {
+        activeFilters.delete('all')
+        document.querySelector('.filter-chip.active[onclick*="all"]')?.classList.remove('active')
+        btn.classList.toggle('active')
+        if (btn.classList.contains('active')) activeFilters.add(type)
+        else activeFilters.delete(type)
+        if (activeFilters.size === 0) {
+          activeFilters.add('all')
+          document.querySelector('.filter-chip[onclick*="all"]')?.classList.add('active')
+        }
+      }
+      applyFilters()
+    }
+
+    function applyFilters() {
+      document.querySelectorAll('#activity-body tr').forEach(row => {
+        const type = row.dataset.type
+        const visible = activeFilters.has('all') || activeFilters.has(type)
+        row.style.display = visible ? '' : 'none'
+      })
+    }
+
+    function filterByCollection(slug) {
+      const url = new URL(window.location)
+      if (slug) url.searchParams.set('collection', slug)
+      else url.searchParams.delete('collection')
+      window.location = url
+    }
+
+    function loadMore() {
+      // In production, fetch next page and append rows
+      const btn = document.getElementById('load-more-btn')
+      btn.textContent = 'Loading...'
+      setTimeout(() => { btn.textContent = 'No more events' ; btn.disabled = true }, 1000)
+    }
+  </script>
+@endsection
