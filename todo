@@ -68,3 +68,239 @@
 - [ ] `buddy migrate` runs new migrations
 - [ ] Hit each new endpoint with curl and verify responses
 - [ ] With mock mode off, test candy machine create + mint on devnet
+
+---
+
+# Tensor-Like Marketplace — Next Phases
+
+> Goal: Evolve the marketplace into a full Tensor-like trading platform.
+
+---
+
+## Phase 7: Collection Browsing & NFT Grid (Tensor-style)
+
+### Collection Page Overhaul
+- [ ] Redesign `collections/[slug].stx` with Tensor-style layout: banner, stats bar, tab navigation
+- [ ] Add real-time stats row: floor price, listed count, total volume, owners, best offer
+- [ ] Implement NFT grid with card view (image, name, price, rarity badge, last sale)
+- [ ] Add list view toggle (compact table like Tensor's list mode)
+- [ ] Infinite scroll / pagination for the NFT grid
+- [ ] Loading skeletons for NFT cards
+
+### Filtering & Sorting
+- [ ] Attribute filter sidebar (trait type → trait value with counts)
+- [ ] Filter by listing status: listed / unlisted / has offers / in auction
+- [ ] Filter by price range (min/max SOL)
+- [ ] Filter by rarity level (Common / Uncommon / Rare / Legendary)
+- [ ] Sort: price low→high, price high→low, rarity, recently listed, recently sold
+- [ ] Search by NFT name or token ID
+- [ ] Persist filter/sort state in URL query params
+- [ ] Mobile-friendly filter drawer
+
+### API Support
+- [ ] Add `GET /marketplace/collections/{slug}/nfts` with filter/sort/pagination query params
+- [ ] Add `GET /marketplace/collections/{slug}/stats` for real-time stats
+- [ ] Add attribute aggregation endpoint for filter counts
+
+---
+
+## Phase 8: NFT Detail Page
+
+- [ ] Create `nfts/[id].stx` detail page
+- [ ] Full-size NFT artwork display with zoom
+- [ ] Attributes/traits panel with rarity percentages per trait
+- [ ] Ownership info: current owner (linked to profile)
+- [ ] Price section: current listing price + buy button, or "Make Offer" if unlisted
+- [ ] Offers tab: all active offers with accept/cancel actions
+- [ ] Activity tab: full transaction history (mints, sales, transfers, listings)
+- [ ] Price history chart (line graph of past sales)
+- [ ] "More from this collection" section at bottom
+- [ ] Share button (copy link, Twitter share)
+
+### API Support
+- [ ] Add `GET /marketplace/nfts/{id}/history` for provenance/activity
+- [ ] Add `GET /marketplace/nfts/{id}/offers` for active offers
+- [ ] Add `GET /marketplace/nfts/{id}/related` for same-collection NFTs
+
+---
+
+## Phase 9: Trading UX (Tensor-style Instant Actions)
+
+### Listing Flow
+- [ ] "List for Sale" modal: set price, review royalties + platform fee, confirm
+- [ ] Batch listing: select multiple NFTs → list all at once
+- [ ] Edit listing price without delisting
+- [ ] Auto-delist on transfer
+
+### Buying Flow
+- [ ] One-click buy with transaction preview (price + fees breakdown)
+- [ ] Cart / multi-buy: add multiple listed NFTs and purchase in one transaction
+- [ ] Insufficient balance warning with "Add funds" prompt
+
+### Offer Flow
+- [ ] "Make Offer" modal: set offer amount + expiry
+- [ ] Collection-wide offers (offer on any NFT in a collection)
+- [ ] Counter-offer support
+- [ ] Auto-expire offers based on config
+
+### Transaction UX
+- [ ] Transaction status toast: pending → confirming → confirmed → finalized
+- [ ] Transaction retry on failure
+- [ ] Recent transactions drawer (accessible from header)
+
+---
+
+## Phase 10: Activity Feed & Analytics
+
+### Activity Feed
+- [ ] Create `activity.stx` global activity page
+- [ ] Real-time feed: sales, listings, delistings, offers, transfers
+- [ ] Filter by event type
+- [ ] Filter by collection
+- [ ] Per-collection activity tab on collection page
+
+### Analytics Dashboard
+- [ ] Collection analytics: floor price chart, volume chart, listings chart over time
+- [ ] Holder distribution pie chart
+- [ ] Top holders leaderboard
+- [ ] Sales volume (24h / 7d / 30d / all-time)
+- [ ] Unique buyers/sellers count
+- [ ] Average sale price trend
+
+### API Support
+- [ ] Add `GET /marketplace/activity` with type/collection filters + pagination
+- [ ] Add `GET /marketplace/collections/{slug}/analytics` for charts data
+- [ ] Add `GET /marketplace/collections/{slug}/holders` for holder stats
+
+---
+
+## Phase 11: User Profile & Portfolio
+
+- [ ] Redesign `profile.stx` as a Tensor-style portfolio page
+- [ ] Tabs: Owned, Listed, Offers Made, Offers Received, Activity
+- [ ] Portfolio value estimation (owned NFTs × floor price)
+- [ ] Unrealized P&L (purchase price vs current floor)
+- [ ] Quick actions from portfolio: list, transfer, burn
+- [ ] View any wallet's profile via `/profile/{walletAddress}`
+- [ ] Favorite/watchlist collections
+
+### API Support
+- [ ] Add `GET /marketplace/profile/{wallet}/portfolio` with value calculations
+- [ ] Add `GET /marketplace/profile/{wallet}/offers` (made + received)
+- [ ] Add `GET /marketplace/profile/{wallet}/activity`
+
+---
+
+## Phase 12: Staking & Rewards
+
+- [ ] Add staking methods to TokenService using `ts-tokens/staking`
+- [ ] Create staking pool management (create pool, set rewards, set lock period)
+- [ ] Build `staking.stx` page: stake/unstake UI, rewards display, APY
+- [ ] Show staked status on NFT cards (locked badge)
+- [ ] Claim rewards flow
+- [ ] Staking leaderboard
+
+### Database
+- [ ] Create `staking_pools` table
+- [ ] Create `stakes` table (nft_id, wallet, staked_at, unlocks_at)
+- [ ] Create `staking_rewards` table
+
+### API
+- [ ] `POST /staking/stake` - Stake NFT
+- [ ] `POST /staking/unstake` - Unstake NFT
+- [ ] `POST /staking/claim` - Claim rewards
+- [ ] `GET /staking/pools` - List pools
+- [ ] `GET /staking/pool/{id}` - Pool detail + user stakes
+
+---
+
+## Phase 13: Governance & DAO
+
+- [ ] Integrate `ts-governance` for Hoodies DAO
+- [ ] Build `governance.stx` page: active proposals, voting, results
+- [ ] NFT-based voting (1 Hoodie = 1 vote) using `nftVoting()`
+- [ ] Create proposal flow: title, description, options, voting period
+- [ ] Vote flow: select option, sign transaction
+- [ ] Proposal lifecycle: pending → active → passed/rejected → executed
+- [ ] Treasury overview: balance, recent distributions
+
+### Database
+- [ ] Create `proposals` table
+- [ ] Create `votes` table
+- [ ] Create `treasury_transactions` table
+
+### API
+- [ ] `POST /governance/proposals` - Create proposal
+- [ ] `GET /governance/proposals` - List proposals
+- [ ] `POST /governance/vote` - Cast vote
+- [ ] `POST /governance/execute` - Execute passed proposal
+- [ ] `GET /governance/treasury` - Treasury overview
+
+---
+
+## Phase 14: DeFi Integration
+
+- [ ] Add Jupiter swap widget to the marketplace (buy SOL → mint/buy NFTs)
+- [ ] Token-gated access: require holding a Hoodie for exclusive features
+- [ ] Compressed NFT support via `ts-tokens/compressed-token` for gas-efficient minting
+- [ ] Solana Actions / Blinks: shareable mint & buy links using `ts-tokens/actions`
+
+### API
+- [ ] `GET /defi/swap/quote` - Get Jupiter swap quote
+- [ ] `POST /defi/swap/execute` - Execute swap
+- [ ] `POST /actions/mint` - Blink-compatible mint endpoint
+- [ ] `POST /actions/buy` - Blink-compatible buy endpoint
+
+---
+
+## Phase 15: Cross-Marketplace & Aggregation
+
+- [ ] Integrate cross-marketplace listing using `crossListNFT()` (Magic Eden, Tensor)
+- [ ] Show aggregated listings from external marketplaces
+- [ ] Best price comparison across marketplaces using `getBestPrice()`
+- [ ] Cancel cross-listings using `cancelCrossListings()`
+- [ ] Display marketplace source badges on NFT cards
+
+### API
+- [ ] `POST /nfts/cross-list` - List across marketplaces
+- [ ] `GET /nfts/{id}/listings` - Aggregated listings from all marketplaces
+- [ ] `DELETE /nfts/cross-list` - Cancel cross-listings
+
+---
+
+## Phase 16: Security Hardening
+
+- [ ] Transaction simulation before execution using `simulateTransaction()`
+- [ ] Royalty bypass detection using `detectRoyaltyBypass()`
+- [ ] MEV protection on trades using `ts-tokens/security`
+- [ ] Rate limiting on mint/buy/offer endpoints
+- [ ] Wallet address validation on all inputs
+- [ ] Admin audit log for all privileged actions
+- [ ] Compliance report generation using `generateComplianceReport()`
+
+---
+
+## Phase 17: Performance & Infrastructure
+
+- [ ] Batch RPC calls using address lookup tables (`ts-tokens/batch`)
+- [ ] Metadata caching layer (Redis or in-memory) with TTL
+- [ ] Image CDN / optimization for NFT thumbnails
+- [ ] WebSocket support for real-time price & activity updates
+- [ ] Background job queue for on-chain syncing
+- [ ] Database indexing audit for query performance
+- [ ] RPC failover configuration (primary + fallback endpoints)
+
+---
+
+## Phase 18: Polish & Launch
+
+- [ ] Mobile-responsive overhaul for all marketplace pages
+- [ ] Dark mode / theme toggle
+- [ ] Empty states for zero-data screens (no listings, no offers, etc.)
+- [ ] Error boundary pages (404, 500, wallet disconnected)
+- [ ] SEO: meta tags, Open Graph images for collections & NFTs
+- [ ] Favicon + branding consistency
+- [ ] Onboarding flow for first-time users (connect wallet → browse → buy)
+- [ ] Production RPC endpoint + Helius API key
+- [ ] Mainnet deployment checklist
+- [ ] Load testing on devnet before mainnet launch
