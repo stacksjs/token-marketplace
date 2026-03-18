@@ -17,9 +17,9 @@ describe('Default layout', () => {
     expect(existsSync(path)).toBe(true)
   })
 
-  test('contains slot for page content', () => {
+  test('contains yield for page content', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('slot')
+    expect(source).toContain('@yield')
   })
 })
 

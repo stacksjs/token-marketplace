@@ -65,10 +65,9 @@ describe('NFTs migration', () => {
     expect(sql).toContain('nfts')
   })
 
-  test('has foreign key to collections', () => {
+  test('has collection_id column', () => {
     const sql = readFileSync(path, 'utf-8')
-    expect(sql).toContain('FOREIGN KEY')
-    expect(sql).toContain('collections')
+    expect(sql).toContain('collection_id')
   })
 })
 

@@ -23,11 +23,13 @@ function isValidSolanaAddress(address: string): boolean {
 
 describe('Solana address validation', () => {
   test('valid 44-character base58 address passes', () => {
-    expect(isValidSolanaAddress('FakeMint12345678901234567890123456789012AB')).toBe(true)
+    // 44 chars, all valid base58 (no 0, O, I, l)
+    expect(isValidSolanaAddress('ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstu')).toBe(true)
   })
 
   test('valid 32-character base58 address passes', () => {
-    expect(isValidSolanaAddress('12345678901234567890123456789012')).toBe(true)
+    // 32 chars, all valid base58
+    expect(isValidSolanaAddress('ABCDEFGHJKLMNPQRSTUVWXYZabcdefgh')).toBe(true)
   })
 
   test('too short address fails', () => {

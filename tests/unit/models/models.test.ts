@@ -22,17 +22,17 @@ describe('Collection model', () => {
     const source = readFileSync(path, 'utf-8')
     expect(source).toContain('name')
     expect(source).toContain('slug')
-    expect(source).toContain('collection_address')
+    expect(source).toContain('mintAddress')
   })
 
   test('has relationship to CandyMachine', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('candy_machine')
+    expect(source).toContain('CandyMachine')
   })
 
   test('has relationship to Nfts', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('nft')
+    expect(source).toContain('Nft')
   })
 })
 
@@ -49,20 +49,20 @@ describe('Nft model', () => {
 
   test('has required fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('mint_address')
+    expect(source).toContain('mintAddress')
     expect(source).toContain('name')
-    expect(source).toContain('collection_id')
+    expect(source).toContain('collectionId')
   })
 
   test('has listing fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('listing_price')
-    expect(source).toContain('delegate_address')
+    expect(source).toContain('listingPrice')
+    expect(source).toContain('delegateAddress')
   })
 
   test('has relationship to Collection', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('collection')
+    expect(source).toContain('Collection')
   })
 })
 
@@ -79,7 +79,7 @@ describe('Offer model', () => {
 
   test('has required fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('nft_id')
+    expect(source).toContain('nftId')
     expect(source).toContain('amount')
     expect(source).toContain('status')
   })
@@ -98,9 +98,9 @@ describe('Auction model', () => {
 
   test('has required fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('nft_id')
-    expect(source).toContain('type')
-    expect(source).toContain('start_price')
+    expect(source).toContain('nftId')
+    expect(source).toContain('auctionType')
+    expect(source).toContain('startingPrice')
     expect(source).toContain('status')
   })
 })
@@ -118,9 +118,9 @@ describe('Bid model', () => {
 
   test('has required fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('auction_id')
+    expect(source).toContain('auctionId')
     expect(source).toContain('amount')
-    expect(source).toContain('bidder_wallet')
+    expect(source).toContain('bidderWalletAddress')
   })
 })
 
@@ -137,7 +137,7 @@ describe('CandyMachine model', () => {
 
   test('has required fields', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('candy_machine_address')
+    expect(source).toContain('candyMachineAddress')
   })
 })
 
@@ -154,7 +154,7 @@ describe('Presale model', () => {
 
   test('has relationship to Collection', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('collection')
+    expect(source).toContain('Collection')
   })
 })
 
@@ -171,7 +171,7 @@ describe('MintTransaction model', () => {
 
   test('has transaction signature field', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('transaction_signature')
+    expect(source).toContain('transactionSignature')
   })
 })
 
@@ -188,7 +188,7 @@ describe('PlatformFee model', () => {
 
   test('has fee amount field', () => {
     const source = readFileSync(path, 'utf-8')
-    expect(source).toContain('fee_amount')
+    expect(source).toContain('feeAmount')
   })
 })
 

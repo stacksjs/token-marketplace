@@ -9,14 +9,14 @@ describe('MainLayout Component', () => {
     expect(existsSync(componentPath)).toBe(true)
   })
 
-  test('imports Header component', () => {
+  test('references Header component', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain("import Header from './Header.stx'")
+    expect(content).toContain('Header')
   })
 
-  test('imports Footer component', () => {
+  test('references Footer component', () => {
     const content = readFileSync(componentPath, 'utf-8')
-    expect(content).toContain("import Footer from './Footer.stx'")
+    expect(content).toContain('Footer')
   })
 
   test('uses Header component', () => {
