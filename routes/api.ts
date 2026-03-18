@@ -171,6 +171,17 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/profile/{wallet}/activity', 'Actions/Marketplace/ProfileActivityAction')
 })
 
+// Governance routes (Phase 15)
+route.group({ prefix: '/governance' }, () => {
+  route.post('/dao', 'Actions/Governance/CreateDAOAction')
+  route.post('/proposals', 'Actions/Governance/CreateProposalAction')
+  route.get('/proposals', 'Actions/Governance/ListProposalsAction')
+  route.get('/proposals/{id}', 'Actions/Governance/ProposalDetailAction')
+  route.post('/vote', 'Actions/Governance/CastVoteAction')
+  route.post('/execute', 'Actions/Governance/ExecuteProposalAction')
+  route.get('/treasury', 'Actions/Governance/TreasuryAction')
+})
+
 // Staking routes (Phase 14)
 route.group({ prefix: '/staking' }, () => {
   route.get('/pools', 'Actions/Staking/GetStakingPoolAction')

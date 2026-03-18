@@ -1,0 +1,203 @@
+<script server>
+const API_URL = process.env.API_URL || 'http://localhost:3008'
+let proposals = []
+let treasury = null
+let error = null
+
+try {
+  const [proposalsRes, treasuryRes] = await Promise.all([
+    fetch(`${API_URL}/governance/proposals?limit=50`),
+    fetch(`${API_URL}/governance/treasury`),
+  ])
+  if (proposalsRes.ok) {
+    const data = await proposalsRes.json()
+    proposals = data.data || []
+  }
+  if (treasuryRes.ok) {
+    const data = await treasuryRes.json()
+    treasury = data.treasuries?.[0] || null
+  }
+} catch (err) {
+  console.error('Failed to fetch governance data:', err)
+  error = 'Failed to load governance data'
+}
+
+function timeLeft(dateStr) {
+  if (!dateStr) return ''
+  const diff = new Date(dateStr).getTime() - Date.now()
+  if (diff <= 0) return 'Ended'
+  const hours = Math.floor(diff / 3600000)
+  if (hours > 24) return Math.floor(hours / 24) + 'd left'
+  return hours + 'h left'
+}
+</script>
+
+<style>
+  .vote-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+  .vote-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .vote-for { background: #22c55e; }
+  .vote-against { background: #ef4444; }
+  .proposal-card { transition: box-shadow 0.15s; }
+  .proposal-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+</style>
+
+@layout('default')
+@section('title', 'Governance | Naked NFTs')
+@section('content')
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-9">Governance</h1>
+        <p class="text-gray-5 mt-1">Vote on proposals with your NFTs — 1 NFT = 1 vote</p>
+      </div>
+      <button class="bg-pink-7 hover:bg-pink-8 text-white font-semibold px-5 py-2.5 rounded-lg transition text-sm" onclick="openCreateProposal()">
+        Create Proposal
+      </button>
+    </div>
+
+    <!-- Treasury Card -->
+    @if(treasury)
+      <div class="bg-gradient-to-r from-gray-9 to-gray-7 rounded-xl p-6 text-white mb-8">
+        <div class="text-sm opacity-70 mb-1">{{ treasury.dao?.name || 'DAO' }} Treasury</div>
+        <div class="text-3xl font-bold mb-3">{{ (treasury.balance / 1e9).toFixed(2) }} SOL</div>
+        <div class="flex gap-6 text-sm opacity-80">
+          <span>Deposited: {{ (treasury.totalDeposited / 1e9).toFixed(2) }} SOL</span>
+          <span>Withdrawn: {{ (treasury.totalWithdrawn / 1e9).toFixed(2) }} SOL</span>
+        </div>
+      </div>
+    @endif
+
+    @if(error)
+      <div class="text-center py-12 text-gray-5">{{ error }}</div>
+    @elseif(proposals.length === 0)
+      <div class="text-center py-20">
+        <div class="text-6xl mb-4">🗳️</div>
+        <h2 class="text-xl font-semibold text-gray-7 mb-2">No proposals yet</h2>
+        <p class="text-gray-5">Be the first to create a proposal for the community</p>
+      </div>
+    @else
+      <div class="space-y-4">
+        @foreach(proposals as proposal)
+          <div class="proposal-card bg-white border border-gray-2 rounded-xl p-6">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="text-lg font-bold text-gray-9">{{ proposal.title }}</h3>
+                @if(proposal.description)
+                  <p class="text-sm text-gray-5 mt-1 line-clamp-2">{{ proposal.description }}</p>
+                @endif
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full font-medium
+                {{ proposal.status === 'active' ? 'bg-green-1 text-green-7' : proposal.status === 'passed' ? 'bg-blue-1 text-blue-7' : proposal.status === 'executed' ? 'bg-purple-1 text-purple-7' : 'bg-gray-1 text-gray-5' }}">
+                {{ proposal.status }}
+              </span>
+            </div>
+
+            <!-- Vote Tallies -->
+            @if(proposal.tallies)
+              <div class="space-y-2 mb-4">
+                @foreach(proposal.tallies as tally)
+                  <div>
+                    <div class="flex justify-between text-sm mb-1">
+                      <span class="text-gray-7">{{ tally.option }}</span>
+                      <span class="text-gray-5">{{ tally.count }} votes ({{ proposal.totalVotes > 0 ? Math.round(tally.count / proposal.totalVotes * 100) : 0 }}%)</span>
+                    </div>
+                    <div class="vote-bar">
+                      <div class="vote-bar-fill {{ tally.option === 'For' ? 'vote-for' : tally.option === 'Against' ? 'vote-against' : 'bg-blue-5' }}" style="width: {{ proposal.totalVotes > 0 ? (tally.count / proposal.totalVotes * 100) : 0 }}%"></div>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            @endif
+
+            <div class="flex items-center justify-between text-xs text-gray-4">
+              <span>{{ proposal.totalVotes || 0 }} total votes</span>
+              <span>{{ timeLeft(proposal.voting_ends_at) }}</span>
+            </div>
+
+            @if(proposal.status === 'active')
+              <div class="mt-4 flex gap-2">
+                @foreach(proposal.options as option)
+                  <button
+                    class="flex-1 py-2 px-4 text-sm font-medium rounded-lg border border-gray-3 hover:bg-gray-1 transition"
+                    onclick="castVote({{ proposal.id }}, {{ @index }})"
+                  >
+                    Vote: {{ option }}
+                  </button>
+                @endforeach
+              </div>
+            @endif
+          </div>
+        @endforeach
+      </div>
+    @endif
+  </div>
+
+  <!-- Create Proposal Modal -->
+  <div id="create-proposal-modal" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeCreateProposal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative">
+        <button class="absolute top-4 right-4 text-gray-4 hover:text-gray-6" onclick="closeCreateProposal()">✕</button>
+        <h3 class="text-xl font-bold text-gray-9 mb-4">Create Proposal</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-7 mb-1">Title</label>
+            <input id="proposal-title" type="text" placeholder="Proposal title" class="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-gray-8 outline-none focus:ring-2 focus:ring-pink-5" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-7 mb-1">Description</label>
+            <textarea id="proposal-desc" rows="3" placeholder="Describe the proposal..." class="w-full border border-gray-3 rounded-lg px-4 py-2.5 text-gray-8 outline-none focus:ring-2 focus:ring-pink-5 resize-none"></textarea>
+          </div>
+          <button class="w-full bg-pink-7 hover:bg-pink-8 text-white font-semibold py-3 rounded-lg transition" onclick="submitProposal()">
+            Submit Proposal
+          </button>
+          <div id="proposal-status" class="text-sm text-center hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openCreateProposal() { document.getElementById('create-proposal-modal').classList.remove('hidden') }
+    function closeCreateProposal() { document.getElementById('create-proposal-modal').classList.add('hidden') }
+
+    async function submitProposal() {
+      const title = document.getElementById('proposal-title').value.trim()
+      const desc = document.getElementById('proposal-desc').value.trim()
+      const status = document.getElementById('proposal-status')
+      const wallet = window.connectedWallet || localStorage.getItem('wallet_addr')
+
+      if (!title) { status.classList.remove('hidden'); status.textContent = 'Title required'; status.className = 'text-sm text-center text-red-6'; return }
+      if (!wallet) { status.classList.remove('hidden'); status.textContent = 'Connect wallet first'; status.className = 'text-sm text-center text-red-6'; return }
+
+      const API = window.API_BASE || 'http://localhost:3008'
+      try {
+        const res = await fetch(API + '/governance/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ daoId: 1, title, description: desc, proposerWallet: wallet })
+        })
+        const data = await res.json()
+        if (data.success) { location.reload() }
+        else { status.classList.remove('hidden'); status.textContent = data.error || 'Failed'; status.className = 'text-sm text-center text-red-6' }
+      } catch { status.classList.remove('hidden'); status.textContent = 'Network error'; status.className = 'text-sm text-center text-red-6' }
+    }
+
+    async function castVote(proposalId, optionIndex) {
+      const wallet = window.connectedWallet || localStorage.getItem('wallet_addr')
+      if (!wallet) { alert('Connect wallet first'); return }
+
+      const API = window.API_BASE || 'http://localhost:3008'
+      try {
+        const res = await fetch(API + '/governance/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ proposalId, voterWallet: wallet, optionIndex })
+        })
+        const data = await res.json()
+        if (data.success) { location.reload() }
+        else { alert(data.error || 'Vote failed') }
+      } catch { alert('Network error') }
+    }
+  </script>
+@endsection
