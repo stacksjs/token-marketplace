@@ -176,6 +176,11 @@ route.group({ prefix: '/marketplace' }, () => {
   route.get('/profile/{wallet}/activity', 'Actions/Marketplace/ProfileActivityAction')
 })
 
+// Security routes (Phase 18)
+route.post('/security/simulate', 'Actions/Security/SimulateTransactionAction')
+route.get('/security/compliance/{slug}', 'Actions/Security/ComplianceReportAction')
+route.get('/admin/audit-log', 'Actions/Admin/AuditLogAction').middleware('auth')
+
 // DeFi routes (Phase 16)
 route.get('/defi/swap/quote', 'Actions/DeFi/SwapQuoteAction')
 route.post('/defi/swap/execute', 'Actions/DeFi/ExecuteSwapAction')
