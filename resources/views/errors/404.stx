@@ -1,0 +1,15 @@
+@layout('default')
+@section('title', '404 - Not Found | Naked NFTs')
+@section('content')
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="text-center max-w-md">
+      <div class="text-8xl font-bold text-gray-2 mb-4">404</div>
+      <h1 class="text-2xl font-bold text-gray-8 mb-2">Page not found</h1>
+      <p class="text-gray-5 mb-8">The page you're looking for doesn't exist or has been moved.</p>
+      <div class="flex justify-center gap-3">
+        <a href="/" class="bg-pink-7 hover:bg-pink-8 text-white font-semibold px-6 py-2.5 rounded-lg transition">Go Home</a>
+        <a href="/collections" class="border border-gray-3 text-gray-7 hover:bg-gray-1 font-medium px-6 py-2.5 rounded-lg transition">Browse Collections</a>
+      </div>
+    </div>
+  </div>
+@endsection

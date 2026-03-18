@@ -1,0 +1,77 @@
+<style>
+  :root {
+    --bg-primary: #f4f0fb;
+    --bg-secondary: #ffffff;
+    --text-primary: #1E2321;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
+    --border-primary: #e5e7eb;
+    --border-secondary: #f3f4f6;
+    --accent: #E50570;
+    --accent-hover: #c7045f;
+  }
+
+  [data-theme="dark"] {
+    --bg-primary: #0f0d15;
+    --bg-secondary: #1a1725;
+    --text-primary: #e8e6f0;
+    --text-secondary: #a8a4b8;
+    --text-tertiary: #6b6680;
+    --border-primary: #2d2840;
+    --border-secondary: #221e30;
+    --accent: #E50570;
+    --accent-hover: #ff1a8a;
+  }
+
+  .dark-toggle {
+    width: 40px; height: 22px; border-radius: 11px;
+    background: #e5e7eb; position: relative; cursor: pointer;
+    transition: background 0.3s;
+    border: none; padding: 0;
+  }
+  [data-theme="dark"] .dark-toggle { background: #E50570; }
+  .dark-toggle-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: white; position: absolute; top: 2px; left: 2px;
+    transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  [data-theme="dark"] .dark-toggle-dot { transform: translateX(18px); }
+  .dark-toggle-icon { font-size: 10px; position: absolute; top: 3px; }
+  .dark-toggle .sun { right: 5px; }
+  .dark-toggle .moon { left: 5px; display: none; }
+  [data-theme="dark"] .dark-toggle .sun { display: none; }
+  [data-theme="dark"] .dark-toggle .moon { display: block; }
+</style>
+
+<button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">
+  <span class="dark-toggle-icon sun">☀️</span>
+  <span class="dark-toggle-icon moon">🌙</span>
+  <div class="dark-toggle-dot"></div>
+</button>
+
+<script>
+  function toggleDarkMode() {
+    const html = document.documentElement
+    const current = html.getAttribute('data-theme')
+    const next = current === 'dark' ? 'light' : 'dark'
+    html.setAttribute('data-theme', next)
+    localStorage.setItem('theme', next)
+  }
+
+  // Initialize theme
+  (function() {
+    const saved = localStorage.getItem('theme')
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved)
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'dark')
+    }
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (!localStorage.getItem('theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light')
+      }
+    })
+  })()
+</script>

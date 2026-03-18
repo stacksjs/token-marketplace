@@ -1,0 +1,27 @@
+<!-- SEO meta tags component -->
+<!-- Usage: include with page-specific variables set in server script -->
+
+<meta name="description" content="{{ metaDescription || 'Naked NFTs - The premier Solana NFT marketplace. Buy, sell, and trade NFTs with zero friction.' }}" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="{{ canonicalUrl || '' }}" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="{{ ogType || 'website' }}" />
+<meta property="og:title" content="{{ ogTitle || pageTitle || 'Naked NFTs Marketplace' }}" />
+<meta property="og:description" content="{{ metaDescription || 'Buy, sell, and trade NFTs on Solana.' }}" />
+<meta property="og:image" content="{{ ogImage || '/assets/images/og-default.png' }}" />
+<meta property="og:url" content="{{ canonicalUrl || '' }}" />
+<meta property="og:site_name" content="Naked NFTs" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="{{ twitterCard || 'summary_large_image' }}" />
+<meta name="twitter:title" content="{{ ogTitle || pageTitle || 'Naked NFTs Marketplace' }}" />
+<meta name="twitter:description" content="{{ metaDescription || 'Buy, sell, and trade NFTs on Solana.' }}" />
+<meta name="twitter:image" content="{{ ogImage || '/assets/images/og-default.png' }}" />
+
+<!-- Structured Data (JSON-LD) -->
+@if(structuredData)
+  <script type="application/ld+json">
+    {{ JSON.stringify(structuredData) }}
+  </script>
+@endif
