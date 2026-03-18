@@ -12,6 +12,18 @@ const isDevnet = (typeof Bun !== 'undefined' ? Bun.env : process.env).SOLANA_NET
 
 // Basic routes
 route.get('/', () => response.text('Token Marketplace API'))
+
+// Serve static JS assets
+route.get('/js/{filename}', async (req: any) => {
+  const filename = req.getParam('filename')
+  if (!filename || filename.includes('..')) return response.json({ error: 'Not found' }, 404)
+  const path = await import('node:path')
+  const fs = await import('node:fs')
+  const filePath = path.resolve('public/js', filename)
+  if (!fs.existsSync(filePath)) return response.json({ error: 'Not found' }, 404)
+  const content = fs.readFileSync(filePath, 'utf-8')
+  return new Response(content, { headers: { 'Content-Type': 'application/javascript' } })
+})
 route.health() // adds a GET `/health` route
 route.get('/api/info', 'Actions/Api/InfoAction')
 

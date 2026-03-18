@@ -365,6 +365,74 @@
           }
         }
       }
+
+      // Mint NFT to collection (devnet)
+      window.__doMint = function(btn, collectionMint) {
+        var nameEl = document.getElementById('mintName')
+        var descEl = document.getElementById('mintDesc')
+        var imageEl = document.getElementById('mintImage')
+        var symbolEl = document.getElementById('mintSymbol')
+        var statusEl = document.getElementById('mintStatus')
+
+        var nftName = nameEl ? nameEl.value.trim() : ''
+        if (!nftName) {
+          alert('NFT name is required')
+          return
+        }
+
+        btn.disabled = true
+        btn.textContent = 'Minting on-chain...'
+        if (statusEl) {
+          statusEl.style.display = ''
+          statusEl.textContent = 'Sending transaction to Solana devnet...'
+          statusEl.style.color = '#6b7280'
+        }
+
+        fetch(LAYOUT_API + '/marketplace/nfts/mint-to-collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collectionMint: collectionMint,
+            name: nftName,
+            description: descEl ? descEl.value.trim() : '',
+            imageUrl: imageEl ? imageEl.value.trim() : '',
+            symbol: symbolEl ? symbolEl.value.trim() : ''
+          })
+        })
+        .then(function(res) { return res.json() })
+        .then(function(data) {
+          if (data.error) {
+            if (statusEl) {
+              statusEl.textContent = data.error
+              statusEl.style.color = '#dc2626'
+            }
+            alert(data.error)
+          } else {
+            if (statusEl) {
+              statusEl.textContent = 'Minted! Address: ' + data.nft.mintAddress
+              statusEl.style.color = '#059669'
+            }
+            if (window.Toast) Toast.success('NFT minted successfully!')
+            else alert('NFT minted successfully!')
+            if (nameEl) nameEl.value = ''
+            if (descEl) descEl.value = ''
+            if (imageEl) imageEl.value = ''
+            if (symbolEl) symbolEl.value = ''
+            setTimeout(function() { window.location.reload() }, 2000)
+          }
+          btn.disabled = false
+          btn.textContent = 'Mint NFT On-Chain'
+        })
+        .catch(function(err) {
+          console.error('Mint failed:', err)
+          if (statusEl) {
+            statusEl.textContent = 'Failed to mint. Check console.'
+            statusEl.style.color = '#dc2626'
+          }
+          btn.disabled = false
+          btn.textContent = 'Mint NFT On-Chain'
+        })
+      }
     }
   </script>
 </body>

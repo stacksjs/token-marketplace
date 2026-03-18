@@ -172,24 +172,23 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           <!-- Mint NFT Form (devnet) -->
           <div class="mt-6" data-mint-section>
             <button
-              data-mint-toggle
+              onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'':'none'"
               class="w-full bg-gray-8 hover:bg-gray-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150"
             >
               + Mint New NFT
             </button>
             <div data-mint-form style="display:none" class="mt-4 space-y-3">
-              <input data-mint-name type="text" placeholder="NFT Name *" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input data-mint-description type="text" placeholder="Description" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input data-mint-image type="url" placeholder="Image URL (optional)" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input data-mint-symbol type="text" placeholder="Symbol (optional)" maxlength="10" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
+              <input id="mintName" type="text" placeholder="NFT Name *" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
+              <input id="mintDesc" type="text" placeholder="Description" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
+              <input id="mintImage" type="url" placeholder="Image URL (optional)" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
+              <input id="mintSymbol" type="text" placeholder="Symbol (optional)" maxlength="10" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
               <button
-                data-mint-submit
-                data-collection-mint="{{ collection.mint_address }}"
+                onclick="window.__doMint(this,'{{ collection.mint_address }}')"
                 class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150"
               >
                 Mint NFT On-Chain
               </button>
-              <p data-mint-status class="text-sm text-gray-5 text-center" style="display:none"></p>
+              <p id="mintStatus" class="text-sm text-gray-5 text-center" style="display:none"></p>
             </div>
           </div>
         </div>
