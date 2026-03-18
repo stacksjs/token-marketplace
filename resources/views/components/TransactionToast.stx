@@ -1,0 +1,167 @@
+<style>
+  .tx-toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: 380px; width: 100%;
+  }
+  .tx-toast {
+    background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: flex; align-items: center; gap: 12px;
+    animation: slideIn 0.3s ease;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .tx-toast.removing { opacity: 0; transform: translateX(100%); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+  .tx-spinner { width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #E50570; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tx-icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; }
+  .tx-icon-success { background: #d1fae5; color: #065f46; }
+  .tx-icon-error { background: #fee2e2; color: #991b1b; }
+  .tx-body { flex: 1; min-width: 0; }
+  .tx-title { font-size: 13px; font-weight: 600; color: #1E2321; }
+  .tx-subtitle { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .tx-link { font-size: 12px; color: #E50570; text-decoration: none; }
+  .tx-link:hover { text-decoration: underline; }
+  .tx-retry { font-size: 12px; color: #E50570; background: none; border: 1px solid #E50570; border-radius: 6px; padding: 2px 10px; cursor: pointer; margin-left: 8px; }
+  .tx-retry:hover { background: #fdf2f8; }
+  .tx-close { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; padding: 0 4px; flex-shrink: 0; }
+  .tx-close:hover { color: #6b7280; }
+
+  /* Recent transactions drawer */
+  .tx-drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 999; display: none; }
+  .tx-drawer-overlay.active { display: block; }
+  .tx-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 90vw; background: white; z-index: 1000; transform: translateX(100%); transition: transform 0.3s ease; box-shadow: -4px 0 24px rgba(0,0,0,0.1); }
+  .tx-drawer.active { transform: translateX(0); }
+  .tx-drawer-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+  .tx-drawer-list { padding: 12px 20px; overflow-y: auto; max-height: calc(100vh - 60px); }
+  .tx-drawer-item { padding: 12px 0; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 10px; }
+  .tx-drawer-empty { text-align: center; color: #9ca3af; padding: 40px 20px; font-size: 14px; }
+</style>
+
+<!-- Toast container -->
+<div id="tx-toast-container" class="tx-toast-container"></div>
+
+<!-- Recent transactions drawer -->
+<div id="tx-drawer-overlay" class="tx-drawer-overlay" onclick="closeTransactionsDrawer()"></div>
+<div id="tx-drawer" class="tx-drawer">
+  <div class="tx-drawer-header">
+    <span style="font-weight: 600; font-size: 16px; color: #1E2321;">Recent Transactions</span>
+    <button class="tx-close" onclick="closeTransactionsDrawer()">✕</button>
+  </div>
+  <div id="tx-drawer-list" class="tx-drawer-list">
+    <div class="tx-drawer-empty">No recent transactions</div>
+  </div>
+</div>
+
+<script>
+  // Transaction toast manager
+  window.TxToast = {
+    _toasts: [],
+    _history: JSON.parse(localStorage.getItem('tx_history') || '[]'),
+
+    pending(message, subtitle) {
+      return this._show('pending', message, subtitle || 'Waiting for wallet signature...')
+    },
+
+    submitted(id, txSignature) {
+      this._update(id, 'submitted', 'Confirming transaction...', txSignature)
+    },
+
+    confirmed(id, txSignature) {
+      this._update(id, 'confirmed', 'Transaction confirmed', txSignature)
+      this._addToHistory({ status: 'confirmed', message: this._getMessage(id), txSignature, timestamp: Date.now() })
+      setTimeout(() => this._remove(id), 5000)
+    },
+
+    failed(id, reason, retryFn) {
+      this._update(id, 'failed', reason || 'Transaction failed', null, retryFn)
+      this._addToHistory({ status: 'failed', message: this._getMessage(id), reason, timestamp: Date.now() })
+    },
+
+    _show(status, title, subtitle) {
+      const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+      const container = document.getElementById('tx-toast-container')
+      const toast = document.createElement('div')
+      toast.className = 'tx-toast'
+      toast.id = id
+      toast.dataset.title = title
+      toast.innerHTML = this._renderContent(status, title, subtitle)
+      container.appendChild(toast)
+      this._toasts.push(id)
+      return id
+    },
+
+    _update(id, status, subtitle, txSignature, retryFn) {
+      const toast = document.getElementById(id)
+      if (!toast) return
+      toast.innerHTML = this._renderContent(status, toast.dataset.title, subtitle, txSignature, retryFn)
+      if (retryFn) {
+        const btn = toast.querySelector('.tx-retry')
+        if (btn) btn.onclick = retryFn
+      }
+    },
+
+    _renderContent(status, title, subtitle, txSignature, retryFn) {
+      let icon = ''
+      if (status === 'pending' || status === 'submitted') icon = '<div class="tx-spinner"></div>'
+      else if (status === 'confirmed') icon = '<div class="tx-icon tx-icon-success">✓</div>'
+      else if (status === 'failed') icon = '<div class="tx-icon tx-icon-error">✕</div>'
+
+      let extra = ''
+      if (txSignature) {
+        extra = `<a class="tx-link" href="https://solscan.io/tx/${txSignature}" target="_blank">View on Solscan ↗</a>`
+      }
+      if (retryFn) {
+        extra += '<button class="tx-retry">Retry</button>'
+      }
+
+      return `${icon}<div class="tx-body"><div class="tx-title">${title}</div><div class="tx-subtitle">${subtitle}</div>${extra}</div><button class="tx-close" onclick="TxToast._remove('${title}')">✕</button>`
+    },
+
+    _getMessage(id) {
+      const toast = document.getElementById(id)
+      return toast ? toast.dataset.title : ''
+    },
+
+    _remove(id) {
+      const toast = document.getElementById(id)
+      if (!toast) return
+      toast.classList.add('removing')
+      setTimeout(() => toast.remove(), 300)
+    },
+
+    _addToHistory(entry) {
+      this._history.unshift(entry)
+      if (this._history.length > 50) this._history = this._history.slice(0, 50)
+      localStorage.setItem('tx_history', JSON.stringify(this._history))
+      this._renderDrawer()
+    },
+
+    _renderDrawer() {
+      const list = document.getElementById('tx-drawer-list')
+      if (!list) return
+      if (this._history.length === 0) {
+        list.innerHTML = '<div class="tx-drawer-empty">No recent transactions</div>'
+        return
+      }
+      list.innerHTML = this._history.map(h => {
+        const icon = h.status === 'confirmed' ? '<div class="tx-icon tx-icon-success">✓</div>' : '<div class="tx-icon tx-icon-error">✕</div>'
+        const time = new Date(h.timestamp).toLocaleString()
+        const link = h.txSignature ? ` <a class="tx-link" href="https://solscan.io/tx/${h.txSignature}" target="_blank">↗</a>` : ''
+        return `<div class="tx-drawer-item">${icon}<div class="tx-body"><div class="tx-title">${h.message}${link}</div><div class="tx-subtitle">${time}</div></div></div>`
+      }).join('')
+    }
+  }
+
+  function openTransactionsDrawer() {
+    TxToast._renderDrawer()
+    document.getElementById('tx-drawer-overlay').classList.add('active')
+    document.getElementById('tx-drawer').classList.add('active')
+  }
+
+  function closeTransactionsDrawer() {
+    document.getElementById('tx-drawer-overlay').classList.remove('active')
+    document.getElementById('tx-drawer').classList.remove('active')
+  }
+</script>

@@ -143,6 +143,14 @@ route.group({ prefix: '/marketplace' }, () => {
   // Collection stats update (admin - requires authentication)
   route.post('/collections/stats', 'Actions/Marketplace/UpdateCollectionStatsAction').middleware('auth')
 
+  // Batch operations (Phase 9)
+  route.post('/nfts/batch-list', 'Actions/Marketplace/BatchListAction')
+  route.post('/nfts/batch-buy', 'Actions/Marketplace/BatchBuyAction')
+
+  // Collection-wide offers & counter-offers (Phase 9)
+  route.post('/offers/collection', 'Actions/Marketplace/CollectionOfferAction')
+  route.post('/offers/counter', 'Actions/Marketplace/CounterOfferAction')
+
   // User profile
   route.get('/profile/{walletAddress}', 'Actions/Marketplace/ProfileAction')
 })
