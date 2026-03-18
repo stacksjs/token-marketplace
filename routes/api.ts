@@ -102,6 +102,9 @@ route.group({ prefix: '/marketplace' }, () => {
   // Collections
   route.get('/collections', 'Actions/Marketplace/CollectionIndexAction')
   route.get('/collections/{slug}', 'Actions/Marketplace/CollectionShowAction')
+  route.get('/collections/{slug}/nfts', 'Actions/Marketplace/CollectionNftsAction')
+  route.get('/collections/{slug}/stats', 'Actions/Marketplace/CollectionStatsAction')
+  route.get('/collections/{slug}/attributes', 'Actions/Marketplace/CollectionAttributesAction')
 
   // Collection minting page
   route.get('/collections/mint/{slug}', 'Actions/Marketplace/ShowMintingCollectionAction')

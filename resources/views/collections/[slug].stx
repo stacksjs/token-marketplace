@@ -1,6 +1,5 @@
 <script server>
 // Fetch collection data from API
-// Note: 'slug' is injected directly from the [slug] route parameter
 const API_URL = process.env.API_URL || 'http://localhost:3008'
 const collectionSlug = slug || ''
 let collection = null
@@ -27,9 +26,22 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
 </script>
 
 <style>
-  .progress-bar {
-    transition: width 0.5s ease-in-out;
-  }
+  .progress-bar { transition: width 0.5s ease-in-out; }
+  .stat-delta-up { color: #059669; }
+  .stat-delta-down { color: #dc2626; }
+  .tab-active { border-bottom: 2px solid #E50570; color: #1E2321; font-weight: 600; }
+  .tab-inactive { border-bottom: 2px solid transparent; color: #9ca3af; }
+  .tab-inactive:hover { color: #6b7280; border-color: #e5e7eb; }
+  .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .nft-card:hover .nft-actions { opacity: 1; }
+  .nft-actions { opacity: 0; transition: opacity 0.15s; }
+  .view-btn-active { background: #1E2321; color: white; }
+  .rarity-legendary { background: #fef3c7; color: #92400e; }
+  .rarity-epic { background: #ede9fe; color: #6d28d9; }
+  .rarity-rare { background: #dbeafe; color: #1d4ed8; }
+  .rarity-uncommon { background: #d1fae5; color: #065f46; }
+  .rarity-common { background: #f3f4f6; color: #6b7280; }
 </style>
 
 @layout('default')
@@ -43,171 +55,105 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
       </div>
     </div>
   @else
-    <!-- Collection Header -->
+    <!-- Collection Banner -->
     <div class="relative">
-      <!-- Banner Image -->
-      <div class="h-64 md:h-80 bg-gradient-to-r from-gray-9 to-gray-7 relative overflow-hidden">
-        @if(collection.banner_url)
-          <img src="{{ collection.banner_url }}" alt="{{ collection.name }} Banner" class="w-full h-full object-cover" />
+      <div class="h-48 md:h-56 bg-gradient-to-r from-gray-9 to-gray-7 relative overflow-hidden">
+        @if(collection.hero_image_url || collection.banner_url)
+          <img src="{{ collection.hero_image_url || collection.banner_url }}" alt="{{ collection.name }}" class="w-full h-full object-cover" />
         @endif
-        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
       </div>
 
-      <!-- Collection Info Overlay -->
+      <!-- Collection Avatar + Name -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="relative -mt-20 sm:-mt-24">
-          <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
-            <!-- Profile Image -->
-            <div class="shrink-0">
-              <img
-                src="{{ collection.image_url || '/assets/images/anonymouse.png' }}"
-                alt="{{ collection.name }}"
-                class="h-32 w-32 sm:h-40 sm:w-40 rounded-xl border-4 border-white shadow-lg object-cover"
-                onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
-              />
-            </div>
-
-            <!-- Collection Details -->
-            <div class="mt-4 sm:mt-0 sm:pb-2">
-              <div class="flex items-center space-x-3">
-                <h1 class="text-3xl sm:text-4xl font-bold text-gray-9">{{ collection.name }}</h1>
-                @if(collection.is_verified)
-                  <svg class="h-6 w-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                  </svg>
-                @endif
-              </div>
+        <div class="relative -mt-16 flex items-end space-x-5">
+          <img
+            src="{{ collection.image_url || '/assets/images/anonymouse.png' }}"
+            alt="{{ collection.name }}"
+            class="h-28 w-28 rounded-xl border-4 border-white shadow-lg object-cover bg-white"
+            onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+          />
+          <div class="pb-2">
+            <div class="flex items-center space-x-2">
+              <h1 class="text-2xl sm:text-3xl font-bold text-gray-9">{{ collection.name }}</h1>
+              @if(collection.is_verified)
+                <svg class="h-5 w-5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              @endif
               @if(collection.is_minting)
-                <div class="mt-2 flex items-center text-emerald-500">
-                  <div class="blink h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500"></div>
-                  <span class="ml-2 text-sm font-semibold uppercase">Minting Live</span>
-                </div>
+                <span class="flex items-center text-xs font-semibold text-emerald-500 uppercase">
+                  <span class="blink h-2 w-2 rounded-full bg-emerald-500 mr-1"></span> Live
+                </span>
               @endif
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats and Description -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Description -->
-        <div class="lg:col-span-2">
-          <p class="text-gray-6 text-lg leading-relaxed">{{ collection.description }}</p>
-
-          <!-- Links -->
-          <div class="mt-6 flex items-center space-x-4">
-            <a href="/rarity/{{ collection.slug || collectionSlug }}" class="inline-flex items-center text-sm font-medium text-pink-8 hover:text-pink-9 transition">
-              <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-              View Rarity
-            </a>
-          </div>
-
-          <!-- Social Links -->
-          <div class="mt-4 flex space-x-4">
-            @if(collection.website)
-              <a href="{{ collection.website }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-              </a>
-            @endif
-            @if(collection.twitter)
-              <a href="https://twitter.com/{{ collection.twitter }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-                </svg>
-              </a>
-            @endif
-            @if(collection.discord)
-              <a href="{{ collection.discord }}" target="_blank" class="text-gray-5 hover:text-pink-8 transition">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              </a>
-            @endif
-          </div>
-        </div>
-
-        <!-- Stats Card -->
-        <div class="bg-gray-0.25 rounded-xl p-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="text-center">
-              <p class="text-2xl font-bold text-gray-9">{{ nfts.length }}</p>
-              <p class="text-sm text-gray-5">Total Items</p>
-            </div>
-            @if(collection.floor_price)
-              <div class="text-center">
-                <p class="text-2xl font-bold text-gray-9">{{ collection.floor_price }} SOL</p>
-                <p class="text-sm text-gray-5">Floor Price</p>
-              </div>
-            @endif
-            @if(collection.volume_traded)
-              <div class="text-center">
-                <p class="text-2xl font-bold text-gray-9">{{ collection.volume_traded }}</p>
-                <p class="text-sm text-gray-5">Volume</p>
-              </div>
-            @endif
-            @if(collection.unique_holders)
-              <div class="text-center">
-                <p class="text-2xl font-bold text-gray-9">{{ collection.unique_holders }}</p>
-                <p class="text-sm text-gray-5">Owners</p>
-              </div>
-            @endif
-          </div>
-
-          @if(collection.is_minting)
-            <div class="mt-6">
-              <a href="/collections/{{ collection.slug }}/mint">
-                <button class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150">
-                  Mint Now
-                </button>
-              </a>
-            </div>
-          @endif
-
-          <!-- Mint NFT Form (devnet) -->
-          <div class="mt-6" data-mint-section>
-            <button
-              onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'':'none'"
-              class="w-full bg-gray-8 hover:bg-gray-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150"
-            >
-              + Mint New NFT
-            </button>
-            <div data-mint-form style="display:none" class="mt-4 space-y-3">
-              <input id="mintName" type="text" placeholder="NFT Name *" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input id="mintDesc" type="text" placeholder="Description" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input id="mintImage" type="url" placeholder="Image URL (optional)" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <input id="mintSymbol" type="text" placeholder="Symbol (optional)" maxlength="10" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-pink-8 focus:ring-pink-8" />
-              <button
-                onclick="window.__doMint(this,'{{ collection.mint_address }}')"
-                class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-3 px-6 rounded-lg transition duration-150"
-              >
-                Mint NFT On-Chain
-              </button>
-              <p id="mintStatus" class="text-sm text-gray-5 text-center" style="display:none"></p>
+            <!-- Social Links -->
+            <div class="flex items-center space-x-3 mt-1">
+              @if(collection.website)
+                <a href="{{ collection.website }}" target="_blank" class="text-gray-4 hover:text-pink-8 transition">
+                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                </a>
+              @endif
+              <a href="/rarity/{{ collection.slug || collectionSlug }}" class="text-xs text-pink-8 hover:text-pink-9 font-medium">Rarity</a>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- NFTs Grid -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h2 class="text-2xl font-bold text-gray-9 mb-6">Items ({{ nfts.length }})</h2>
+    <!-- Stats Row -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div class="flex items-center gap-6 overflow-x-auto pb-2 stats-bar" id="statsBar">
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Floor</p>
+          <p class="text-lg font-bold text-gray-9 stats-floor">{{ collection.floor_price || '--' }} <span class="text-xs font-normal text-gray-5">SOL</span></p>
+        </div>
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Listed</p>
+          <p class="text-lg font-bold text-gray-9 stats-listed">--</p>
+        </div>
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Volume</p>
+          <p class="text-lg font-bold text-gray-9 stats-volume">{{ collection.volume_traded || '--' }} <span class="text-xs font-normal text-gray-5">SOL</span></p>
+        </div>
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Owners</p>
+          <p class="text-lg font-bold text-gray-9 stats-owners">{{ collection.unique_holders || '--' }}</p>
+        </div>
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Best Offer</p>
+          <p class="text-lg font-bold text-gray-9 stats-best-offer">-- <span class="text-xs font-normal text-gray-5">SOL</span></p>
+        </div>
+        <div class="shrink-0">
+          <p class="text-xs text-gray-4 uppercase font-medium">Supply</p>
+          <p class="text-lg font-bold text-gray-9 stats-supply">{{ nfts.length || collection.total_amount_of_nfts || '--' }}</p>
+        </div>
+      </div>
+    </div>
 
-        <!-- Filter Bar -->
-        <div class="flex flex-wrap items-center gap-3 mb-6">
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-5">Price:</label>
-            <input type="number" placeholder="Min" oninput="collNftFilterChanged()" class="w-20 h-9 rounded border border-gray-300 px-2 text-sm focus:border-pink-8 focus:ring-pink-8 coll-filter-min" />
-            <span class="text-gray-4">-</span>
-            <input type="number" placeholder="Max" oninput="collNftFilterChanged()" class="w-20 h-9 rounded border border-gray-300 px-2 text-sm focus:border-pink-8 focus:ring-pink-8 coll-filter-max" />
-          </div>
-          <select onchange="collNftFilterChanged()" class="h-9 rounded border border-gray-300 px-2 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 coll-filter-rarity">
+    <!-- Tab Navigation -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+      <div class="flex border-b border-gray-200">
+        <button onclick="switchTab('items')" class="px-4 py-3 text-sm tab-active" id="tab-items">Items</button>
+        <button onclick="switchTab('activity')" class="px-4 py-3 text-sm tab-inactive" id="tab-activity">Activity</button>
+      </div>
+    </div>
+
+    <!-- Items Tab -->
+    <div id="panel-items" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <!-- Filter & View Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <select onchange="collNftFilterChanged()" class="h-8 rounded border border-gray-200 px-2 text-xs text-gray-7 coll-filter-status">
+            <option value="all">All</option>
+            <option value="listed">Listed</option>
+            <option value="unlisted">Unlisted</option>
+          </select>
+          <input type="number" placeholder="Min" oninput="collNftFilterChanged()" class="w-16 h-8 rounded border border-gray-200 px-2 text-xs coll-filter-min" />
+          <span class="text-gray-3 text-xs">-</span>
+          <input type="number" placeholder="Max" oninput="collNftFilterChanged()" class="w-16 h-8 rounded border border-gray-200 px-2 text-xs coll-filter-max" />
+          <span class="text-xs text-gray-4">SOL</span>
+          <select onchange="collNftFilterChanged()" class="h-8 rounded border border-gray-200 px-2 text-xs text-gray-7 coll-filter-rarity">
             <option value="">All Rarities</option>
             <option value="legendary">Legendary</option>
             <option value="epic">Epic</option>
@@ -215,76 +161,155 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
             <option value="uncommon">Uncommon</option>
             <option value="common">Common</option>
           </select>
-          <label class="flex items-center gap-1.5 text-sm text-gray-7 cursor-pointer">
-            <input type="checkbox" onchange="collNftFilterChanged()" class="rounded border-gray-300 text-pink-8 focus:ring-pink-8 coll-filter-forsale" />
-            For Sale Only
-          </label>
-          <select onchange="collNftFilterChanged()" class="h-9 rounded border border-gray-300 px-2 text-sm text-gray-7 focus:border-pink-8 focus:ring-pink-8 coll-filter-sort">
-            <option value="name">Name</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-            <option value="rarity">Rarity</option>
-            <option value="recent">Recent</option>
+          <select onchange="collNftFilterChanged()" class="h-8 rounded border border-gray-200 px-2 text-xs text-gray-7 coll-filter-sort">
+            <option value="recent">Recently Listed</option>
+            <option value="price_asc">Price: Low → High</option>
+            <option value="price_desc">Price: High → Low</option>
+            <option value="rarity">Rarity: Rarest</option>
+            <option value="rarity_common">Rarity: Most Common</option>
+            <option value="name">Name A-Z</option>
+            <option value="token_id">Token ID ↑</option>
+            <option value="token_id_desc">Token ID ↓</option>
           </select>
         </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          @foreach(nfts as nft)
-            <div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
-              <div class="aspect-square">
-                <img
-                  src="{{ nft.image_url || '/assets/images/anonymouse.png' }}"
-                  alt="{{ nft.name }}"
-                  class="w-full h-full object-cover"
-                  onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
-                />
-              </div>
-              <div class="p-3">
-                <p class="font-semibold text-gray-9 truncate">{{ nft.name }}</p>
-                @if(nft.rarity_rank)
-                  <p class="text-xs text-gray-5">Rank #{{ nft.rarity_rank }}</p>
-                @endif
-                @if(nft.price)
-                  <p class="text-sm font-semibold text-pink-8 mt-1">{{ nft.price }} SOL</p>
-                @endif
-                @if(nft.is_for_sale)
-                  <div class="mt-2">
-                    <span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span>
-                  </div>
-                  <button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="{{ nft.id }}" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">Buy Now</button>
-                @endif
-                <button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="{{ nft.id }}" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Make Offer</button>
-                <div style="display:none" class="mt-2 coll-offer-form">
-                  <input type="number" step="0.01" min="0" placeholder="Amount (SOL)" class="w-full h-8 rounded border border-gray-300 px-2 text-xs focus:border-pink-8 focus:ring-pink-8 coll-offer-amount" onclick="event.stopPropagation()" />
-                  <button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="{{ nft.id }}" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit Offer</button>
-                </div>
-              </div>
-            </div>
-          @endforeach
-        </div>
-
-        <!-- Load More Button -->
-        @if(hasMore)
-        <div class="flex justify-center mt-8">
-          <button onclick="collNftLoadMore(this)" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-7 font-semibold px-8 py-3 rounded-lg transition text-sm">
-            Load More
+        <!-- View Toggle -->
+        <div class="flex items-center gap-1 bg-gray-100 rounded p-0.5">
+          <button onclick="setView('grid')" class="view-btn view-btn-active rounded p-1.5" id="view-grid">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          </button>
+          <button onclick="setView('list')" class="view-btn rounded p-1.5 text-gray-4" id="view-list">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
           </button>
         </div>
-        @endif
+      </div>
 
-        @if(nfts.length == 0)
-          <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <p class="mt-4 text-gray-5">No NFTs in this collection yet</p>
+      <!-- NFT Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="nftGrid">
+        @foreach(nfts as nft)
+          <div class="nft-card bg-white rounded-lg overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-md transition cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
+            <div class="aspect-square relative">
+              <img
+                src="{{ nft.image_url || '/assets/images/anonymouse.png' }}"
+                alt="{{ nft.name }}"
+                class="w-full h-full object-cover"
+                loading="lazy"
+                onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'"
+              />
+              @if(nft.rarity)
+                <span class="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded rarity-{{ (nft.rarity || 'common').toLowerCase() }}">{{ nft.rarity }}</span>
+              @endif
+              @if(nft.is_for_sale)
+                <div class="nft-actions absolute bottom-2 left-2 right-2">
+                  <button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="{{ nft.id }}" class="w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition shadow-lg">Buy Now</button>
+                </div>
+              @endif
+            </div>
+            <div class="p-2.5">
+              <p class="font-semibold text-sm text-gray-9 truncate">{{ nft.name }}</p>
+              <div class="flex items-center justify-between mt-1">
+                @if(nft.listing_price || nft.price)
+                  <p class="text-sm font-bold text-gray-9">{{ nft.listing_price ? (nft.listing_price / 1e9).toFixed(2) : nft.price }} <span class="text-xs font-normal text-gray-4">SOL</span></p>
+                @else
+                  <p class="text-xs text-gray-4">Not Listed</p>
+                @endif
+                @if(nft.rarity_rank)
+                  <p class="text-[10px] text-gray-4">#{{ nft.rarity_rank }}</p>
+                @endif
+              </div>
+              <button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="{{ nft.id }}" class="mt-1.5 w-full bg-gray-100 hover:bg-gray-200 text-gray-7 text-xs font-medium py-1.5 rounded transition">Offer</button>
+              <div style="display:none" class="mt-1.5 coll-offer-form">
+                <input type="number" step="0.01" min="0" placeholder="SOL" class="w-full h-7 rounded border border-gray-200 px-2 text-xs coll-offer-amount" onclick="event.stopPropagation()" />
+                <button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="{{ nft.id }}" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit</button>
+              </div>
+            </div>
           </div>
-        @endif
+        @endforeach
+      </div>
+
+      <!-- List View (hidden by default) -->
+      <div class="hidden" id="nftList">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-gray-4 uppercase border-b">
+              <th class="text-left py-2 px-2">NFT</th>
+              <th class="text-left py-2 px-2">Rarity</th>
+              <th class="text-right py-2 px-2">Price</th>
+              <th class="text-right py-2 px-2">Rank</th>
+              <th class="text-right py-2 px-2">Owner</th>
+            </tr>
+          </thead>
+          <tbody id="nftListBody">
+            @foreach(nfts as nft)
+              <tr class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer" onclick="NFTModal.open({{ nft.id }})">
+                <td class="py-2 px-2 flex items-center gap-2">
+                  <img src="{{ nft.image_url || '/assets/images/anonymouse.png' }}" class="h-8 w-8 rounded object-cover" onerror="this.onerror=null;this.src='/assets/images/anonymouse.png'" />
+                  <span class="font-medium text-gray-9 truncate max-w-[120px]">{{ nft.name }}</span>
+                </td>
+                <td class="py-2 px-2">
+                  @if(nft.rarity)
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded rarity-{{ (nft.rarity || 'common').toLowerCase() }}">{{ nft.rarity }}</span>
+                  @endif
+                </td>
+                <td class="py-2 px-2 text-right font-semibold text-gray-9">
+                  @if(nft.listing_price || nft.price)
+                    {{ nft.listing_price ? (nft.listing_price / 1e9).toFixed(2) : nft.price }} SOL
+                  @else
+                    <span class="text-gray-4">--</span>
+                  @endif
+                </td>
+                <td class="py-2 px-2 text-right text-gray-5">{{ nft.rarity_rank || '--' }}</td>
+                <td class="py-2 px-2 text-right text-gray-4 font-mono text-xs">
+                  @if(nft.owner_wallet_address)
+                    {{ nft.owner_wallet_address.slice(0,4) }}...{{ nft.owner_wallet_address.slice(-4) }}
+                  @endif
+                </td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Loading Skeleton -->
+      <div class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="nftSkeleton">
+        <div class="rounded-lg overflow-hidden border border-gray-100"><div class="aspect-square skeleton"></div><div class="p-2.5"><div class="h-4 skeleton rounded w-3/4 mb-2"></div><div class="h-3 skeleton rounded w-1/2"></div></div></div>
+        <div class="rounded-lg overflow-hidden border border-gray-100"><div class="aspect-square skeleton"></div><div class="p-2.5"><div class="h-4 skeleton rounded w-3/4 mb-2"></div><div class="h-3 skeleton rounded w-1/2"></div></div></div>
+        <div class="rounded-lg overflow-hidden border border-gray-100"><div class="aspect-square skeleton"></div><div class="p-2.5"><div class="h-4 skeleton rounded w-3/4 mb-2"></div><div class="h-3 skeleton rounded w-1/2"></div></div></div>
+        <div class="rounded-lg overflow-hidden border border-gray-100"><div class="aspect-square skeleton"></div><div class="p-2.5"><div class="h-4 skeleton rounded w-3/4 mb-2"></div><div class="h-3 skeleton rounded w-1/2"></div></div></div>
+        <div class="rounded-lg overflow-hidden border border-gray-100"><div class="aspect-square skeleton"></div><div class="p-2.5"><div class="h-4 skeleton rounded w-3/4 mb-2"></div><div class="h-3 skeleton rounded w-1/2"></div></div></div>
+      </div>
+
+      <!-- Load More -->
+      @if(hasMore)
+      <div class="flex justify-center mt-8" id="loadMoreWrap">
+        <button onclick="collNftLoadMore(this)" class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-7 font-medium px-8 py-2.5 rounded-lg transition text-sm">Load More</button>
+      </div>
+      @endif
+
+      @if(nfts.length == 0)
+        <div class="text-center py-16">
+          <svg class="mx-auto h-12 w-12 text-gray-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <p class="mt-4 text-gray-5">No NFTs in this collection yet</p>
+        </div>
+      @endif
+
+      <!-- Mint NFT (devnet) -->
+      <div class="mt-8 border-t border-gray-100 pt-6" data-mint-section>
+        <button onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'':'none'" class="text-sm text-gray-5 hover:text-gray-8 transition">+ Mint New NFT (devnet)</button>
+        <div data-mint-form style="display:none" class="mt-4 max-w-md space-y-3">
+          <input id="mintName" type="text" placeholder="NFT Name *" class="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm" />
+          <input id="mintDesc" type="text" placeholder="Description" class="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm" />
+          <input id="mintImage" type="url" placeholder="Image URL" class="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm" />
+          <input id="mintSymbol" type="text" placeholder="Symbol" maxlength="10" class="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm" />
+          <button onclick="window.__doMint(this,'{{ collection.mint_address }}')" class="w-full bg-pink-8 hover:bg-pink-9 text-white font-semibold py-2.5 rounded-lg transition text-sm">Mint NFT On-Chain</button>
+          <p id="mintStatus" class="text-sm text-gray-5 text-center" style="display:none"></p>
+        </div>
+      </div>
     </div>
 
-    <!-- Collection Activity -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-      <h2 class="text-2xl font-bold text-gray-9 mb-6">Collection Activity</h2>
+    <!-- Activity Tab (hidden by default) -->
+    <div id="panel-activity" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 hidden">
       <div class="coll-activity-container">
         <div class="flex justify-center py-8">
           <div class="spinner h-6 w-6 border-4 border-pink-8 border-t-transparent rounded-full"></div>
@@ -294,67 +319,113 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
 
     <script client>
       {
-        var _collRoot = document.currentScript.previousElementSibling
         var COLL_API = window.API_BASE || 'http://localhost:3008'
         var _collSlug = window.location.pathname.split('/').pop()
         var _collNftPage = 1
         var _collNftHasMore = true
         var _collNftLoading = false
         var _collFilterTimer = null
+        var _currentView = 'grid'
+        var _currentTab = 'items'
 
-        function getCollEl(cls) {
-          var els = _collRoot.getElementsByClassName(cls)
-          return els[0] || null
+        // Tab switching
+        window.switchTab = function(tab) {
+          _currentTab = tab
+          document.getElementById('panel-items').classList.toggle('hidden', tab !== 'items')
+          document.getElementById('panel-activity').classList.toggle('hidden', tab !== 'activity')
+          document.getElementById('tab-items').className = 'px-4 py-3 text-sm ' + (tab === 'items' ? 'tab-active' : 'tab-inactive')
+          document.getElementById('tab-activity').className = 'px-4 py-3 text-sm ' + (tab === 'activity' ? 'tab-active' : 'tab-inactive')
+          if (tab === 'activity') loadCollectionActivity()
         }
 
+        // View toggle
+        window.setView = function(view) {
+          _currentView = view
+          document.getElementById('nftGrid').classList.toggle('hidden', view !== 'grid')
+          document.getElementById('nftList').classList.toggle('hidden', view !== 'list')
+          document.getElementById('view-grid').className = 'view-btn rounded p-1.5 ' + (view === 'grid' ? 'view-btn-active' : 'text-gray-4')
+          document.getElementById('view-list').className = 'view-btn rounded p-1.5 ' + (view === 'list' ? 'view-btn-active' : 'text-gray-4')
+        }
+
+        // Stats auto-refresh
+        function refreshStats() {
+          fetch(COLL_API + '/marketplace/collections/' + _collSlug + '/stats')
+            .then(function(r) { return r.json() })
+            .then(function(s) {
+              var bar = document.getElementById('statsBar')
+              if (!bar) return
+              var floor = bar.querySelector('.stats-floor')
+              var listed = bar.querySelector('.stats-listed')
+              var volume = bar.querySelector('.stats-volume')
+              var owners = bar.querySelector('.stats-owners')
+              var offer = bar.querySelector('.stats-best-offer')
+              var supply = bar.querySelector('.stats-supply')
+              if (floor && s.floorPrice !== null) floor.innerHTML = Number(s.floorPrice).toFixed(2) + ' <span class="text-xs font-normal text-gray-5">SOL</span>'
+              if (listed) listed.textContent = s.listedCount + ' / ' + s.totalSupply
+              if (volume && s.totalVolume) volume.innerHTML = Number(s.totalVolume).toFixed(1) + ' <span class="text-xs font-normal text-gray-5">SOL</span>'
+              if (owners) owners.textContent = s.ownersCount || '--'
+              if (offer && s.bestOffer) offer.innerHTML = Number(s.bestOffer).toFixed(2) + ' <span class="text-xs font-normal text-gray-5">SOL</span>'
+              if (supply) supply.textContent = s.totalSupply || '--'
+            })
+            .catch(function() {})
+        }
+        refreshStats()
+        setInterval(refreshStats, 30000)
+
+        // Filter helpers
         function getCollFilters() {
-          var minEl = getCollEl('coll-filter-min')
-          var maxEl = getCollEl('coll-filter-max')
-          var rarityEl = getCollEl('coll-filter-rarity')
-          var forSaleEl = getCollEl('coll-filter-forsale')
-          var sortEl = getCollEl('coll-filter-sort')
           return {
-            minPrice: minEl ? minEl.value : '',
-            maxPrice: maxEl ? maxEl.value : '',
-            rarity: rarityEl ? rarityEl.value : '',
-            forSale: forSaleEl ? forSaleEl.checked : false,
-            sort: sortEl ? sortEl.value : 'name'
+            status: (document.querySelector('.coll-filter-status') || {}).value || 'all',
+            minPrice: (document.querySelector('.coll-filter-min') || {}).value || '',
+            maxPrice: (document.querySelector('.coll-filter-max') || {}).value || '',
+            rarity: (document.querySelector('.coll-filter-rarity') || {}).value || '',
+            sort: (document.querySelector('.coll-filter-sort') || {}).value || 'recent'
           }
         }
 
-        function buildCollFilterQuery(page) {
+        function buildFilterQuery(page) {
           var f = getCollFilters()
-          var q = '?page=' + page
+          var q = '?page=' + page + '&limit=50'
+          if (f.status !== 'all') q += '&forSale=' + (f.status === 'listed' ? 'true' : 'false')
           if (f.minPrice) q += '&minPrice=' + f.minPrice
           if (f.maxPrice) q += '&maxPrice=' + f.maxPrice
           if (f.rarity) q += '&rarity=' + encodeURIComponent(f.rarity)
-          if (f.forSale) q += '&forSale=true'
           if (f.sort) q += '&sort=' + f.sort
           return q
         }
 
+        function rarityClass(r) {
+          if (!r) return 'rarity-common'
+          return 'rarity-' + r.toLowerCase()
+        }
+
         function nftCardHtml(nft) {
-          var html = '<div class="bg-gray-0.25 rounded-lg overflow-hidden transition duration-150 hover:shadow-lg cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
-            + '<div class="aspect-square"><img src="' + (nft.image_url || '/assets/images/anonymouse.png') + '" alt="' + (nft.name || '') + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /></div>'
-            + '<div class="p-3"><p class="font-semibold text-gray-9 truncate">' + (nft.name || '') + '</p>'
-          if (nft.rarity_rank) html += '<p class="text-xs text-gray-5">Rank #' + nft.rarity_rank + '</p>'
-          if (nft.price) html += '<p class="text-sm font-semibold text-pink-8 mt-1">' + nft.price + ' SOL</p>'
-          if (nft.is_for_sale) {
-            html += '<div class="mt-2"><span class="text-xs bg-pink-100 text-pink-700 py-1 px-2 rounded">For Sale</span></div>'
-            html += '<button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="' + nft.id + '" class="mt-2 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition">Buy Now</button>'
-          }
-          html += '<button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="' + nft.id + '" class="mt-2 w-full bg-gray-7 hover:bg-gray-8 text-white text-xs font-semibold py-2 rounded transition">Make Offer</button>'
-          html += '<div style="display:none" class="mt-2 coll-offer-form"><input type="number" step="0.01" min="0" placeholder="Amount (SOL)" class="w-full h-8 rounded border border-gray-300 px-2 text-xs focus:border-pink-8 focus:ring-pink-8 coll-offer-amount" onclick="event.stopPropagation()" /><button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="' + nft.id + '" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit Offer</button></div>'
+          var price = nft.listing_price ? (Number(nft.listing_price) / 1e9).toFixed(2) : (nft.price ? Number(nft.price).toFixed(2) : null)
+          var html = '<div class="nft-card bg-white rounded-lg overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-md transition cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
+            + '<div class="aspect-square relative"><img src="' + (nft.image_url || '/assets/images/anonymouse.png') + '" alt="' + (nft.name || '') + '" class="w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" />'
+          if (nft.rarity) html += '<span class="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded ' + rarityClass(nft.rarity) + '">' + nft.rarity + '</span>'
+          if (nft.is_for_sale) html += '<div class="nft-actions absolute bottom-2 left-2 right-2"><button onclick="event.stopPropagation(); collBuyNow(this)" data-nft-id="' + nft.id + '" class="w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-2 rounded transition shadow-lg">Buy Now</button></div>'
+          html += '</div><div class="p-2.5"><p class="font-semibold text-sm text-gray-9 truncate">' + (nft.name || '') + '</p><div class="flex items-center justify-between mt-1">'
+          if (price) html += '<p class="text-sm font-bold text-gray-9">' + price + ' <span class="text-xs font-normal text-gray-4">SOL</span></p>'
+          else html += '<p class="text-xs text-gray-4">Not Listed</p>'
+          if (nft.rarity_rank) html += '<p class="text-[10px] text-gray-4">#' + nft.rarity_rank + '</p>'
+          html += '</div>'
+          html += '<button onclick="event.stopPropagation(); collToggleOffer(this)" data-nft-id="' + nft.id + '" class="mt-1.5 w-full bg-gray-100 hover:bg-gray-200 text-gray-7 text-xs font-medium py-1.5 rounded transition">Offer</button>'
+          html += '<div style="display:none" class="mt-1.5 coll-offer-form"><input type="number" step="0.01" min="0" placeholder="SOL" class="w-full h-7 rounded border border-gray-200 px-2 text-xs coll-offer-amount" onclick="event.stopPropagation()" /><button onclick="event.stopPropagation(); collSubmitOffer(this)" data-nft-id="' + nft.id + '" class="mt-1 w-full bg-pink-8 hover:bg-pink-9 text-white text-xs font-semibold py-1.5 rounded transition">Submit</button></div>'
           html += '</div></div>'
           return html
         }
 
-        function getCollGridEl() {
-          var els = _collRoot.getElementsByClassName('grid-cols-2')
-          for (var i = 0; i < els.length; i++) {
-            if (els[i].classList.contains('gap-4')) return els[i]
-          }
-          return null
+        function nftRowHtml(nft) {
+          var price = nft.listing_price ? (Number(nft.listing_price) / 1e9).toFixed(2) + ' SOL' : (nft.price ? nft.price + ' SOL' : '--')
+          var owner = nft.owner_wallet_address ? nft.owner_wallet_address.slice(0,4) + '...' + nft.owner_wallet_address.slice(-4) : ''
+          return '<tr class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer" onclick="NFTModal.open(' + nft.id + ')">'
+            + '<td class="py-2 px-2 flex items-center gap-2"><img src="' + (nft.image_url || '/assets/images/anonymouse.png') + '" class="h-8 w-8 rounded object-cover" onerror="this.onerror=null;this.src=\'/assets/images/anonymouse.png\'" /><span class="font-medium text-gray-9 truncate max-w-[120px]">' + (nft.name || '') + '</span></td>'
+            + '<td class="py-2 px-2">' + (nft.rarity ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ' + rarityClass(nft.rarity) + '">' + nft.rarity + '</span>' : '') + '</td>'
+            + '<td class="py-2 px-2 text-right font-semibold text-gray-9">' + price + '</td>'
+            + '<td class="py-2 px-2 text-right text-gray-5">' + (nft.rarity_rank || '--') + '</td>'
+            + '<td class="py-2 px-2 text-right text-gray-4 font-mono text-xs">' + owner + '</td>'
+            + '</tr>'
         }
 
         window.collNftFilterChanged = function() {
@@ -362,20 +433,33 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           _collFilterTimer = setTimeout(function() {
             _collNftPage = 1
             _collNftHasMore = true
-            var gridEl = getCollGridEl()
-            if (!gridEl) return
-            fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildCollFilterQuery(1))
+            var grid = document.getElementById('nftGrid')
+            var listBody = document.getElementById('nftListBody')
+            var skeleton = document.getElementById('nftSkeleton')
+            if (skeleton) skeleton.classList.remove('hidden')
+            if (grid) grid.classList.add('hidden')
+
+            fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildFilterQuery(1))
               .then(function(res) { return res.json() })
               .then(function(data) {
-                var nfts = (data.collection && data.collection.nfts) || data.nfts || []
-                if (nfts.length < (data.perPage || 20)) _collNftHasMore = false
-                var html = ''
-                for (var i = 0; i < nfts.length; i++) html += nftCardHtml(nfts[i])
-                gridEl.innerHTML = html
-                var loadMoreBtn = gridEl.nextElementSibling
-                if (loadMoreBtn) loadMoreBtn.style.display = _collNftHasMore ? '' : 'none'
+                var nfts = data.nfts || []
+                if (nfts.length < 50) _collNftHasMore = false
+                var gridHtml = '', listHtml = ''
+                for (var i = 0; i < nfts.length; i++) {
+                  gridHtml += nftCardHtml(nfts[i])
+                  listHtml += nftRowHtml(nfts[i])
+                }
+                if (grid) { grid.innerHTML = gridHtml; grid.classList.remove('hidden') }
+                if (listBody) listBody.innerHTML = listHtml
+                if (skeleton) skeleton.classList.add('hidden')
+                var loadMore = document.getElementById('loadMoreWrap')
+                if (loadMore) loadMore.style.display = _collNftHasMore ? '' : 'none'
               })
-              .catch(function(err) { console.error('Filter failed:', err) })
+              .catch(function(err) {
+                console.error('Filter failed:', err)
+                if (skeleton) skeleton.classList.add('hidden')
+                if (grid) grid.classList.remove('hidden')
+              })
           }, 300)
         }
 
@@ -386,15 +470,15 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           btn.textContent = 'Loading...'
           _collNftPage++
           try {
-            var res = await fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildCollFilterQuery(_collNftPage))
+            var res = await fetch(COLL_API + '/marketplace/collections/' + _collSlug + buildFilterQuery(_collNftPage))
             var data = await res.json()
-            var nfts = (data.collection && data.collection.nfts) || data.nfts || []
-            if (nfts.length < (data.perPage || 20)) _collNftHasMore = false
-            var gridEl = getCollGridEl()
-            if (gridEl) {
-              for (var i = 0; i < nfts.length; i++) {
-                gridEl.insertAdjacentHTML('beforeend', nftCardHtml(nfts[i]))
-              }
+            var nfts = data.nfts || []
+            if (nfts.length < 50) _collNftHasMore = false
+            var grid = document.getElementById('nftGrid')
+            var listBody = document.getElementById('nftListBody')
+            for (var i = 0; i < nfts.length; i++) {
+              if (grid) grid.insertAdjacentHTML('beforeend', nftCardHtml(nfts[i]))
+              if (listBody) listBody.insertAdjacentHTML('beforeend', nftRowHtml(nfts[i]))
             }
             if (!_collNftHasMore) btn.parentNode.style.display = 'none'
           } catch (err) {
@@ -406,6 +490,7 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
           btn.textContent = 'Load More'
         }
 
+        // Activity
         function collActivityIcon(type) {
           if (type === 'mint') return '<svg class="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>'
           if (type === 'sale' || type === 'buy') return '<svg class="h-5 w-5 text-pink-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" /></svg>'
@@ -415,26 +500,23 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
         }
 
         function collActivityLabel(type) {
-          if (type === 'mint') return 'Minted'
-          if (type === 'sale' || type === 'buy') return 'Sold'
-          if (type === 'offer') return 'Offer'
-          if (type === 'list') return 'Listed'
-          return type || 'Activity'
+          var labels = { mint: 'Minted', sale: 'Sold', buy: 'Sold', offer: 'Offer', list: 'Listed', delist: 'Delisted', transfer: 'Transfer' }
+          return labels[type] || type || 'Activity'
         }
 
         function loadCollectionActivity() {
-          var containers = _collRoot.getElementsByClassName('coll-activity-container')
+          var containers = document.getElementsByClassName('coll-activity-container')
           var container = containers[0]
           if (!container) return
-          fetch(COLL_API + '/marketplace/activity?collectionSlug=' + _collSlug + '&limit=10')
+          fetch(COLL_API + '/marketplace/activity?collectionSlug=' + _collSlug + '&limit=20')
             .then(function(res) { return res.json() })
             .then(function(data) {
               var events = data.events || data.activity || []
               if (events.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-5 py-8">No activity for this collection yet</p>'
+                container.innerHTML = '<p class="text-center text-gray-5 py-12">No activity for this collection yet</p>'
                 return
               }
-              var html = '<div class="space-y-3">'
+              var html = '<div class="space-y-2">'
               for (var i = 0; i < events.length; i++) {
                 var e = events[i]
                 var addr = e.wallet_address || e.address || ''
@@ -442,192 +524,68 @@ const pageTitle = `${collection?.name || 'Collection'} | Naked NFTs`
                 var nftName = e.nft_name || e.name || 'NFT #' + (e.nft_id || '')
                 var timeAgo = e.created_at ? new Date(e.created_at).toLocaleDateString() : ''
                 var amount = e.amount || e.price ? Number(e.amount || e.price).toFixed(2) + ' SOL' : ''
-                html += '<div class="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition">'
-                  + '<div class="flex items-center space-x-3">'
-                  + '<div class="flex-shrink-0">' + collActivityIcon(e.type || e.event_type) + '</div>'
-                  + '<div>'
-                  + '<p class="font-medium text-gray-8">' + nftName + '</p>'
-                  + '<p class="text-sm text-gray-5">' + collActivityLabel(e.type || e.event_type) + (shortAddr ? ' by ' + shortAddr : '') + '</p>'
-                  + '</div></div>'
-                  + '<div class="text-right">'
-                  + (amount ? '<p class="font-semibold text-gray-9">' + amount + '</p>' : '')
-                  + (timeAgo ? '<p class="text-xs text-gray-4">' + timeAgo + '</p>' : '')
-                  + '</div></div>'
+                html += '<div class="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition">'
+                  + '<div class="flex items-center space-x-3"><div class="shrink-0">' + collActivityIcon(e.type || e.event_type) + '</div>'
+                  + '<div><p class="font-medium text-sm text-gray-8">' + nftName + '</p>'
+                  + '<p class="text-xs text-gray-4">' + collActivityLabel(e.type || e.event_type) + (shortAddr ? ' by ' + shortAddr : '') + '</p></div></div>'
+                  + '<div class="text-right">' + (amount ? '<p class="font-semibold text-sm text-gray-9">' + amount + '</p>' : '') + (timeAgo ? '<p class="text-[10px] text-gray-4">' + timeAgo + '</p>' : '') + '</div></div>'
               }
               html += '</div>'
               container.innerHTML = html
             })
-            .catch(function(err) {
-              console.error('Failed to load collection activity:', err)
-              container.innerHTML = '<p class="text-center text-gray-5 py-8">Failed to load activity</p>'
-            })
+            .catch(function() { container.innerHTML = '<p class="text-center text-gray-5 py-12">Failed to load activity</p>' })
         }
 
+        // Buy / Offer actions
         window.collBuyNow = async function(btn) {
           var nftId = btn.dataset.nftId
           var walletAddr = localStorage.getItem('wallet_addr')
           if (!walletAddr) {
-            if (window.Toast) Toast.error('Please connect your wallet first')
-            else alert('Please connect your wallet first')
+            if (window.Toast) Toast.error('Connect your wallet first')
+            else alert('Connect your wallet first')
             return
           }
-          btn.disabled = true
-          btn.textContent = 'Buying...'
+          btn.disabled = true; btn.textContent = 'Buying...'
           try {
-            var res = await fetch(COLL_API + '/nfts/buy', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nftId: Number(nftId), buyerWalletAddress: walletAddr })
-            })
+            var res = await fetch(COLL_API + '/nfts/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nftId: Number(nftId), buyerWalletAddress: walletAddr }) })
             var data = await res.json()
-            if (data.error) {
-              if (window.Toast) Toast.error(data.error)
-              else alert(data.error)
-            } else {
+            if (data.error) { if (window.Toast) Toast.error(data.error); else alert(data.error) }
+            else {
+              if (data.transaction && data.transaction.serializedTransaction) {
+                if (window.Toast) Toast.info('Approve in your wallet...')
+                var sig = await WalletManager.signAndSend(data.transaction.serializedTransaction)
+                await fetch(COLL_API + '/nfts/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signature: sig, nftId: Number(nftId), action: 'buy' }) })
+              }
               if (window.Toast) Toast.success('Purchase successful!')
               else alert('Purchase successful!')
+              setTimeout(function() { window.location.reload() }, 2000)
             }
-          } catch (err) {
-            if (window.Toast) Toast.error('Failed to buy NFT')
-            else alert('Failed to buy NFT')
-          }
-          btn.disabled = false
-          btn.textContent = 'Buy Now'
+          } catch (err) { if (window.Toast) Toast.error('Failed to buy'); else alert('Failed to buy') }
+          btn.disabled = false; btn.textContent = 'Buy Now'
         }
 
         window.collToggleOffer = function(btn) {
           var form = btn.nextElementSibling
-          if (form) {
-            form.style.display = form.style.display === 'none' ? '' : 'none'
-          }
+          if (form) form.style.display = form.style.display === 'none' ? '' : 'none'
         }
 
         window.collSubmitOffer = async function(btn) {
           var nftId = btn.dataset.nftId
           var walletAddr = localStorage.getItem('wallet_addr')
-          if (!walletAddr) {
-            if (window.Toast) Toast.error('Please connect your wallet first')
-            else alert('Please connect your wallet first')
-            return
-          }
+          if (!walletAddr) { if (window.Toast) Toast.error('Connect your wallet first'); else alert('Connect wallet'); return }
           var amountInput = btn.previousElementSibling
           var amount = amountInput ? amountInput.value : ''
-          if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            if (window.Toast) Toast.error('Enter a valid offer amount')
-            else alert('Enter a valid offer amount')
-            return
-          }
-          btn.disabled = true
-          btn.textContent = 'Submitting...'
+          if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) { if (window.Toast) Toast.error('Enter valid amount'); else alert('Enter valid amount'); return }
+          btn.disabled = true; btn.textContent = 'Submitting...'
           try {
-            var res = await fetch(COLL_API + '/nfts/offer', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), buyerWalletAddress: walletAddr })
-            })
+            var res = await fetch(COLL_API + '/nfts/offer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nftId: Number(nftId), amount: Number(amount), buyerWalletAddress: walletAddr }) })
             var data = await res.json()
-            if (data.error) {
-              if (window.Toast) Toast.error(data.error)
-              else alert(data.error)
-            } else {
-              if (window.Toast) Toast.success('Offer submitted!')
-              else alert('Offer submitted!')
-              btn.parentNode.style.display = 'none'
-              if (amountInput) amountInput.value = ''
-            }
-          } catch (err) {
-            if (window.Toast) Toast.error('Failed to submit offer')
-            else alert('Failed to submit offer')
-          }
-          btn.disabled = false
-          btn.textContent = 'Submit Offer'
+            if (data.error) { if (window.Toast) Toast.error(data.error); else alert(data.error) }
+            else { if (window.Toast) Toast.success('Offer submitted!'); else alert('Offer submitted!'); btn.parentNode.style.display = 'none'; if (amountInput) amountInput.value = '' }
+          } catch (err) { if (window.Toast) Toast.error('Failed'); else alert('Failed') }
+          btn.disabled = false; btn.textContent = 'Submit'
         }
-
-        loadCollectionActivity()
       }
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var MINT_API = window.API_BASE || 'http://localhost:3008'
-
-      var toggleBtn = document.querySelector('[data-mint-toggle]')
-      if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
-          var form = document.querySelector('[data-mint-form]')
-          if (form) form.style.display = form.style.display === 'none' ? '' : 'none'
-        })
-      }
-
-      var submitBtn = document.querySelector('[data-mint-submit]')
-      if (submitBtn) {
-        submitBtn.addEventListener('click', function() {
-          var nameEl = document.querySelector('[data-mint-name]')
-          var descEl = document.querySelector('[data-mint-description]')
-          var imageEl = document.querySelector('[data-mint-image]')
-          var symbolEl = document.querySelector('[data-mint-symbol]')
-          var statusEl = document.querySelector('[data-mint-status]')
-          var collectionMint = submitBtn.dataset.collectionMint
-
-          var nftName = nameEl ? nameEl.value.trim() : ''
-          if (!nftName) {
-            alert('NFT name is required')
-            return
-          }
-
-          submitBtn.disabled = true
-          submitBtn.textContent = 'Minting on-chain...'
-          if (statusEl) {
-            statusEl.style.display = ''
-            statusEl.textContent = 'Sending transaction to Solana devnet...'
-            statusEl.style.color = '#6b7280'
-          }
-
-          fetch(MINT_API + '/marketplace/nfts/mint-to-collection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              collectionMint: collectionMint,
-              name: nftName,
-              description: descEl ? descEl.value.trim() : '',
-              imageUrl: imageEl ? imageEl.value.trim() : '',
-              symbol: symbolEl ? symbolEl.value.trim() : ''
-            })
-          })
-          .then(function(res) { return res.json() })
-          .then(function(data) {
-            if (data.error) {
-              if (statusEl) {
-                statusEl.textContent = data.error + (data.hint ? ' - ' + data.hint : '')
-                statusEl.style.color = '#dc2626'
-              }
-              alert(data.error)
-            } else {
-              if (statusEl) {
-                statusEl.textContent = 'Minted! Mint address: ' + data.nft.mintAddress
-                statusEl.style.color = '#059669'
-              }
-              alert('NFT minted successfully!')
-              if (nameEl) nameEl.value = ''
-              if (descEl) descEl.value = ''
-              if (imageEl) imageEl.value = ''
-              if (symbolEl) symbolEl.value = ''
-              setTimeout(function() { window.location.reload() }, 2000)
-            }
-            submitBtn.disabled = false
-            submitBtn.textContent = 'Mint NFT On-Chain'
-          })
-          .catch(function(err) {
-            console.error('Mint failed:', err)
-            if (statusEl) {
-              statusEl.textContent = 'Failed to mint NFT. Check console.'
-              statusEl.style.color = '#dc2626'
-            }
-            submitBtn.disabled = false
-            submitBtn.textContent = 'Mint NFT On-Chain'
-          })
-        })
-      }
-    })
     </script>
   @endif
 @endsection
