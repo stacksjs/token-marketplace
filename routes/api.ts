@@ -280,6 +280,14 @@ route.get('/indexer/status', 'Actions/Indexer/IndexerStatusAction')
 route.get('/indexer/traits/{slug}', 'Actions/Indexer/TraitCountsAction')
 route.get('/indexer/events', 'Actions/Indexer/MarketplaceEventsAction')
 
+// Compressed NFT routes
+route.group({ prefix: '/cnft' }, () => {
+  route.post('/mint', 'Actions/CompressedNFT/MintCompressedAction')
+  route.post('/tree', 'Actions/CompressedNFT/CreateMerkleTreeAction')
+  route.get('/trees', 'Actions/CompressedNFT/TreeStatusAction')
+  route.get('/trees/{collectionId}', 'Actions/CompressedNFT/TreeStatusAction')
+})
+
 // Fee estimation routes
 route.get('/fees/estimate', 'Actions/Fees/FeeEstimateAction')
 
