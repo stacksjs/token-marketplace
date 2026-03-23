@@ -1,0 +1,208 @@
+<div class="fee-selector" id="fee-selector">
+  <div class="fee-header">
+    <span class="fee-title">Network Fee</span>
+    <span class="congestion-badge" id="congestion-badge">Low</span>
+  </div>
+
+  <div class="fee-options">
+    <label class="fee-option" data-tier="economy">
+      <input type="radio" name="fee-tier" value="economy" />
+      <div class="fee-details">
+        <span class="fee-name">Economy</span>
+        <span class="fee-time" id="fee-time-economy">~15s</span>
+        <span class="fee-cost" id="fee-economy">0.000001 SOL</span>
+      </div>
+    </label>
+
+    <label class="fee-option selected" data-tier="standard">
+      <input type="radio" name="fee-tier" value="standard" checked />
+      <div class="fee-details">
+        <span class="fee-name">Standard</span>
+        <span class="fee-time" id="fee-time-standard">~6s</span>
+        <span class="fee-cost" id="fee-standard">0.000005 SOL</span>
+      </div>
+    </label>
+
+    <label class="fee-option" data-tier="fast">
+      <input type="radio" name="fee-tier" value="fast" />
+      <div class="fee-details">
+        <span class="fee-name">Fast</span>
+        <span class="fee-time" id="fee-time-fast">~3s</span>
+        <span class="fee-cost" id="fee-fast">0.000050 SOL</span>
+      </div>
+    </label>
+  </div>
+</div>
+
+<style>
+  .fee-selector {
+    border: 1px solid var(--border-color, #2a2a3a);
+    border-radius: 12px;
+    padding: 16px;
+    background: var(--card-bg, #1a1a2e);
+  }
+
+  .fee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .fee-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary, #e0e0e0);
+  }
+
+  .congestion-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .congestion-badge.congestion-low {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  .congestion-badge.congestion-medium {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+  }
+
+  .congestion-badge.congestion-high {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+
+  .fee-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fee-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, #2a2a3a);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .fee-option:hover {
+    border-color: var(--accent-color, #7c3aed);
+    background: rgba(124, 58, 237, 0.05);
+  }
+
+  .fee-option.selected {
+    border-color: var(--accent-color, #7c3aed);
+    background: rgba(124, 58, 237, 0.1);
+  }
+
+  .fee-option input[type="radio"] {
+    accent-color: var(--accent-color, #7c3aed);
+  }
+
+  .fee-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .fee-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-primary, #e0e0e0);
+    min-width: 70px;
+  }
+
+  .fee-time {
+    font-size: 12px;
+    color: var(--text-secondary, #888);
+    min-width: 40px;
+  }
+
+  .fee-cost {
+    font-size: 12px;
+    color: var(--text-secondary, #888);
+    margin-left: auto;
+    font-family: monospace;
+  }
+</style>
+
+<script>
+  (function () {
+    var refreshInterval = null
+
+    function loadFeeEstimates() {
+      fetch('/api/fees/estimate')
+        .then(function (res) { return res.json() })
+        .then(function (fees) {
+          var economyEl = document.getElementById('fee-economy')
+          var standardEl = document.getElementById('fee-standard')
+          var fastEl = document.getElementById('fee-fast')
+          var timeEconomyEl = document.getElementById('fee-time-economy')
+          var timeStandardEl = document.getElementById('fee-time-standard')
+          var timeFastEl = document.getElementById('fee-time-fast')
+
+          if (economyEl && fees.display) economyEl.textContent = fees.display.economy
+          if (standardEl && fees.display) standardEl.textContent = fees.display.standard
+          if (fastEl && fees.display) fastEl.textContent = fees.display.fast
+          if (timeEconomyEl && fees.estimatedTimes) timeEconomyEl.textContent = fees.estimatedTimes.economy
+          if (timeStandardEl && fees.estimatedTimes) timeStandardEl.textContent = fees.estimatedTimes.standard
+          if (timeFastEl && fees.estimatedTimes) timeFastEl.textContent = fees.estimatedTimes.fast
+
+          var badge = document.getElementById('congestion-badge')
+          if (badge && fees.networkCongestion) {
+            badge.textContent = fees.networkCongestion.charAt(0).toUpperCase() + fees.networkCongestion.slice(1)
+            badge.className = 'congestion-badge congestion-' + fees.networkCongestion
+          }
+        })
+        .catch(function () {
+          // Silently fail — keep showing last known values
+        })
+    }
+
+    // Radio button selection handling
+    var options = document.querySelectorAll('.fee-option')
+    options.forEach(function (option) {
+      option.addEventListener('click', function () {
+        options.forEach(function (o) { o.classList.remove('selected') })
+        option.classList.add('selected')
+        var radio = option.querySelector('input[type="radio"]')
+        if (radio) radio.checked = true
+
+        // Dispatch custom event for parent components
+        var event = new CustomEvent('fee-selected', {
+          detail: { tier: option.getAttribute('data-tier') },
+          bubbles: true,
+        })
+        option.dispatchEvent(event)
+      })
+    })
+
+    // Load initial estimates and refresh periodically
+    loadFeeEstimates()
+    refreshInterval = setInterval(loadFeeEstimates, 30000)
+
+    // Expose for programmatic access
+    window.FeeSelector = {
+      getSelectedTier: function () {
+        var checked = document.querySelector('input[name="fee-tier"]:checked')
+        return checked ? checked.value : 'standard'
+      },
+      refresh: loadFeeEstimates,
+      destroy: function () {
+        if (refreshInterval) clearInterval(refreshInterval)
+      },
+    }
+  })()
+</script>
