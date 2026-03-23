@@ -299,6 +299,16 @@ route.group({ prefix: '/cnft' }, () => {
   route.get('/trees/{collectionId}', 'Actions/CompressedNFT/TreeStatusAction')
 })
 
+// Trading Rewards routes
+route.group({ prefix: '/rewards' }, () => {
+  route.get('/leaderboard', 'Actions/Rewards/LeaderboardAction')
+  route.get('/wallet/{wallet}', 'Actions/Rewards/WalletRewardsAction')
+  route.post('/record', 'Actions/Rewards/RecordActivityAction')
+})
+
+// Floor comparison routes
+route.get('/marketplace/floor/{slug}', 'Actions/Marketplace/FloorComparisonAction')
+
 // Fee estimation routes
 route.get('/fees/estimate', 'Actions/Fees/FeeEstimateAction')
 

@@ -2,10 +2,11 @@ import { Action } from '@stacksjs/actions'
 import { db } from '@stacksjs/database'
 import { response } from '@stacksjs/router'
 import type { RequestInstance } from '@stacksjs/types'
+import { tensorAggregator } from '../../Services/TensorAggregatorService'
 
 export default new Action({
   name: 'Aggregated Listings',
-  description: 'Fetch listings for an NFT from all marketplaces',
+  description: 'Fetch listings for an NFT from all marketplaces including Tensor',
   method: 'GET',
 
   async handle(request: RequestInstance) {
@@ -37,9 +38,36 @@ export default new Action({
       })
     }
 
-    // In production, fetch from external marketplaces via ts-tokens/marketplace
-    // Mock external listings for structure
-    // const externalListings = await tokenService.getExternalListings(nft.mint_address)
+    // Fetch Tensor listings for the same mint
+    const mintAddress = (nft as any).mint_address
+    if (mintAddress && tensorAggregator.hasApiKey()) {
+      try {
+        const collectionId = (nft as any).collection_id
+        if (collectionId) {
+          const collection = await db
+            .selectFrom('collections')
+            .select('slug')
+            .where('id', '=', collectionId)
+            .executeTakeFirst()
+
+          if (collection?.slug) {
+            const tensorListings = await tensorAggregator.getCollectionListings(collection.slug, { limit: 10 })
+            const matchingListing = tensorListings.find(l => l.mint === mintAddress)
+            if (matchingListing) {
+              listings.push({
+                marketplace: 'tensor',
+                price: matchingListing.price,
+                url: `https://www.tensor.trade/item/${mintAddress}`,
+                source: 'tensor',
+              })
+            }
+          }
+        }
+      }
+      catch {
+        // Tensor API unavailable, continue with local listings only
+      }
+    }
 
     // Sort by price ascending to show best price first
     listings.sort((a, b) => a.price - b.price)
@@ -48,7 +76,7 @@ export default new Action({
 
     return response.json({
       nftId: id,
-      mint: (nft as any).mint_address,
+      mint: mintAddress,
       listings,
       bestPrice,
       totalListings: listings.length,
