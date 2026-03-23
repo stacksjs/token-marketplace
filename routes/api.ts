@@ -280,6 +280,10 @@ route.get('/indexer/status', 'Actions/Indexer/IndexerStatusAction')
 route.get('/indexer/traits/{slug}', 'Actions/Indexer/TraitCountsAction')
 route.get('/indexer/events', 'Actions/Indexer/MarketplaceEventsAction')
 
+// Revenue / Community-Owned Marketplace routes
+route.get('/revenue/stats', 'Actions/Revenue/RevenueStatsAction')
+route.get('/revenue/stats/{collectionId}', 'Actions/Revenue/RevenueStatsAction')
+
 // Compressed NFT routes
 route.group({ prefix: '/cnft' }, () => {
   route.post('/mint', 'Actions/CompressedNFT/MintCompressedAction')
