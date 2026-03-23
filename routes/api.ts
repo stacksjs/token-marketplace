@@ -275,6 +275,11 @@ route.post('/auth/wallet/verify', 'Actions/Auth/WalletVerifyAction')
 // Admin fee stats (requires authentication)
 route.get('/admin/fees', 'Actions/Admin/PlatformFeeStatsAction').middleware('auth')
 
+// Indexer routes
+route.get('/indexer/status', 'Actions/Indexer/IndexerStatusAction')
+route.get('/indexer/traits/{slug}', 'Actions/Indexer/TraitCountsAction')
+route.get('/indexer/events', 'Actions/Indexer/MarketplaceEventsAction')
+
 // Multisig routes (requires authentication)
 route.group({ prefix: '/multisig', middleware: 'auth' }, () => {
   route.post('/', 'Actions/Multisig/CreateMultisigAction')
