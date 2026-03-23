@@ -280,6 +280,10 @@ route.get('/indexer/status', 'Actions/Indexer/IndexerStatusAction')
 route.get('/indexer/traits/{slug}', 'Actions/Indexer/TraitCountsAction')
 route.get('/indexer/events', 'Actions/Indexer/MarketplaceEventsAction')
 
+// Media / Image CDN routes
+route.get('/media/image', 'Actions/Media/ImageProxyAction')
+route.get('/media/status', 'Actions/Media/ImageCDNStatusAction')
+
 // Multisig routes (requires authentication)
 route.group({ prefix: '/multisig', middleware: 'auth' }, () => {
   route.post('/', 'Actions/Multisig/CreateMultisigAction')

@@ -51,3 +51,28 @@ export function toCamelCase(obj: Record<string, any>, jsonFields?: string[]): Re
   }
   return result
 }
+
+/**
+ * Convert a raw NFT image URL to a CDN-proxied URL with resizing.
+ *
+ * Usage in STX views:
+ *   <img src="{{ cdnImage(nft.image, 400) }}" />
+ *
+ * Generates: /api/media/image?url=https://arweave.net/abc&w=400&f=webp
+ */
+export function cdnImage(url: string, width: number = 400, format: string = 'webp'): string {
+  if (!url) return '/assets/images/placeholder-nft.png'
+
+  // If already a local/CDN URL, return as-is
+  if (url.startsWith('/')) return url
+
+  return `/api/media/image?url=${encodeURIComponent(url)}&w=${width}&f=${format}`
+}
+
+/** Preset size helpers for common NFT image dimensions. */
+export const imageSizes = {
+  thumbnail: (url: string) => cdnImage(url, 150),
+  card: (url: string) => cdnImage(url, 400),
+  detail: (url: string) => cdnImage(url, 800),
+  full: (url: string) => cdnImage(url, 1200),
+}
