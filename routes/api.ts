@@ -280,6 +280,13 @@ route.get('/indexer/status', 'Actions/Indexer/IndexerStatusAction')
 route.get('/indexer/traits/{slug}', 'Actions/Indexer/TraitCountsAction')
 route.get('/indexer/events', 'Actions/Indexer/MarketplaceEventsAction')
 
+// Creator Launchpad routes
+route.group({ prefix: '/launchpad' }, () => {
+  route.post('/create', 'Actions/Launchpad/CreateLaunchAction')
+  route.get('/dashboard', 'Actions/Launchpad/CreatorDashboardAction')
+  route.get('/dashboard/{slug}', 'Actions/Launchpad/CreatorDashboardAction')
+})
+
 // Revenue / Community-Owned Marketplace routes
 route.get('/revenue/stats', 'Actions/Revenue/RevenueStatsAction')
 route.get('/revenue/stats/{collectionId}', 'Actions/Revenue/RevenueStatsAction')
