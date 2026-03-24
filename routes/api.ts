@@ -272,7 +272,8 @@ route.post('/nfts/bulk-create', 'Actions/Nft/BulkCreateNftsAction').middleware('
 route.post('/auth/wallet/challenge', 'Actions/Auth/WalletChallengeAction')
 route.post('/auth/wallet/verify', 'Actions/Auth/WalletVerifyAction')
 
-// Admin fee stats (requires authentication)
+// Admin routes (requires authentication)
+route.get('/admin/verify', 'Actions/Admin/VerifyAdminAction').middleware('auth')
 route.get('/admin/fees', 'Actions/Admin/PlatformFeeStatsAction').middleware('auth')
 
 // Indexer routes

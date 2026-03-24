@@ -6,6 +6,23 @@ const pageTitle = 'Admin | Naked NFTs'
 @section('title', pageTitle)
 @section('content')
   <div class="min-h-screen bg-gray-50">
+    <!-- Access Denied overlay (shown by default, hidden after admin verification) -->
+    <div id="admin-access-denied" class="flex items-center justify-center min-h-screen">
+      <div class="text-center max-w-md mx-auto px-6">
+        <div id="admin-loading" class="text-gray-5">
+          <p class="text-lg font-medium">Verifying admin access...</p>
+        </div>
+        <div id="admin-denied" class="hidden">
+          <div class="text-6xl mb-4">🔒</div>
+          <h2 class="text-2xl font-bold text-gray-8 mb-2">Access Denied</h2>
+          <p class="text-gray-5 mb-6">You must be signed in with an admin wallet to access this page.</p>
+          <a href="/" class="inline-block px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition">Go Home</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin content (hidden until verified) -->
+    <div id="admin-content" class="hidden">
     <!-- Header -->
     <div class="bg-white border-b border-gray-200">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -548,6 +565,7 @@ const pageTitle = 'Admin | Naked NFTs'
         </div>
       </div>
     </div>
+  </div>
   </div>
 
   <script client>
@@ -1188,8 +1206,34 @@ const pageTitle = 'Admin | Naked NFTs'
         }
       }
 
-      // Auto-load collections on page load
-      loadCollectionsList()
+      // Verify admin access before showing the dashboard
+      ;(async function() {
+        var token = localStorage.getItem('auth_token')
+        if (!token) {
+          document.getElementById('admin-loading').classList.add('hidden')
+          document.getElementById('admin-denied').classList.remove('hidden')
+          return
+        }
+
+        try {
+          var res = await fetch(ADMIN_API + '/admin/verify', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          })
+          if (res.ok) {
+            // Admin verified — show dashboard, hide overlay
+            document.getElementById('admin-access-denied').classList.add('hidden')
+            document.getElementById('admin-content').classList.remove('hidden')
+            loadCollectionsList()
+          } else {
+            document.getElementById('admin-loading').classList.add('hidden')
+            document.getElementById('admin-denied').classList.remove('hidden')
+          }
+        } catch (err) {
+          document.getElementById('admin-loading').classList.add('hidden')
+          document.getElementById('admin-denied').classList.remove('hidden')
+        }
+      })()
     }
   </script>
+  </div>
 @endsection
